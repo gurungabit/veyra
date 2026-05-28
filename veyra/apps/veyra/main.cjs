@@ -1,7 +1,7 @@
 const { app, BrowserWindow, dialog, ipcMain, shell } = require("electron");
 const { createServer: createHttpsServer, request: httpsRequest } = require("https");
 const { execFileSync, spawn } = require("child_process");
-const { copyFileSync, existsSync, mkdirSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } = require("fs");
+const { appendFileSync, copyFileSync, existsSync, mkdirSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } = require("fs");
 const { dirname, join, resolve } = require("path");
 
 app.setName("Veyra");
@@ -317,32 +317,147 @@ function deleteBuilderScript(id) {
 
 async function openBuilderScriptInVsCode(script) {
   const filePath = writeBuilderScript(script);
+  return openFileInVsCode(filePath);
+}
+
+async function openScriptInVsCode(scriptId) {
+  const filePath = scriptSourcePath(scriptId);
+  if (!filePath) throw new Error(`No editable source file is registered for script ${scriptId}.`);
+  return openFileInVsCode(filePath);
+}
+
+async function openFileInVsCode(filePath) {
+  const targetPath = resolve(filePath);
+  if (!existsSync(targetPath)) throw new Error(`File does not exist: ${targetPath}`);
+  const attempts = [];
+  logEditorOpen(`open requested: ${targetPath}`);
+
+  try {
+    const uri = vscodeFileUri(targetPath);
+    await shell.openExternal(uri);
+    attempts.push(`uri:${uri}`);
+    logEditorOpen(`shell.openExternal ok: ${uri}`);
+    if (process.platform === "win32") {
+      await spawnDetached(process.env.ComSpec || "cmd.exe", ["/d", "/c", "start", "", uri]);
+      attempts.push(`cmd-start-uri:${uri}`);
+      logEditorOpen(`cmd start uri ok: ${uri}`);
+    }
+  } catch (error) {
+    attempts.push(`uri failed: ${error?.message || String(error)}`);
+    logEditorOpen(`uri failed: ${error?.stack || error?.message || String(error)}`);
+  }
+
+  try {
+    const cliResult = await openFileWithVsCodeCli(targetPath);
+    logEditorOpen(`cli ok: ${JSON.stringify(cliResult)}`);
+    return { filePath: targetPath, ...cliResult, attempts, logPath: editorOpenLogPath() };
+  } catch (error) {
+    attempts.push(`cli failed: ${error?.message || String(error)}`);
+    logEditorOpen(`cli failed: ${error?.stack || error?.message || String(error)}`);
+    if (attempts.some((attempt) => attempt.startsWith("uri:"))) {
+      return { filePath: targetPath, result: "opened-vscode-uri", attempts, logPath: editorOpenLogPath() };
+    }
+    throw new Error(`Could not open VS Code for ${targetPath}. ${attempts.join(" | ")}`);
+  }
+}
+
+async function openFileWithVsCodeCli(targetPath) {
   const codePath = findVsCodeExecutable();
   if (codePath) {
-    const isCmd = /\.(cmd|bat)$/i.test(codePath);
-    const child = isCmd
-      ? spawn("cmd.exe", ["/d", "/s", "/c", `"${codePath}" -r "${filePath}"`], { detached: true, stdio: "ignore", windowsHide: true })
-      : spawn(codePath, ["-r", filePath], { detached: true, stdio: "ignore", windowsHide: true });
-    child.unref();
-    return { filePath, codePath, result: "spawned-vscode" };
+    if (process.platform === "win32") {
+      await spawnVsCodeOnWindows(codePath, targetPath);
+      return { codePath, result: "spawned-vscode-cli" };
+    }
+    await spawnDetached(codePath, ["--new-window", targetPath], false);
+    return { codePath, result: "spawned-vscode" };
   }
 
   if (process.platform === "darwin") {
-    const child = spawn("open", ["-a", "Visual Studio Code", filePath], { detached: true, stdio: "ignore" });
-    child.unref();
-    return { filePath, result: "spawned-macos-vscode" };
+    await spawnDetached("open", ["-a", "Visual Studio Code", targetPath]);
+    return { result: "spawned-macos-vscode" };
   }
 
   if (process.platform !== "win32") {
-    const child = spawn("code", ["-r", filePath], { detached: true, stdio: "ignore" });
-    child.unref();
-    return { filePath, result: "spawned-code-command" };
+    await spawnDetached("code", ["--new-window", targetPath]);
+    return { result: "spawned-code-command" };
   }
 
-  const fallback = `code -r "${filePath}"`;
-  const child = spawn("cmd.exe", ["/d", "/s", "/c", fallback], { detached: true, stdio: "ignore", windowsHide: true });
+  await spawnDetached(process.env.ComSpec || "cmd.exe", ["/d", "/s", "/c", quoteCmdCommand(["code", "--new-window", targetPath])]);
+  return { result: "spawned-code-command" };
+}
+
+function vscodeFileUri(filePath) {
+  return `vscode://file/${encodeURI(filePath.replace(/\\/gu, "/"))}`;
+}
+
+async function spawnDetached(command, args, windowsHide = true) {
+  logEditorOpen(`spawn: ${command} ${args.join(" ")}`);
+  const child = spawn(command, args, {
+    detached: true,
+    stdio: "ignore",
+    windowsHide,
+    windowsVerbatimArguments: isWindowsCommandPrompt(command)
+  });
+  await waitForSpawn(child);
   child.unref();
-  return { filePath, result: "spawned-code-command" };
+}
+
+async function spawnVsCodeOnWindows(codePath, targetPath) {
+  if (/\.cmd$/iu.test(codePath) || /\.bat$/iu.test(codePath)) {
+    await spawnDetached(process.env.ComSpec || "cmd.exe", ["/d", "/s", "/c", quoteCmdCommand([codePath, "--new-window", targetPath])]);
+    return;
+  }
+  await spawnDetached(codePath, ["--new-window", targetPath], false);
+}
+
+function quoteCmdCommand(args) {
+  const [command = "", ...commandArgs] = args;
+  const commandPart = /[\\/\s]/u.test(command) ? quoteCmdArg(command) : command;
+  return `"${[commandPart, ...commandArgs.map(quoteCmdArg)].join(" ")}"`;
+}
+
+function quoteCmdArg(arg) {
+  return `"${String(arg).replace(/"/g, '""')}"`;
+}
+
+function isWindowsCommandPrompt(command) {
+  return process.platform === "win32" && /(?:^|[\\/])cmd(?:\.exe)?$/i.test(command);
+}
+
+function logEditorOpen(message) {
+  try {
+    const logPath = editorOpenLogPath();
+    mkdirSync(dirname(logPath), { recursive: true });
+    appendFileSync(logPath, `[${new Date().toISOString()}] ${message}\n`, "utf8");
+  } catch {
+    // Editor diagnostics should never break the app.
+  }
+}
+
+function editorOpenLogPath() {
+  return join(app.getPath("userData"), "Logs", "editor-open.log");
+}
+
+function waitForSpawn(child) {
+  return new Promise((resolveSpawn, rejectSpawn) => {
+    const timeout = setTimeout(resolveSpawn, 350);
+    child.once("error", (error) => {
+      clearTimeout(timeout);
+      rejectSpawn(error);
+    });
+    child.once("spawn", () => {
+      clearTimeout(timeout);
+      resolveSpawn();
+    });
+  });
+}
+
+function scriptSourcePath(scriptId) {
+  const paths = {
+    "leveling.high-level-xp": join(scriptsDir, "HighLevelXP.ts"),
+    "leveling.class-xp": join(scriptsDir, "ClassXP.ts")
+  };
+  return paths[String(scriptId || "")] || "";
 }
 
 function findVsCodeExecutable() {
@@ -360,7 +475,12 @@ function findVsCodeExecutable() {
     ...whereExecutables("code.cmd"),
     ...whereExecutables("code")
   ].filter(Boolean);
-  return candidates.find((candidate) => existsSync(candidate)) || "";
+  return candidates.find((candidate) => existsSync(candidate) && isVsCodeExecutableCandidate(candidate)) || "";
+}
+
+function isVsCodeExecutableCandidate(candidate) {
+  if (process.platform !== "win32") return true;
+  return /\.(cmd|bat|exe)$/i.test(candidate);
 }
 
 function whereExecutables(command) {
@@ -384,6 +504,7 @@ ipcMain.handle("write-builder-script", (_event, script) => writeBuilderScript(sc
 ipcMain.handle("write-builder-scripts", (_event, scripts) => writeBuilderScripts(scripts));
 ipcMain.handle("delete-builder-script", (_event, id) => deleteBuilderScript(id));
 ipcMain.handle("open-builder-script-vscode", (_event, script) => openBuilderScriptInVsCode(script));
+ipcMain.handle("open-script-vscode", (_event, scriptId) => openScriptInVsCode(scriptId));
 
 app.whenReady().then(() => startAssetServer().then(createWindow));
 

@@ -35,6 +35,8 @@ export interface Bot {
 
 type FlashObject = HTMLElement & Record<string, (...args: unknown[]) => unknown>;
 
+const publicOnlyMaps = new Set<string>();
+
 export class BrowserFlashBot implements Bot {
   constructor(
     private readonly flash: () => FlashObject,
@@ -160,12 +162,13 @@ export class BrowserFlashBot implements Bot {
     const targetPad = (pad || "").trim();
     const options = await this.readOptions().catch(() => createDefaultGameOptionsState());
     let targetMap = map;
-    if (options.values["private-rooms"] === true && !hasPrivateRoomSuffix(targetMap)) {
+    const baseTargetMap = baseMapName(targetMap);
+    if (options.values["private-rooms"] === true && !hasPrivateRoomSuffix(targetMap) && !publicOnlyMaps.has(baseTargetMap)) {
       const privateNumber = Number(options.values["private-number"] ?? 0);
       targetMap = withPrivateRoomSuffix(targetMap, privateNumber);
     }
 
-    if (current && sameMap(current.map, targetMap)) {
+    if (current && sameMap(current.map, targetMap) && samePrivateRoom(current, targetMap)) {
       if (targetCell && (current.cell !== targetCell || (targetPad && targetPad !== "Auto" && current.pad !== targetPad))) {
         this.log(`Jumping to ${targetCell}/${targetPad}.`);
         await this.jump(targetCell, targetPad);
@@ -174,9 +177,15 @@ export class BrowserFlashBot implements Bot {
       return;
     }
 
-    this.log(`Joining ${targetMap}.`);
-    await this.call("joinMap", targetMap, "Enter", "Spawn");
-    await this.waitForMap(targetMap, undefined, undefined);
+    try {
+      await this.joinBaseMap(targetMap);
+    } catch (error) {
+      if (!hasPrivateRoomSuffix(targetMap)) throw error;
+      publicOnlyMaps.add(baseTargetMap);
+      this.log(`Private room join failed for ${targetMap}; retrying ${baseTargetMap}.`);
+      await this.joinBaseMap(baseTargetMap);
+      targetMap = baseTargetMap;
+    }
     await this.delay(650);
 
     const landed = await this.snapshot().catch(() => undefined);
@@ -185,6 +194,12 @@ export class BrowserFlashBot implements Bot {
       await this.jump(targetCell, targetPad);
       await this.waitForMap(targetMap, targetCell, undefined);
     }
+  }
+
+  private async joinBaseMap(targetMap: string): Promise<void> {
+    this.log(`Joining ${targetMap}.`);
+    await this.call("joinMap", targetMap, "Enter", "Spawn");
+    await this.waitForMap(targetMap, undefined, undefined);
   }
 
   async sendPacket(packet: string): Promise<void> {
@@ -285,8 +300,11 @@ function toStringArray(value: unknown): string[] {
 }
 
 function sameMap(left: string, right: string): boolean {
-  const normalize = (value: string) => (value || "").split("-")[0]?.toLowerCase() || "";
-  return normalize(left) === normalize(right);
+  return baseMapName(left) === baseMapName(right);
+}
+
+function baseMapName(map: string): string {
+  return (map || "").split("-")[0]?.toLowerCase() || "";
 }
 
 function samePrivateRoom(snapshot: PlayerSnapshot, targetMap: string): boolean {

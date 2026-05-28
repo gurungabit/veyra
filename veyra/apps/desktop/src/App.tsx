@@ -28,6 +28,7 @@ type RendererApi = {
     status: () => Promise<ScriptRuntimeSnapshot>;
     runExample: () => Promise<ScriptRuntimeSnapshot>;
     run: (scriptPath: string) => Promise<ScriptRuntimeSnapshot>;
+    openInVsCode: (scriptPath: string) => Promise<{ filePath: string; result: string; codePath?: string }>;
     stop: () => Promise<ScriptRuntimeSnapshot>;
     logs: () => Promise<LogEntry[]>;
   };
@@ -192,6 +193,20 @@ export function App() {
     }
   }
 
+  async function openSelectedScriptInVsCode(): Promise<void> {
+    const api = getRendererApi()?.scripts;
+    if (!api || !selectedScript) return;
+    setScriptBusy(true);
+    try {
+      const result = await api.openInVsCode(selectedScript);
+      appendLocalLog("info", selectedInfo?.name ?? "script", `Opened in VS Code: ${result.filePath}`);
+    } catch (error) {
+      appendLocalLog("error", selectedInfo?.name ?? "script", errorMessage(error));
+    } finally {
+      setScriptBusy(false);
+    }
+  }
+
   function appendLocalLog(level: LogEntry["level"], scope: string, message: string): void {
     setScriptLogs((current) => [
       ...current,
@@ -235,6 +250,7 @@ export function App() {
           runtime={scripts}
           busy={scriptBusy}
           onSelect={setSelectedScript}
+          onOpenInVsCode={() => void openSelectedScriptInVsCode()}
           onStart={() => void runSelectedScript()}
           onStop={() => void stopScript()}
         />
@@ -264,7 +280,7 @@ export function App() {
                 type="button"
                 className="menu-button"
                 onClick={(event) => {
-                  if (nativeMenuKeys.has(item.key)) {
+                  if (isNativeMenuKey(item.key)) {
                     void popupNativeMenu(item.key, event.currentTarget);
                     return;
                   }
@@ -308,6 +324,7 @@ function ScriptPanel(props: {
   runtime: ScriptRuntimeSnapshot;
   busy: boolean;
   onSelect: (scriptPath: string) => void;
+  onOpenInVsCode: () => void;
   onStart: () => void;
   onStop: () => void;
 }) {
@@ -324,8 +341,12 @@ function ScriptPanel(props: {
       </select>
       <div className="button-grid two">
         <button type="button">Load Script</button>
-        <button type="button">Open VSCode</button>
-        <button type="button">Edit Script</button>
+        <button type="button" disabled={!props.selectedScript || props.busy} onClick={props.onOpenInVsCode}>
+          Open VSCode
+        </button>
+        <button type="button" disabled={!props.selectedScript || props.busy} onClick={props.onOpenInVsCode}>
+          Edit Script
+        </button>
         <button type="button">Search Scripts</button>
       </div>
       <button type="button" className="wide-button">Edit Script Options</button>
@@ -389,6 +410,10 @@ async function popupNativeMenu(kind: "options" | "helpers" | "tools" | "auto" | 
 function getToolWindowKind(): ToolWindowKind | null {
   const kind = new URLSearchParams(window.location.search).get("window");
   return kind === "scripts" || kind === "logs" ? kind : null;
+}
+
+function isNativeMenuKey(key: MenuKey): key is "options" | "helpers" | "tools" {
+  return nativeMenuKeys.has(key);
 }
 
 function hostBoundsChanged(
