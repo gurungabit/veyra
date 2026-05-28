@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="Content-Security-Policy" content="default-src * 'unsafe-inline' 'unsafe-eval' data: blob: file:; plugin-types application/x-shockwave-flash;" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Veyra</title>
+    <link rel="stylesheet" href="./styles.css?v=20260527-muted-primary-1" />
+  </head>
+  <body>
+    <main class="app-shell">
+      <header class="menu-bar">
+        <div class="brand">
+          <span class="brand-text">
+            <strong>Veyra</strong>
+            <span id="status">Starting...</span>
+          </span>
+        </div>
+        <nav class="nav-left" aria-label="Main tools">
+          <button class="nav-item" data-window="scripts" type="button">Scripts</button>
+          <button class="nav-item" data-menu="options" type="button">Options</button>
+          <button class="nav-item" data-menu="helpers" type="button">Helpers</button>
+          <button class="nav-item" data-menu="tools" type="button">Tools</button>
+          <button class="nav-item" data-window="skills" type="button">Skills</button>
+          <button class="nav-item" data-menu="packets" type="button">Packets</button>
+          <button class="nav-item" data-top-action="open-bank" type="button">Bank</button>
+          <button class="nav-item" data-window="logs" type="button">Logs</button>
+          <button class="nav-item" data-menu="plugins" type="button">Plugins</button>
+        </nav>
+        <nav class="nav-right" aria-label="Quick tools">
+          <button class="nav-item" data-menu="auto" type="button">Auto</button>
+          <button class="nav-item" data-menu="jump" type="button">Jump</button>
+          <button class="nav-item square" data-window="advanced" type="button">+</button>
+        </nav>
+      </header>
+
+      <div class="dropdown-layer" id="dropdown-layer"></div>
+      <section class="menu-ribbon" id="menu-ribbon" data-open="false"></section>
+
+      <section class="game-stage" id="game-host"></section>
+
+      <aside class="drawer drawer-left" id="script-drawer" data-open="false">
+        <section class="drawer-section">
+          <div class="section-heading">
+            <span>Load Script</span>
+            <small id="script-status">No script loaded</small>
+          </div>
+          <label class="field">
+            <span>Script</span>
+            <select id="script-select"></select>
+          </label>
+          <input id="script-search" class="input" type="search" placeholder="Search scripts, tags, maps..." />
+          <div class="script-list" id="script-list"></div>
+          <div class="button-grid two">
+            <button id="edit-script" type="button">Edit Script</button>
+            <button id="search-scripts" type="button">Find Script</button>
+          </div>
+          <button data-window="builder" type="button">Script Builder</button>
+          <button id="edit-options" type="button">Edit Script Options</button>
+          <div class="button-grid two">
+            <button id="start-script" class="primary" type="button">Start Script</button>
+            <button id="stop-script" type="button">Stop Script</button>
+          </div>
+        </section>
+      </aside>
+
+      <aside class="drawer drawer-right" id="tool-drawer" data-open="false">
+        <div id="tool-panel"></div>
+      </aside>
+
+      <aside class="bottom-console" id="bottom-console" data-open="true">
+        <div class="console-tabs">
+          <button class="console-tab active" data-log="script" type="button">Script</button>
+          <button class="console-tab" data-log="debug" type="button">Debug</button>
+          <button class="console-tab" data-log="packet" type="button">Packets</button>
+          <button class="console-tab" data-log="event" type="button">Events</button>
+          <span class="spacer"></span>
+          <button id="clear-log" type="button">Clear</button>
+          <button id="copy-log" type="button">Copy</button>
+          <button id="save-log" type="button">Save</button>
+        </div>
+        <pre class="log" id="log"></pre>
+      </aside>
+    </main>
+    <script type="module" src="../dist/renderer.js?v=20260527-muted-primary-1"></script>
+  </body>
+</html>
