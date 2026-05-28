@@ -1,0 +1,25 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "lib": ["ES2022", "DOM"],
+    "strict": true,
+    "noUncheckedIndexedAccess": true,
+    "exactOptionalPropertyTypes": true,
+    "esModuleInterop": true,
+    "forceConsistentCasingInFileNames": true,
+    "skipLibCheck": true,
+    "declaration": true,
+    "sourceMap": true,
+    "composite": true,
+    "baseUrl": ".",
+    "paths": {
+      "@veyra/protocol": ["packages/protocol/src/index.ts"],
+      "@veyra/core": ["packages/core/src/index.ts"],
+      "@veyra/runtime": ["packages/runtime/src/index.ts"],
+      "@veyra/scripts": ["packages/scripts/src/index.ts"],
+      "@veyra/script-tools": ["packages/script-tools/src/index.ts"]
+    }
+  }
+}

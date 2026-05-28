@@ -1,0 +1,17 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "target": "ES2020",
+    "module": "ES2020",
+    "moduleResolution": "Bundler",
+    "rootDir": "src",
+    "outDir": "dist",
+    "lib": ["ES2020", "DOM"],
+    "types": [],
+    "strict": true,
+    "declaration": false,
+    "composite": false,
+    "noEmit": false
+  },
+  "include": ["src/**/*.ts"]
+}

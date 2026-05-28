@@ -1,0 +1,352 @@
+import { createDefaultGameOptionsState, type GameOptionsState } from "./gameOptions.js";
+
+export interface PlayerSnapshot {
+  loggedIn: boolean;
+  username: string;
+  level: number;
+  map: string;
+  cell: string;
+  pad: string;
+  room: number;
+  alive: boolean;
+  currentClassName: string;
+  currentClassPoints: number;
+  currentClassRank: number;
+}
+
+export interface Bot {
+  log(message: string): void;
+  delay(ms: number, signal?: AbortSignal): Promise<void>;
+  gameOptions(): Promise<GameOptionsState>;
+  waitForLogin(signal?: AbortSignal): Promise<PlayerSnapshot>;
+  snapshot(): Promise<PlayerSnapshot>;
+  cells(): Promise<string[]>;
+  pads(): Promise<string[]>;
+  waitForMap(map: string, cell?: string, pad?: string, signal?: AbortSignal): Promise<PlayerSnapshot>;
+  join(map: string, cell?: string, pad?: string): Promise<void>;
+  jump(cell: string, pad?: string): Promise<void>;
+  attack(monster?: string | number): Promise<void>;
+  useAvailableSkills(): Promise<void>;
+  sendPacket(packet: string): Promise<void>;
+  getGameObject<T>(path: string): Promise<T>;
+  callGameFunction<T>(path: string, ...args: unknown[]): Promise<T>;
+  call<T>(name: string, ...args: unknown[]): Promise<T>;
+}
+
+type FlashObject = HTMLElement & Record<string, (...args: unknown[]) => unknown>;
+
+export class BrowserFlashBot implements Bot {
+  constructor(
+    private readonly flash: () => FlashObject,
+    private readonly logger: (message: string) => void,
+    private readonly readOptions: () => Promise<GameOptionsState> = async () => createDefaultGameOptionsState()
+  ) {}
+
+  log(message: string): void {
+    this.logger(message);
+  }
+
+  async gameOptions(): Promise<GameOptionsState> {
+    return this.readOptions();
+  }
+
+  async delay(ms: number, signal?: AbortSignal): Promise<void> {
+    await new Promise<void>((resolve, reject) => {
+      const timeout = window.setTimeout(resolve, ms);
+      signal?.addEventListener(
+        "abort",
+        () => {
+          window.clearTimeout(timeout);
+          reject(signal.reason instanceof Error ? signal.reason : new Error(String(signal.reason ?? "Cancelled.")));
+        },
+        { once: true }
+      );
+    });
+  }
+
+  async waitForLogin(signal?: AbortSignal): Promise<PlayerSnapshot> {
+    for (;;) {
+      const snapshot = await this.snapshot();
+      if (snapshot.loggedIn) return snapshot;
+      this.log("Waiting for login.");
+      await this.delay(1000, signal);
+    }
+  }
+
+  async snapshot(): Promise<PlayerSnapshot> {
+    const bridgeSnapshot = await this.call<unknown>("getWorldSnapshot").catch(() => undefined);
+    if (bridgeSnapshot) {
+      const snapshot = parseMaybeJson<Record<string, unknown>>(bridgeSnapshot);
+      if (snapshot && typeof snapshot === "object") {
+        return {
+          loggedIn: toBoolean(snapshot.loggedIn),
+          username: String(snapshot.username ?? ""),
+          level: toNumber(snapshot.level),
+          map: String(snapshot.map ?? ""),
+          cell: String(snapshot.cell ?? ""),
+          pad: String(snapshot.pad ?? ""),
+          room: toNumber(snapshot.room),
+          alive: toBoolean(snapshot.alive),
+          currentClassName: String(snapshot.currentClassName || "Equipped class"),
+          currentClassPoints: toNumber(snapshot.currentClassPoints),
+          currentClassRank: toNumber(snapshot.currentClassRank)
+        };
+      }
+    }
+
+    const [loggedIn, username, fallbackUsername, level, map, cell, pad, hp, rank, className, equippedClassName, classPoints] = await Promise.all([
+      this.call<boolean>("isLoggedIn").catch(() => false),
+      this.getGameObject<string>("loginInfo.strUsername").catch(() => ""),
+      this.getGameObject<string>("world.myAvatar.objData.strUsername").catch(() => ""),
+      this.getGameObject<unknown>("world.myAvatar.dataLeaf.intLevel").catch(() => 0),
+      this.getGameObject<string>("world.strMapName").catch(() => ""),
+      this.getGameObject<string>("world.strFrame").catch(() => ""),
+      this.getGameObject<string>("world.strPad").catch(() => ""),
+      this.getGameObject<unknown>("world.myAvatar.dataLeaf.intHP").catch(() => 0),
+      this.getGameObject<unknown>("world.myAvatar.objData.iRank").catch(() => 0),
+      this.getGameObject<string>("world.myAvatar.objData.strClassName").catch(() => ""),
+      this.getGameObject<string>("world.myAvatar.objData.eqp.ar.sName").catch(() => ""),
+      this.getGameObject<unknown>("world.myAvatar.objData.iCP").catch(() => 0)
+    ]);
+
+    return {
+      loggedIn: toBoolean(loggedIn),
+      username: username || fallbackUsername,
+      level: toNumber(level),
+      map,
+      cell,
+      pad,
+      room: 0,
+      alive: toNumber(hp) > 0,
+      currentClassName: className || equippedClassName || "Equipped class",
+      currentClassPoints: toNumber(classPoints),
+      currentClassRank: toNumber(rank)
+    };
+  }
+
+  async cells(): Promise<string[]> {
+    return toStringArray(await this.call<unknown>("getCells").catch(() => []));
+  }
+
+  async pads(): Promise<string[]> {
+    return toStringArray(await this.call<unknown>("getPads").catch(() => []));
+  }
+
+  async waitForMap(map: string, cell?: string, pad?: string, signal?: AbortSignal): Promise<PlayerSnapshot> {
+    const baseMap = map.split("-")[0]?.toLowerCase() || map.toLowerCase();
+    const deadline = Date.now() + 12000;
+    let lastSnapshot = await this.snapshot();
+
+    while (Date.now() < deadline) {
+      if (signal?.aborted) throw signal.reason instanceof Error ? signal.reason : new Error("Cancelled.");
+
+      lastSnapshot = await this.snapshot();
+      const loadedMap = lastSnapshot.map.toLowerCase();
+      const cellMatches = !cell || lastSnapshot.cell === cell;
+      const padMatches = !pad || lastSnapshot.pad === pad;
+      if ((loadedMap === baseMap || loadedMap === map.toLowerCase()) && cellMatches && padMatches) return lastSnapshot;
+      if ((loadedMap === baseMap || loadedMap === map.toLowerCase()) && cellMatches && !pad) return lastSnapshot;
+      await this.delay(300, signal);
+    }
+
+    throw new Error(
+      `Timed out joining ${map}${cell ? ` ${cell}` : ""}${pad ? `/${pad}` : ""}. Last location: ${lastSnapshot.map || "unknown"} ${lastSnapshot.cell || "?"}/${lastSnapshot.pad || "?"}.`
+    );
+  }
+
+  async join(map: string, cell?: string, pad?: string): Promise<void> {
+    const current = await this.snapshot().catch(() => undefined);
+    const targetCell = (cell || "").trim();
+    const targetPad = (pad || "").trim();
+    const options = await this.readOptions().catch(() => createDefaultGameOptionsState());
+    let targetMap = map;
+    if (options.values["private-rooms"] === true && !hasPrivateRoomSuffix(targetMap)) {
+      const privateNumber = Number(options.values["private-number"] ?? 0);
+      targetMap = withPrivateRoomSuffix(targetMap, privateNumber);
+    }
+
+    if (current && sameMap(current.map, targetMap)) {
+      if (targetCell && (current.cell !== targetCell || (targetPad && targetPad !== "Auto" && current.pad !== targetPad))) {
+        this.log(`Jumping to ${targetCell}/${targetPad}.`);
+        await this.jump(targetCell, targetPad);
+        await this.waitForMap(targetMap, targetCell, undefined);
+      }
+      return;
+    }
+
+    this.log(`Joining ${targetMap}.`);
+    await this.call("joinMap", targetMap, "Enter", "Spawn");
+    await this.waitForMap(targetMap, undefined, undefined);
+    await this.delay(650);
+
+    const landed = await this.snapshot().catch(() => undefined);
+    if (landed && targetCell && (landed.cell !== targetCell || (targetPad && targetPad !== "Auto" && landed.pad !== targetPad))) {
+      this.log(`Jumping to ${targetCell}/${targetPad}.`);
+      await this.jump(targetCell, targetPad);
+      await this.waitForMap(targetMap, targetCell, undefined);
+    }
+  }
+
+  async sendPacket(packet: string): Promise<void> {
+    await this.callGameFunction("sfc.sendString", packet);
+  }
+
+  async jump(cell: string, pad = "Spawn"): Promise<void> {
+    const current = await this.snapshot().catch(() => undefined);
+    if (current && sameCellPad(current, cell, pad)) return;
+
+    let lastError: unknown;
+    for (let attempt = 1; attempt <= 3; attempt += 1) {
+      try {
+        if (!pad || pad === "Auto") {
+          await this.call("jumpCorrectRoom", cell, "Spawn", true, false);
+          return;
+        }
+        await this.call("jumpCorrectRoom", cell, pad, false, false);
+        return;
+      } catch (error) {
+        lastError = error;
+        await this.delay(450);
+      }
+    }
+    throw new Error(`Jump to ${cell}/${pad || "Auto"} failed: ${describeUnknownError(lastError)}`);
+  }
+
+  async attack(monster: string | number = "*"): Promise<void> {
+    if (typeof monster === "number") {
+      await this.call("attackMonsterID", monster);
+      return;
+    }
+    await this.call("attackMonsterName", monster);
+  }
+
+  async useAvailableSkills(): Promise<void> {
+    for (const skill of [1, 2, 3, 4, 5]) {
+      if (toBoolean(await this.call("canUseSkill", skill).catch(() => false))) {
+        await this.call("useSkill", skill);
+      }
+    }
+  }
+
+  async getGameObject<T>(path: string): Promise<T> {
+    const value = await this.call<unknown>("getGameObject", path);
+    if (typeof value === "string") {
+      try {
+        return JSON.parse(value) as T;
+      } catch {
+        return value as T;
+      }
+    }
+    return value as T;
+  }
+
+  async callGameFunction<T>(path: string, ...args: unknown[]): Promise<T> {
+    const flashObject = this.flash();
+    const safeName = args.length > 0 ? "callGameFunctionSafe" : "callGameFunction0Safe";
+    if (typeof flashObject[safeName] === "function") {
+      const raw = args.length > 0 ? await this.call<unknown>(safeName, path, ...args) : await this.call<unknown>(safeName, path);
+      return unwrapSafeFlashCall<T>(raw, path, args);
+    }
+    return args.length > 0 ? this.call<T>("callGameFunction", path, ...args) : this.call<T>("callGameFunction0", path);
+  }
+
+  async call<T>(name: string, ...args: unknown[]): Promise<T> {
+    const flashObject = this.flash();
+    const fn = flashObject[name];
+    if (typeof fn !== "function") throw new Error(`Flash callback is unavailable: ${name}`);
+    try {
+      return fn.apply(flashObject, args) as T;
+    } catch (error) {
+      throw new Error(`Flash callback ${name} failed: ${describeUnknownError(error)}`);
+    }
+  }
+}
+
+function toBoolean(value: unknown): boolean {
+  if (typeof value === "boolean") return value;
+  if (typeof value === "number") return value !== 0;
+  if (typeof value === "string") return value.toLowerCase() === "true";
+  return false;
+}
+
+function toNumber(value: unknown): number {
+  if (typeof value === "number") return Number.isFinite(value) ? value : 0;
+  if (typeof value === "string") {
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : 0;
+  }
+  return 0;
+}
+
+function toStringArray(value: unknown): string[] {
+  const parsed = parseMaybeJson<unknown>(value);
+  if (!Array.isArray(parsed)) return [];
+  return parsed.map((item) => String(item)).filter(Boolean);
+}
+
+function sameMap(left: string, right: string): boolean {
+  const normalize = (value: string) => (value || "").split("-")[0]?.toLowerCase() || "";
+  return normalize(left) === normalize(right);
+}
+
+function samePrivateRoom(snapshot: PlayerSnapshot, targetMap: string): boolean {
+  const targetRoom = privateRoomNumber(targetMap);
+  return targetRoom === undefined || snapshot.room === 0 || snapshot.room === targetRoom;
+}
+
+function sameCellPad(snapshot: PlayerSnapshot, cell: string, pad?: string): boolean {
+  const targetCell = (cell || "Enter").trim().toLowerCase();
+  const targetPad = (pad || "Spawn").trim().toLowerCase();
+  const currentCell = (snapshot.cell || "").trim().toLowerCase();
+  const currentPad = (snapshot.pad || "").trim().toLowerCase();
+  return currentCell === targetCell && (targetPad === "auto" || currentPad === targetPad);
+}
+
+function hasPrivateRoomSuffix(map: string): boolean {
+  return /-\d+$/.test(map);
+}
+
+function privateRoomNumber(map: string): number | undefined {
+  const match = /-(\d+)$/.exec(map);
+  if (!match) return undefined;
+  const room = Number(match[1]);
+  return Number.isFinite(room) && room > 0 ? room : undefined;
+}
+
+function withPrivateRoomSuffix(map: string, privateNumber: number): string {
+  if (hasPrivateRoomSuffix(map)) return map;
+  const room = Number.isFinite(privateNumber) && privateNumber > 0 ? Math.floor(privateNumber) : 100000;
+  return `${map}-${room}`;
+}
+
+function parseMaybeJson<T>(value: unknown): T | undefined {
+  if (typeof value !== "string") return value as T;
+  try {
+    return JSON.parse(value) as T;
+  } catch {
+    return undefined;
+  }
+}
+
+function unwrapSafeFlashCall<T>(raw: unknown, path: string, args: unknown[]): T {
+  const parsed = parseMaybeJson<Record<string, unknown>>(raw);
+  if (!parsed || typeof parsed !== "object") return raw as T;
+  if (parsed.ok === true) return parsed.value as T;
+  const message = String(parsed.message || "Flash call failed.");
+  const errorName = parsed.errorName ? ` ${String(parsed.errorName)}` : "";
+  const errorId = parsed.errorId ? ` #${String(parsed.errorId)}` : "";
+  const stack = parsed.stack ? `\n${String(parsed.stack)}` : "";
+  throw new Error(`${path}(${args.map((arg) => JSON.stringify(arg)).join(", ")}) failed:${errorName}${errorId} ${message}${stack}`);
+}
+
+function describeUnknownError(error: unknown): string {
+  if (error instanceof Error) return error.message || error.name;
+  if (typeof error === "string") return error;
+  if (error === null) return "null";
+  if (error === undefined) return "undefined";
+  try {
+    return JSON.stringify(error);
+  } catch {
+    return Object.prototype.toString.call(error);
+  }
+}

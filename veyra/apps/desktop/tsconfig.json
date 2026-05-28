@@ -1,0 +1,16 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "jsx": "react-jsx",
+    "baseUrl": "../..",
+    "rootDir": ".",
+    "outDir": "dist-types"
+  },
+  "references": [
+    { "path": "../../packages/protocol" },
+    { "path": "../../packages/core" },
+    { "path": "../../packages/runtime" },
+    { "path": "../../packages/script-tools" }
+  ],
+  "include": ["src/**/*.ts", "src/**/*.tsx", "electron/**/*.ts", "electron/**/*.cts", "vite.config.ts"]
+}
