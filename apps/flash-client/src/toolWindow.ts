@@ -1697,7 +1697,7 @@ function renderOptions(): void {
         <label class="check"><input data-local-option="open-last-script" type="checkbox" checked /> Remember selected script</label>
         <label class="check"><input data-local-option="attach-logs" type="checkbox" checked /> Share logs with tool windows</label>
         <label class="field"><span>Log limit</span><input class="input" type="number" min="100" value="600" /></label>
-        <label class="field"><span>Default script folder</span><input class="input" value="apps/veyra/src/scripts" /></label>
+        <label class="field"><span>Default script folder</span><input class="input" value="apps/flash-client/src/scripts" /></label>
         <p class="muted">These settings are local UI settings until the shared settings package lands.</p>
       </section>`;
   } else if (section === "core-options") {

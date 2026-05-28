@@ -4,7 +4,7 @@ Veyra is a TypeScript-first desktop automation runtime with an Electron Flash cl
 
 ## Workspace
 
-- `apps/veyra`: Official Electron app with the embedded Flash client.
+- `apps/flash-client`: Official Electron app with the embedded Flash client.
 - `apps/desktop`: React desktop shell prototype.
 - `apps/windows-bridge`: Windows-only local bridge process for Flash client primitives.
 - `packages/protocol`: shared JSON-RPC contracts.
