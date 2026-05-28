@@ -446,13 +446,20 @@ async function runBuilderAction(bot: Bot, action: BuilderAction, signal: AbortSi
     case "while": {
       let iteration = 0;
       const questId = questLoopQuestId(action);
+      const allActions = action.actions || [];
+      const oneTimeActions = questId > 0 ? leadingQuestSetupActions(allActions) : [];
+      const loopActions = oneTimeActions.length > 0 ? allActions.slice(oneTimeActions.length) : allActions;
+      if (oneTimeActions.length > 0) {
+        bot.log(`Running ${oneTimeActions.length} quest setup step${oneTimeActions.length === 1 ? "" : "s"} before loop.`);
+        await runQuestLoopActions(bot, oneTimeActions, questId, signal, depth + 1);
+      }
       while (await evaluateCondition(bot, action.condition)) {
         if (signal?.aborted) throw signal.reason instanceof Error ? signal.reason : new Error("Cancelled.");
         iteration += 1;
         bot.log(`While loop ${iteration}.`);
         try {
-          if (questId > 0) await runQuestLoopActions(bot, action.actions || [], questId, signal, depth + 1);
-          else await runBuilderActions(bot, action.actions || [], signal, depth + 1);
+          if (questId > 0) await runQuestLoopActions(bot, loopActions, questId, signal, depth + 1);
+          else await runBuilderActions(bot, loopActions, signal, depth + 1);
         } catch (error) {
           if (!isBuilderLoopBreak(error)) throw error;
           return;
@@ -462,6 +469,15 @@ async function runBuilderAction(bot: Bot, action: BuilderAction, signal: AbortSi
       return;
     }
   }
+}
+
+function leadingQuestSetupActions(actions: BuilderAction[]): BuilderAction[] {
+  const setup: BuilderAction[] = [];
+  for (const action of actions) {
+    if (normalizeBuilderAction(action).kind !== "getMapItem") break;
+    setup.push(action);
+  }
+  return setup;
 }
 
 async function jumpIfNeeded(

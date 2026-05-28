@@ -1075,7 +1075,12 @@ async function openBuilderDraftInVsCode(): Promise<void> {
 }
 
 async function openBuilderScriptIdInVsCode(scriptId: string): Promise<void> {
-  const selected = builderScripts.find((script) => script.id === scriptId);
+  let selected = builderScripts.find((script) => script.id === scriptId);
+  if (!selected) {
+    const value = await readBuilderScriptsSetting().catch(() => undefined);
+    builderScripts = normalizeBuilderScripts(value);
+    selected = builderScripts.find((script) => script.id === scriptId);
+  }
   if (!selected) {
     localNote("Selected script is not a builder script.");
     return;
@@ -1085,6 +1090,24 @@ async function openBuilderScriptIdInVsCode(scriptId: string): Promise<void> {
     if (native?.openBuilderScriptInVsCode) await native.openBuilderScriptInVsCode(selected);
     else await writeBuilderScripts();
     localNote(`Opened ${selected.name} in VS Code.`);
+  } catch (error) {
+    localNote(`Could not open VS Code: ${error instanceof Error ? error.message : String(error)}`);
+  }
+}
+
+async function openScriptIdInVsCode(scriptId: string): Promise<void> {
+  const selected = state.scripts.find((script) => script.id === scriptId);
+  if (selected?.category === "Builder") {
+    await openBuilderScriptIdInVsCode(scriptId);
+    return;
+  }
+
+  const native = nativeApi();
+  try {
+    if (!native?.openScriptInVsCode) throw new Error("VS Code opener is unavailable.");
+    const result = await native.openScriptInVsCode(scriptId);
+    const filePath = result && typeof result === "object" && "filePath" in result ? String((result as { filePath?: unknown }).filePath ?? "") : "";
+    localNote(`Opened ${selected?.meta.name || scriptId} in VS Code${filePath ? `: ${filePath}` : "."}`);
   } catch (error) {
     localNote(`Could not open VS Code: ${error instanceof Error ? error.message : String(error)}`);
   }
@@ -1963,8 +1986,9 @@ function nativeApi(): {
   writeBuilderScripts?: (scripts: unknown[]) => Promise<unknown>;
   deleteBuilderScript?: (id: string) => Promise<unknown>;
   openBuilderScriptInVsCode?: (script: unknown) => Promise<unknown>;
+  openScriptInVsCode?: (scriptId: string) => Promise<unknown>;
 } | undefined {
-  return (window as unknown as {
+  const current = (window as unknown as {
     veyraNative?: {
       openScriptsFolder?: () => Promise<unknown>;
       readJsonSetting?: (name: string) => Promise<unknown>;
@@ -1974,8 +1998,15 @@ function nativeApi(): {
       writeBuilderScripts?: (scripts: unknown[]) => Promise<unknown>;
       deleteBuilderScript?: (id: string) => Promise<unknown>;
       openBuilderScriptInVsCode?: (script: unknown) => Promise<unknown>;
+      openScriptInVsCode?: (scriptId: string) => Promise<unknown>;
     };
   }).veyraNative;
+  const opener = window.opener
+    ? (window.opener as unknown as {
+        veyraNative?: typeof current;
+      }).veyraNative
+    : undefined;
+  return current ?? opener;
 }
 
 function serverOptions(selected: string): string {
@@ -2611,12 +2642,8 @@ function handleToolButton(action: string): void {
     renderScripts();
   }
   else if (action === "open-script-folder") openScriptsFolder();
-  else if (action === "edit-script") {
-    const selected = state.scripts.find((script) => script.id === selectedId);
-    if (selected?.category === "Builder") openBuilderWindow(selectedId);
-    else openScriptsFolder();
-  }
-  else if (action === "edit-script-vscode") void openBuilderScriptIdInVsCode(selectedId);
+  else if (action === "edit-script") void openScriptIdInVsCode(selectedId);
+  else if (action === "edit-script-vscode") void openScriptIdInVsCode(selectedId);
   else if (action === "open-builder") openBuilderWindow(selectedId);
   else if (action === "script-options") {
     scriptOptionsOpen = !scriptOptionsOpen;

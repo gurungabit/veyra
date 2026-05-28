@@ -26,6 +26,7 @@ export interface VeyraDesktopApi {
     status(): Promise<ScriptRuntimeSnapshot>;
     runExample(): Promise<ScriptRuntimeSnapshot>;
     run(scriptPath: string): Promise<ScriptRuntimeSnapshot>;
+    openInVsCode(scriptPath: string): Promise<{ filePath: string; result: string; codePath?: string }>;
     stop(): Promise<ScriptRuntimeSnapshot>;
     logs(): Promise<LogEntry[]>;
   };
@@ -59,6 +60,7 @@ contextBridge.exposeInMainWorld("veyra", {
     status: () => ipcRenderer.invoke("veyra:scripts-status"),
     runExample: () => ipcRenderer.invoke("veyra:scripts-run-example"),
     run: (scriptPath) => ipcRenderer.invoke("veyra:scripts-run", scriptPath),
+    openInVsCode: (scriptPath) => ipcRenderer.invoke("veyra:scripts-open-vscode", scriptPath),
     stop: () => ipcRenderer.invoke("veyra:scripts-stop"),
     logs: () => ipcRenderer.invoke("veyra:scripts-logs")
   }

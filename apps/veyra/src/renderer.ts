@@ -210,7 +210,7 @@ function installUiHandlers(): void {
   });
   scriptSearch.addEventListener("input", renderScriptList);
 
-  byId<HTMLButtonElement>("edit-script").addEventListener("click", () => log("event", `Edit ${currentScript().meta.name} in the source tree.`));
+  byId<HTMLButtonElement>("edit-script").addEventListener("click", () => void openCurrentScriptInVsCode());
   byId<HTMLButtonElement>("search-scripts").addEventListener("click", () => {
     scriptSearch.focus();
     scriptSearch.select();
@@ -2142,6 +2142,27 @@ async function deleteBuilderScriptSetting(id: string): Promise<unknown> {
   return writeJsonSetting("builder-scripts", { scripts: builderScripts.map(normalizeBuilderScript) });
 }
 
+async function openCurrentScriptInVsCode(): Promise<void> {
+  const script = currentScript();
+  const native = nativeApi();
+  try {
+    let result: unknown;
+    if (script.category === "Builder") {
+      const builderScript = builderScripts.find((item) => item.id === script.id);
+      if (!builderScript) throw new Error(`Builder source is not loaded for ${script.meta.name}.`);
+      if (!native?.openBuilderScriptInVsCode) throw new Error("Builder VS Code opener is unavailable.");
+      result = await native.openBuilderScriptInVsCode(builderScript);
+    } else {
+      if (!native?.openScriptInVsCode) throw new Error("VS Code opener is unavailable.");
+      result = await native.openScriptInVsCode(script.id);
+    }
+    const filePath = result && typeof result === "object" && "filePath" in result ? String((result as { filePath?: unknown }).filePath ?? "") : "";
+    log("event", `Opened ${script.meta.name} in VS Code${filePath ? `: ${filePath}` : "."}`);
+  } catch (error) {
+    log("event", `Could not open VS Code: ${error instanceof Error ? error.message : String(error)}`);
+  }
+}
+
 function nativeApi(): {
   openScriptsFolder?: () => Promise<unknown>;
   readJsonSetting?: (name: string) => Promise<unknown>;
@@ -2150,6 +2171,8 @@ function nativeApi(): {
   writeBuilderScript?: (script: unknown) => Promise<unknown>;
   writeBuilderScripts?: (scripts: unknown[]) => Promise<unknown>;
   deleteBuilderScript?: (id: string) => Promise<unknown>;
+  openBuilderScriptInVsCode?: (script: unknown) => Promise<unknown>;
+  openScriptInVsCode?: (scriptId: string) => Promise<unknown>;
 } | undefined {
   return (window as unknown as {
     veyraNative?: {
@@ -2157,11 +2180,13 @@ function nativeApi(): {
       readJsonSetting?: (name: string) => Promise<unknown>;
       writeJsonSetting?: (name: string, value: unknown) => Promise<unknown>;
       readBuilderScripts?: () => Promise<unknown>;
-      writeBuilderScript?: (script: unknown) => Promise<unknown>;
-      writeBuilderScripts?: (scripts: unknown[]) => Promise<unknown>;
-      deleteBuilderScript?: (id: string) => Promise<unknown>;
-    };
-  }).veyraNative;
+        writeBuilderScript?: (script: unknown) => Promise<unknown>;
+        writeBuilderScripts?: (scripts: unknown[]) => Promise<unknown>;
+        deleteBuilderScript?: (id: string) => Promise<unknown>;
+        openBuilderScriptInVsCode?: (script: unknown) => Promise<unknown>;
+        openScriptInVsCode?: (scriptId: string) => Promise<unknown>;
+      };
+    }).veyraNative;
 }
 
 function createBot(label: string): BrowserFlashBot {

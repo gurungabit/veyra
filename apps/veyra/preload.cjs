@@ -8,5 +8,6 @@ window.veyraNative = {
   writeBuilderScript: (script) => ipcRenderer.invoke("write-builder-script", script),
   writeBuilderScripts: (scripts) => ipcRenderer.invoke("write-builder-scripts", scripts),
   deleteBuilderScript: (id) => ipcRenderer.invoke("delete-builder-script", id),
-  openBuilderScriptInVsCode: (script) => ipcRenderer.invoke("open-builder-script-vscode", script)
+  openBuilderScriptInVsCode: (script) => ipcRenderer.invoke("open-builder-script-vscode", script),
+  openScriptInVsCode: (scriptId) => ipcRenderer.invoke("open-script-vscode", scriptId)
 };
