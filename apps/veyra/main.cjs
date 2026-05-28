@@ -1,7 +1,7 @@
 const { app, BrowserWindow, dialog, ipcMain, shell } = require("electron");
 const { createServer: createHttpsServer, request: httpsRequest } = require("https");
 const { execFileSync, spawn } = require("child_process");
-const { existsSync, mkdirSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } = require("fs");
+const { copyFileSync, existsSync, mkdirSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } = require("fs");
 const { dirname, join, resolve } = require("path");
 
 app.setName("Veyra");
@@ -17,6 +17,7 @@ const certKeyPath = join(certDir, "game-aq-dev.key");
 const certPemPath = join(certDir, "game-aq-dev.pem");
 const certPassphrase = "veyra-dev";
 const flash = resolvePepperFlash();
+migrateGlobalFlashSharedObjects();
 installFlashTrust();
 installFlashSettings();
 
@@ -688,6 +689,97 @@ function installFlashSettings() {
     } catch (error) {
       console.warn("Unable to write Flash mms.cfg.", filePath, error);
     }
+  }
+}
+
+function migrateGlobalFlashSharedObjects() {
+  const sources = getGlobalFlashSharedObjectRoots();
+  const targets = getVeyraPepperSharedObjectRoots();
+  for (const source of sources) {
+    if (!existsSync(source)) continue;
+    for (const target of targets) {
+      try {
+        copyDirectory(source, target);
+      } catch (error) {
+        console.warn("Unable to migrate Flash SharedObjects.", source, target, error);
+      }
+    }
+  }
+}
+
+function getGlobalFlashSharedObjectRoots() {
+  const roots = [];
+  if (process.platform === "win32" && process.env.APPDATA) {
+    const sharedRoot = join(process.env.APPDATA, "Macromedia", "Flash Player", "#SharedObjects");
+    try {
+      if (existsSync(sharedRoot)) {
+        for (const entry of readdirSync(sharedRoot, { withFileTypes: true })) {
+          if (entry.isDirectory()) roots.push(join(sharedRoot, entry.name, "game.aq.com"));
+        }
+      }
+    } catch {
+      // Missing global Flash data is fine; the app will create its own profile.
+    }
+  } else if (process.platform === "darwin" && process.env.HOME) {
+    const sharedRoot = join(process.env.HOME, "Library", "Preferences", "Macromedia", "Flash Player", "#SharedObjects");
+    try {
+      if (existsSync(sharedRoot)) {
+        for (const entry of readdirSync(sharedRoot, { withFileTypes: true })) {
+          if (entry.isDirectory()) roots.push(join(sharedRoot, entry.name, "game.aq.com"));
+        }
+      }
+    } catch {
+      // Missing global Flash data is fine; the app will create its own profile.
+    }
+  }
+  return roots;
+}
+
+function getVeyraPepperSharedObjectRoots() {
+  const base = getVeyraPepperWritableRoot();
+  if (!base) return [];
+  return [
+    join(base, "#SharedObjects", "Veyra", "game.aq.com"),
+    join(base, "#SharedObjects", "CDE5NDWY", "game.aq.com")
+  ];
+}
+
+function getVeyraPepperWritableRoot() {
+  if (process.platform === "win32" && process.env.LOCALAPPDATA) {
+    return join(process.env.LOCALAPPDATA, "Veyra", "User Data", "Default", "Pepper Data", "Shockwave Flash", "WritableRoot");
+  }
+  if (process.platform === "darwin" && process.env.HOME) {
+    return join(process.env.HOME, "Library", "Application Support", "Veyra", "Default", "Pepper Data", "Shockwave Flash", "WritableRoot");
+  }
+  return "";
+}
+
+function copyDirectory(source, target) {
+  if (!existsSync(source)) return;
+  mkdirSync(target, { recursive: true });
+  for (const entry of readdirSync(source, { withFileTypes: true })) {
+    const sourcePath = join(source, entry.name);
+    const targetPath = join(target, entry.name);
+    if (entry.isDirectory()) {
+      copyDirectory(sourcePath, targetPath);
+    } else if (entry.isFile() && shouldCopyFlashSharedObject(sourcePath, targetPath)) {
+      copyFileSync(sourcePath, targetPath);
+    }
+  }
+}
+
+function shouldCopyFlashSharedObject(sourcePath, targetPath) {
+  if (!existsSync(targetPath)) return true;
+  if (/AQWUserPref\.sol$/i.test(sourcePath) && hasSavedAqwLogin(sourcePath) && !hasSavedAqwLogin(targetPath)) return true;
+  return statSync(sourcePath).mtimeMs > statSync(targetPath).mtimeMs;
+}
+
+function hasSavedAqwLogin(filePath) {
+  try {
+    const text = readFileSync(filePath).toString("latin1");
+    return /strUsername[\s\S]{0,16}[a-z0-9_ -]{2,}/i.test(text) && /strPassword[\s\S]{0,16}[^\x00]{6,}/i.test(text);
+  } catch {
+    return false;
   }
 }
 
