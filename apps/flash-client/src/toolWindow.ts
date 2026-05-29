@@ -2755,8 +2755,15 @@ function bindTravelButtons(): void {
 function renderLogBox(): void {
   const box = document.getElementById("tool-log");
   if (!box) return;
+  const previousScrollTop = box.scrollTop;
+  const shouldStickToBottom = isScrolledNearBottom(box);
   box.textContent = state.logs[activeLog].join("\n");
-  box.scrollTop = box.scrollHeight;
+  box.scrollTop = shouldStickToBottom ? box.scrollHeight : previousScrollTop;
+}
+
+function isScrolledNearBottom(element: HTMLElement): boolean {
+  const distanceFromBottom = element.scrollHeight - element.clientHeight - element.scrollTop;
+  return distanceFromBottom <= 12;
 }
 
 async function saveSkillSet(): Promise<void> {

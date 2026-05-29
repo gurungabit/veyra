@@ -455,7 +455,14 @@ function waitForSpawn(child) {
 function scriptSourcePath(scriptId) {
   const paths = {
     "leveling.high-level-xp": join(scriptsDir, "HighLevelXP.ts"),
-    "leveling.class-xp": join(scriptsDir, "ClassXP.ts")
+    "leveling.class-xp": join(scriptsDir, "ClassXP.ts"),
+    "farmjoe.do-all": join(scriptsDir, "FarmJoeKits", "FarmerJoeKit0DoAll.ts"),
+    "farmjoe.core": join(scriptsDir, "FarmJoeKits", "CoreFarmerJoe.ts"),
+    "farmjoe.member-farms": join(scriptsDir, "FarmJoeKits", "MemberFarmsKit.ts"),
+    "farmjoe.ultra-preps.player1": join(scriptsDir, "FarmJoeKits", "JoePrepsForUltras.ts"),
+    "farmjoe.ultra-preps.player2": join(scriptsDir, "FarmJoeKits", "JoePrepsForUltras.ts"),
+    "farmjoe.ultra-preps.player3": join(scriptsDir, "FarmJoeKits", "JoePrepsForUltras.ts"),
+    "farmjoe.ultra-preps.player4": join(scriptsDir, "FarmJoeKits", "JoePrepsForUltras.ts")
   };
   return paths[String(scriptId || "")] || "";
 }

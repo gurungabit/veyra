@@ -9,6 +9,7 @@ import {
 } from "./gameOptions.js";
 import { normalizeBuilderScript, normalizeBuilderScripts, runBuilderScript, type BuilderScript } from "./builderScripts.js";
 import { main as runClassXP, meta as classXpMeta } from "./scripts/ClassXP.js";
+import { main as runFarmJoeDoAll, meta as farmJoeDoAllMeta } from "./scripts/FarmJoeKits/FarmerJoeKit0DoAll.js";
 import { main as runHighLevelXP, meta as highLevelXpMeta } from "./scripts/HighLevelXP.js";
 
 type FlashEmbed = HTMLObjectElement & Record<string, (...args: unknown[]) => unknown>;
@@ -79,6 +80,13 @@ const builtInScripts: ScriptDefinition[] = [
     map: "icestormunder",
     meta: classXpMeta,
     run: (bot, options) => runClassXP(bot, withSignal({ targetRank: 10 }, options.signal))
+  },
+  {
+    id: "farmjoe.do-all",
+    category: "FarmJoeKits",
+    map: "icestormunder",
+    meta: farmJoeDoAllMeta,
+    run: (bot, options) => runFarmJoeDoAll(bot, withSignal({}, options.signal))
   }
 ];
 let builderScripts: BuilderScript[] = [];
@@ -224,13 +232,13 @@ function installUiHandlers(): void {
     tab.addEventListener("click", () => {
       activeLog = (tab.dataset.log ?? "script") as LogKind;
       document.querySelectorAll(".console-tab").forEach((el) => el.classList.toggle("active", el === tab));
-      renderLog();
+      renderLog(true);
     });
   }
 
   byId<HTMLButtonElement>("clear-log").addEventListener("click", () => {
     logs[activeLog] = [];
-    renderLog();
+    renderLog(true);
   });
   byId<HTMLButtonElement>("copy-log").addEventListener("click", () => void navigator.clipboard?.writeText(logs[activeLog].join("\n")));
   byId<HTMLButtonElement>("save-log").addEventListener("click", saveActiveLog);
@@ -468,7 +476,7 @@ async function handleToolCommand(command: string, payload: unknown): Promise<voi
     case "clear-log":
       if (isLogKind(data.kind)) {
         logs[data.kind] = [];
-        if (activeLog === data.kind) renderLog();
+        if (activeLog === data.kind) renderLog(true);
         publishState();
       }
       break;
@@ -2326,7 +2334,7 @@ function addParam(object: HTMLObjectElement, name: string, value: string): void 
 function setActiveLog(kind: LogKind): void {
   activeLog = kind;
   document.querySelectorAll(".console-tab").forEach((el) => el.classList.toggle("active", (el as HTMLElement).dataset.log === kind));
-  renderLog();
+  renderLog(true);
 }
 
 function setStatus(message: string): void {
@@ -2343,9 +2351,16 @@ function log(kind: LogKind, message: string): void {
   toolBus.postMessage({ type: "log", kind, line, logs: logs[kind].slice(-200) });
 }
 
-function renderLog(): void {
+function renderLog(forceBottom = false): void {
+  const previousScrollTop = logEl.scrollTop;
+  const shouldStickToBottom = forceBottom || isScrolledNearBottom(logEl);
   logEl.textContent = logs[activeLog].join("\n");
-  logEl.scrollTop = logEl.scrollHeight;
+  logEl.scrollTop = shouldStickToBottom ? logEl.scrollHeight : previousScrollTop;
+}
+
+function isScrolledNearBottom(element: HTMLElement): boolean {
+  const distanceFromBottom = element.scrollHeight - element.clientHeight - element.scrollTop;
+  return distanceFromBottom <= 12;
 }
 
 function saveActiveLog(): void {
