@@ -40,7 +40,7 @@ interface EmbedTarget {
 export class BridgeProcessManager extends EventEmitter {
   private port = 0;
   private readonly token = randomBytes(24).toString("hex");
-  private readonly swfPath = resolve(process.env.VEYRA_CLIENT_SWF ?? join(findWorkspaceRoot(), "apps", "windows-bridge", "client.swf"));
+  private readonly swfPath = resolve(process.env.VEYRA_CLIENT_SWF ?? join(findWorkspaceRoot(), "apps", "flash-client", "client.swf"));
   private child: ChildProcessWithoutNullStreams | undefined;
   private eventAbort: AbortController | undefined;
   private eventRequest: Promise<void> | undefined;

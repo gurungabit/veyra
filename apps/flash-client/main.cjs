@@ -10,7 +10,7 @@ const rootDir = resolve(__dirname, "../..");
 const appDir = __dirname;
 const preloadPath = join(appDir, "preload.cjs");
 const scriptsDir = join(appDir, "src", "scripts");
-const swfPath = resolve(process.env.VEYRA_CLIENT_SWF || join(rootDir, "apps", "windows-bridge", "client.swf"));
+const swfPath = resolve(process.env.VEYRA_CLIENT_SWF || join(appDir, "client.swf"));
 const certDir = join(appDir, "certs");
 const certPath = join(certDir, "game-aq-dev.pfx");
 const certKeyPath = join(certDir, "game-aq-dev.key");
@@ -791,8 +791,7 @@ function installFlashTrust() {
     mkdirSync(trustDir, { recursive: true });
     const trustedPaths = [
       rootDir,
-      join(rootDir, "apps", "veyra"),
-      join(rootDir, "apps", "windows-bridge"),
+      appDir,
       dirname(swfPath)
     ];
     writeFileSync(join(trustDir, "veyra.cfg"), Array.from(new Set(trustedPaths)).join("\n"), "utf8");

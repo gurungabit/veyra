@@ -17,6 +17,6 @@
       <HintPath>lib\Interop.ShockwaveFlashObjects.dll</HintPath>
       <Private>true</Private>
     </Reference>
-    <None Include="client.swf" CopyToOutputDirectory="PreserveNewest" Condition="Exists('client.swf')" />
+    <None Include="..\flash-client\client.swf" Link="client.swf" CopyToOutputDirectory="PreserveNewest" Condition="Exists('..\flash-client\client.swf')" />
   </ItemGroup>
 </Project>

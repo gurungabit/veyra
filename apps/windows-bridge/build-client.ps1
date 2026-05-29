@@ -13,7 +13,8 @@ if (-not $PlayerGlobalHome) {
 $compiler = Join-Path $resolvedFlexHome "bin\mxmlc.bat"
 $sourceRoot = Join-Path $PSScriptRoot "as3-client\src"
 $mainSource = Join-Path $sourceRoot "veyra\Main.as"
-$output = Join-Path $PSScriptRoot "client.swf"
+$outputDir = [System.IO.Path]::GetFullPath((Join-Path $PSScriptRoot "..\flash-client"))
+$output = Join-Path $outputDir "client.swf"
 
 if (-not (Test-Path $compiler)) {
     throw "mxmlc was not found at $compiler"
@@ -25,6 +26,7 @@ if (-not (Test-Path $mainSource)) {
 
 $env:FLEX_HOME = $resolvedFlexHome
 $env:PLAYERGLOBAL_HOME = [System.IO.Path]::GetFullPath($PlayerGlobalHome)
+New-Item -ItemType Directory -Force -Path $outputDir | Out-Null
 
 & $compiler `
     "+env.PLAYERGLOBAL_HOME=$env:PLAYERGLOBAL_HOME" `

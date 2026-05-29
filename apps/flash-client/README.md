@@ -8,7 +8,7 @@ The renderer is served from a local `127.0.0.1` HTTPS server so Flash `ExternalI
 
 - Electron 8.
 - A PPAPI Pepper Flash plugin.
-- `apps/windows-bridge/client.swf`.
+- `apps/flash-client/client.swf`.
 - Flash local-trusted access for the local SWF and HTML folders.
 
 Electron cannot use the installed `NPSWF*.dll` files from `C:\Windows\System32\Macromed\Flash` or `C:\Windows\SysWOW64\Macromed\Flash`. Those are NPAPI plugins.
@@ -20,7 +20,7 @@ $env:VEYRA_PEPPER_FLASH = "C:\path\to\pepflashplayer.dll"
 $env:VEYRA_PEPPER_FLASH_VERSION = "34.0.0.330"
 ```
 
-On macOS the plugin path must be a PPAPI `PepperFlashPlayer.plugin`, not an NPAPI browser plugin. Veyra checks Artix Game Launcher first, then common Chrome/Chromium PepperFlash folders.
+On macOS the plugin path must be a PPAPI `PepperFlashPlayer.plugin`, not an NPAPI browser plugin. Veyra checks Artix Game Launcher first, then common Chrome/Chromium PepperFlash folders. The Windows bridge is not used by this app on macOS.
 
 Then run:
 

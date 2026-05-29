@@ -1683,12 +1683,13 @@ textarea {
 .script-picker-row {
   position: relative;
   display: grid;
-  grid-template-columns: 1fr auto;
-  gap: 4px 10px;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: auto auto auto;
+  gap: 3px;
   width: 100%;
   min-width: 0;
-  min-height: 54px !important;
-  padding: 9px 10px 9px 12px !important;
+  min-height: 66px !important;
+  padding: 9px 12px 10px !important;
   color: var(--text) !important;
   background: var(--panel-2) !important;
   border-color: var(--line) !important;
@@ -1710,11 +1711,14 @@ textarea {
   white-space: nowrap;
 }
 
+.script-picker-row strong {
+  line-height: 1.15;
+}
+
 .script-picker-row span {
-  grid-column: 1 / span 2;
   color: var(--muted);
   font-size: 11px;
-  line-height: 1.25;
+  line-height: 1.3;
 }
 
 .script-picker-row.active span {
@@ -1723,14 +1727,23 @@ textarea {
 
 .script-picker-row em {
   align-self: start;
+  min-width: 0;
+  overflow: hidden;
   padding: 0;
   color: var(--accent-2);
   background: transparent;
   border: 0;
   border-radius: 0;
   font-size: 10px;
-  line-height: 1.1;
+  font-weight: 800;
+  line-height: 1.25;
   font-style: normal;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.script-picker-row.active em {
+  color: var(--on-primary-muted);
 }
 
 .script-options-card {
