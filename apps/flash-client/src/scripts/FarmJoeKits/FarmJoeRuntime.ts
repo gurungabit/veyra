@@ -77,6 +77,8 @@ type VeyraQuestAction =
 
 export const RANK_10_CLASS_POINTS = 302500;
 
+const EMBERSEA_FACTION_ID = 43;
+
 const experienceRoutes: FarmRoute[] = [
   {
     minLevel: 1,
@@ -920,11 +922,54 @@ export class FarmJoeRuntime {
       }
       loops += 1;
       await this.recoverIfDead(location);
+      if (location?.map && !location.cell) {
+        await this.jumpToMonsterCell(monster, item ? `farming ${item}` : `fighting ${monster}`);
+      }
       await this.bot.attack(monster);
       await this.bot.useAvailableSkills();
       if (acceptedDrops.length > 0) await this.acceptDrops(acceptedDrops);
       await this.bot.delay(650, this.signal);
     }
+  }
+
+  private async jumpToMonsterCell(monster: string | number, context: string): Promise<void> {
+    const position = await this.findMonsterPosition(monster).catch(() => undefined);
+    if (!position?.cell) return;
+
+    const snapshot = await this.snapshot().catch(() => undefined);
+    if (snapshot?.cell === position.cell && (!position.pad || position.pad === "Auto" || snapshot.pad === position.pad))
+      return;
+
+    this.log(`Jumping to ${position.cell}/${position.pad || "Auto"} before ${context}.`);
+    await this.jump(position.cell, position.pad || "Auto");
+    await this.bot.delay(300, this.signal);
+  }
+
+  private async findMonsterPosition(monster: string | number): Promise<{ cell: string; pad: string } | undefined> {
+    const monsters = recordsFrom(await this.bot.call<unknown>("getMonsters").catch(() => []));
+    const targetId = typeof monster === "number" ? monster : 0;
+    const targetName = typeof monster === "number" ? "" : monster.trim().toLowerCase();
+    const candidates = monsters.filter((record) => {
+      if (typeof monster === "number") {
+        return (
+          numberFrom(record, ["MonMapID", "MapID", "monMapId", "MonID", "MonsterID", "id", "ID"]) === targetId
+        );
+      }
+      const name = stringFrom(firstFrom(record, ["strMonName", "sName", "Name", "name"])).toLowerCase();
+      return targetName === "*" || name.includes(targetName);
+    });
+    if (candidates.length === 0) return undefined;
+
+    const aliveCandidates = candidates.filter((record) => numberFrom(record, ["intHP", "HP", "hp"]) > 0);
+    const sorted = (aliveCandidates.length > 0 ? aliveCandidates : candidates).sort(
+      (a, b) => numberFrom(a, ["intHP", "HP", "hp"]) - numberFrom(b, ["intHP", "HP", "hp"])
+    );
+    const best = sorted[0];
+    if (!best) return undefined;
+
+    const cell = stringFrom(firstFrom(best, ["strFrame", "frame", "Frame", "cell", "Cell"])).trim();
+    const pad = stringFrom(firstFrom(best, ["strPad", "pad", "Pad"])).trim() || "Auto";
+    return cell ? { cell, pad } : undefined;
   }
 
   private async isDropVisible(item: string | number): Promise<boolean> {
@@ -1414,9 +1459,109 @@ export class FarmJoeRuntime {
     await this.pyromancer();
     if (await this.contains("Pyromancer")) await this.rankClass("Pyromancer");
     await this.buyItem("fireforge", 1142, "Darkness Sigil");
+    await this.emberseaRep(10);
     await this.buyItem("fireforge", 1142, "Flame Sigil");
     await this.buyItem("fireforge", 1140, "Blaze Binder");
     await this.rankClass("Blaze Binder");
+  }
+
+  private async emberseaRep(targetRank = 10): Promise<void> {
+    const currentRank = await this.factionRank(EMBERSEA_FACTION_ID);
+    if (currentRank >= targetRank) {
+      this.log(`Embersea reputation is already Rank ${currentRank}; skipping reputation farm.`);
+      return;
+    }
+
+    this.log(`Flame Sigil requires Embersea Rank ${targetRank}; farming Embersea from Rank ${currentRank}.`);
+    if (await this.isQuestCompleted(4080)) {
+      await this.farmEmberseaRepWithPyrewatch(targetRank);
+    } else {
+      await this.farmEmberseaRepWithBlazebinders(targetRank);
+    }
+
+    const finalRank = await this.factionRank(EMBERSEA_FACTION_ID);
+    if (finalRank < targetRank) {
+      throw new Error(`Flame Sigil requires Embersea Rank ${targetRank}; current Embersea Rank is ${finalRank}.`);
+    }
+  }
+
+  private async farmEmberseaRepWithPyrewatch(targetRank: number): Promise<void> {
+    this.log("Embersea route: Spreading Like Wildfire quest 4080 via Pyrewatch map items.");
+    await this.farmFactionQuest({
+      factionId: EMBERSEA_FACTION_ID,
+      targetRank,
+      questId: 4080,
+      action: async () => {
+        await this.getMapItem("pyrewatch", 3162, 4);
+      }
+    });
+  }
+
+  private async farmEmberseaRepWithBlazebinders(targetRank: number): Promise<void> {
+    this.log("Embersea route: Slay the Blazebinders quest 4228 via fireforge Blazebinders.");
+    await this.farmFactionQuest({
+      factionId: EMBERSEA_FACTION_ID,
+      targetRank,
+      questId: 4228,
+      action: async () => {
+        await this.hunt("fireforge", "Blazebinder", "Defeated Blazebinder", 5, true);
+      },
+      afterComplete: async () => {
+        await this.acceptDrops("Defeated Blazebinder");
+      }
+    });
+  }
+
+  private async farmFactionQuest(options: {
+    factionId: number;
+    targetRank: number;
+    questId: number;
+    action: () => Promise<void>;
+    afterComplete?: () => Promise<void>;
+  }): Promise<void> {
+    let loops = 0;
+    let staleTurnIns = 0;
+    let lastRank = await this.factionRank(options.factionId);
+
+    while ((await this.factionRank(options.factionId)) < options.targetRank) {
+      if (this.options.maxFarmLoops && loops >= this.options.maxFarmLoops) {
+        this.log(`Stopped faction quest ${options.questId} after ${loops} loops due to maxFarmLoops.`);
+        return;
+      }
+
+      loops += 1;
+      const beforeRep = await this.factionRep(options.factionId);
+      await this.acceptQuest(options.questId);
+      await options.action();
+      await this.completeQuest(options.questId);
+      await options.afterComplete?.();
+      await this.bot.delay(750, this.signal);
+
+      const afterRep = await this.factionRep(options.factionId);
+      const rank = classRankFromPoints(afterRep);
+      if (rank > lastRank || loops === 1 || loops % 10 === 0) {
+        this.log(`Embersea reputation progress: Rank ${rank}, ${afterRep} rep.`);
+        lastRank = rank;
+      }
+
+      if (afterRep <= beforeRep) {
+        staleTurnIns += 1;
+        if (staleTurnIns >= 3) {
+          throw new Error(`Quest ${options.questId} is not increasing Embersea reputation after ${staleTurnIns} turn-ins.`);
+        }
+      } else {
+        staleTurnIns = 0;
+      }
+    }
+  }
+
+  private async factionRep(factionId: number): Promise<number> {
+    const rep = await this.bot.callGameFunction<unknown>("world.myAvatar.getRep", factionId).catch(() => undefined);
+    return rep === undefined ? 0 : Math.max(0, toNumber(rep));
+  }
+
+  private async factionRank(factionId: number): Promise<number> {
+    return classRankFromPoints(await this.factionRep(factionId));
   }
 
   private async pyromancer(): Promise<void> {
