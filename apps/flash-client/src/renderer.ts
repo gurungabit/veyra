@@ -9,6 +9,8 @@ import {
 } from "./gameOptions.js";
 import { normalizeBuilderScript, normalizeBuilderScripts, runBuilderScript, type BuilderScript } from "./builderScripts.js";
 import { main as runEmberseaRep, meta as emberseaRepMeta } from "./scripts/EmberseaRep.js";
+import { main as runFireIslandEmberseaStory, meta as fireIslandEmberseaStoryMeta } from "./scripts/FireIslandEmberseaStory.js";
+import { main as runFireIslandPyrewatchStory, meta as fireIslandPyrewatchStoryMeta } from "./scripts/FireIslandPyrewatchStory.js";
 import { main as runClassXP, meta as classXpMeta } from "./scripts/ClassXP.js";
 import { main as runFarmJoeDoAll, meta as farmJoeDoAllMeta } from "./scripts/FarmJoeKits/FarmerJoeKit0DoAll.js";
 import { main as runHighLevelXP, meta as highLevelXpMeta } from "./scripts/HighLevelXP.js";
@@ -88,6 +90,20 @@ const builtInScripts: ScriptDefinition[] = [
     map: "fireforge / pyrewatch",
     meta: emberseaRepMeta,
     run: (bot, options) => runEmberseaRep(bot, withSignal({ targetRank: 10 }, options.signal))
+  },
+  {
+    id: "story.fire-island-embersea",
+    category: "Story",
+    map: "embersea",
+    meta: fireIslandEmberseaStoryMeta,
+    run: (bot, options) => runFireIslandEmberseaStory(bot, withSignal({}, options.signal))
+  },
+  {
+    id: "story.fire-island-pyrewatch",
+    category: "Story",
+    map: "embersea / pyrewatch",
+    meta: fireIslandPyrewatchStoryMeta,
+    run: (bot, options) => runFireIslandPyrewatchStory(bot, withSignal({}, options.signal))
   },
   {
     id: "farmjoe.do-all",

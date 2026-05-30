@@ -1,5 +1,6 @@
 import type { Bot } from "../bot.js";
 import { FarmJoeRuntime, type FarmJoeRuntimeOptions } from "./FarmJoeKits/FarmJoeRuntime.js";
+import { runEmberseaRep } from "./Reputation/Embersea.js";
 
 export const meta = {
   name: "EmberseaREP",
@@ -13,5 +14,5 @@ export interface EmberseaRepOptions extends FarmJoeRuntimeOptions {
 }
 
 export async function main(bot: Bot, options: EmberseaRepOptions = {}): Promise<void> {
-  await new FarmJoeRuntime(bot, options).emberseaRep(options.targetRank ?? 10);
+  await runEmberseaRep(new FarmJoeRuntime(bot, options), options.targetRank ?? 10);
 }
