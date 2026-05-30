@@ -4,7 +4,8 @@ const fs = require("node:fs");
 const path = require("node:path");
 
 const storyRoot = path.resolve(__dirname, "../../../../Scripts/Story");
-const outputFile = path.resolve(__dirname, "../src/scripts/Story/GeneratedStories.ts");
+const outputDir = path.resolve(__dirname, "../src/scripts/Story/Generated");
+const legacyOutputFile = path.resolve(__dirname, "../src/scripts/Story/GeneratedStories.ts");
 
 const ignoredEntryFiles = new Set(["0AllStories.cs"]);
 const ignoredCalls = new Set([
@@ -46,16 +47,22 @@ function main() {
   const sourceFiles = files.map(parseSourceFile);
   const classIndex = new Map(sourceFiles.filter((file) => file.className).map((file) => [file.className, file]));
   const resolver = new StoryResolver(classIndex);
-  const entries = sourceFiles
-    .filter((file) => !ignoredEntryFiles.has(path.basename(file.filePath)))
-    .map((file) => buildGeneratedEntry(file, resolver));
+  const entries = assignUniqueModulePaths(
+    sourceFiles
+      .filter((file) => !ignoredEntryFiles.has(path.basename(file.filePath)))
+      .map((file) => buildGeneratedEntry(file, resolver))
+  );
 
-  const generated = renderGeneratedStories(entries);
-  fs.writeFileSync(outputFile, generated);
+  fs.rmSync(outputDir, { force: true, recursive: true });
+  fs.rmSync(legacyOutputFile, { force: true });
+  fs.mkdirSync(outputDir, { recursive: true });
+  fs.writeFileSync(path.join(outputDir, "runner.ts"), renderGeneratedRunner());
+  for (const entry of entries) writeGeneratedStoryModule(entry);
+  fs.writeFileSync(path.join(outputDir, "index.ts"), renderGeneratedIndex(entries));
 
   const totalSteps = entries.reduce((sum, entry) => sum + entry.steps.length, 0);
   const emptyEntries = entries.filter((entry) => entry.steps.length === 0).length;
-  console.log(`Generated ${entries.length} story definitions with ${totalSteps} steps.`);
+  console.log(`Generated ${entries.length} story modules with ${totalSteps} steps.`);
   if (emptyEntries > 0) console.log(`${emptyEntries} definitions had no detected automated quest steps.`);
 }
 
@@ -355,6 +362,7 @@ function buildGeneratedEntry(sourceFile, resolver) {
   const name = metadata.name || nameFromPath(relativePath);
   return {
     id,
+    modulePath: modulePathFromRelative(relativePath),
     map: inferMap(steps) || inferMapFromName(name) || "story",
     meta: {
       name,
@@ -364,6 +372,19 @@ function buildGeneratedEntry(sourceFile, resolver) {
     },
     steps
   };
+}
+
+function assignUniqueModulePaths(entries) {
+  const seen = new Map();
+  return entries.map((entry) => {
+    const count = seen.get(entry.modulePath) ?? 0;
+    seen.set(entry.modulePath, count + 1);
+    if (count === 0) return entry;
+    return {
+      ...entry,
+      modulePath: entry.modulePath.replace(/\.ts$/, `_${count + 1}.ts`)
+    };
+  });
 }
 
 function storyStepOverride(id) {
@@ -844,12 +865,33 @@ function slash(value) {
   return value.split(path.sep).join("/");
 }
 
-function renderGeneratedStories(entries) {
-  const plans = Object.fromEntries(entries.map((entry) => [entry.id, entry.steps]));
-  const metadata = entries.map(({ id, map, meta }) => ({ id, category: "Story", map, meta }));
-  return `import type { Bot } from "../../bot.js";
-import { FarmJoeRuntime, type FarmJoeRuntimeOptions } from "../FarmJoeKits/FarmJoeRuntime.js";
-import { runStorySteps, type StoryStep } from "./StoryRuntime.js";
+function modulePathFromRelative(relativePath) {
+  return `${relativePath
+    .replace(/\.cs$/i, "")
+    .split("/")
+    .map((segment) => segment.replace(/\[(.*?)\]/g, "$1").replace(/[^A-Za-z0-9]+/g, "") || "Story")
+    .join("/")}.ts`;
+}
+
+function writeGeneratedStoryModule(entry) {
+  const filePath = path.join(outputDir, entry.modulePath);
+  fs.mkdirSync(path.dirname(filePath), { recursive: true });
+  const runnerImport = `${relativeImport(path.dirname(filePath), path.join(outputDir, "runner"))}.js`;
+  fs.writeFileSync(filePath, renderGeneratedStoryModule(entry, runnerImport));
+}
+
+function relativeImport(fromDirectory, toFileWithoutExtension) {
+  let relative = slash(path.relative(fromDirectory, toFileWithoutExtension));
+  if (!relative.startsWith(".")) relative = `./${relative}`;
+  return relative;
+}
+
+function renderGeneratedRunner() {
+  return `import type { Bot } from "../../../bot.js";
+import { FarmJoeRuntime, type FarmJoeRuntimeOptions } from "../../FarmJoeKits/FarmJoeRuntime.js";
+import { runStorySteps, type StoryStep } from "../StoryRuntime.js";
+
+export type { StoryStep };
 
 export interface GeneratedStoryDefinition {
   id: string;
@@ -864,20 +906,53 @@ export interface GeneratedStoryDefinition {
   run: (bot: Bot, options?: FarmJoeRuntimeOptions) => Promise<void>;
 }
 
-const generatedStoryPlans: Record<string, StoryStep[]> = ${stableStringify(plans)};
-
-const generatedStoryMetadata = ${stableStringify(metadata)} satisfies Array<Omit<GeneratedStoryDefinition, "run">>;
-
-export const generatedStoryDefinitions: GeneratedStoryDefinition[] = generatedStoryMetadata.map((definition) => ({
-  ...definition,
-  run: (bot, options = {}) => runGeneratedStory(definition.id, bot, options)
-}));
-
-async function runGeneratedStory(id: string, bot: Bot, options: FarmJoeRuntimeOptions): Promise<void> {
-  const runtime = new FarmJoeRuntime(bot, options);
-  const definition = generatedStoryMetadata.find((entry) => entry.id === id);
-  await runStorySteps(runtime, generatedStoryPlans[id] ?? [], definition?.meta.name ?? id);
+export function defineGeneratedStory(
+  definition: Omit<GeneratedStoryDefinition, "run">,
+  steps: StoryStep[]
+): GeneratedStoryDefinition {
+  return {
+    ...definition,
+    run: (bot, options = {}) => runStorySteps(new FarmJoeRuntime(bot, options), steps, definition.meta.name)
+  };
 }
+`;
+}
+
+function renderGeneratedStoryModule(entry, runnerImport) {
+  return `import { defineGeneratedStory, type StoryStep } from "${runnerImport}";
+
+export const meta = ${stableStringify(entry.meta)};
+
+const steps: StoryStep[] = ${stableStringify(entry.steps)};
+
+export const definition = defineGeneratedStory(
+  {
+    id: ${JSON.stringify(entry.id)},
+    category: "Story",
+    map: ${JSON.stringify(entry.map)},
+    meta
+  },
+  steps
+);
+
+export const main = definition.run;
+
+export default definition;
+`;
+}
+
+function renderGeneratedIndex(entries) {
+  const imports = entries
+    .map((entry, index) => `import story${index} from "./${slash(entry.modulePath).replace(/\.ts$/, ".js")}";`)
+    .join("\n");
+  const exports = entries.map((_, index) => `  story${index}`).join(",\n");
+  return `import type { GeneratedStoryDefinition } from "./runner.js";
+
+${imports}
+
+export const generatedStoryDefinitions: GeneratedStoryDefinition[] = [
+${exports}
+];
 `;
 }
 

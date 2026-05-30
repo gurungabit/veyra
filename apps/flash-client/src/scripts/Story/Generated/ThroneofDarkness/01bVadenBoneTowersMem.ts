@@ -1,0 +1,595 @@
+import { defineGeneratedStory, type StoryStep } from "../runner.js";
+
+export const meta = {
+  "name": "(Vaden) Bone Towers Story",
+  "description": "This will finish the Bone Towers story.",
+  "tags": [
+    "story",
+    "bone",
+    "towers",
+    "farm",
+    "vaden",
+    "throne",
+    "darkness",
+    "throneof",
+    "01b",
+    "mem"
+  ],
+  "version": "0.1.0"
+};
+
+const steps: StoryStep[] = [
+  {
+    "kind": "kill",
+    "questId": 4968,
+    "map": "bonecastle",
+    "monsters": [
+      "Undead Guard"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 4969,
+    "map": "bonecastle",
+    "monsters": [
+      "Undead Guard"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 4970,
+    "map": "bonecastle",
+    "monsters": [
+      "Undead Knight"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 4971,
+    "map": "bonecastle",
+    "monsters": [
+      "Fallen Deathknight"
+    ]
+  },
+  {
+    "kind": "mapItem",
+    "questId": 4972,
+    "map": "bonecastle",
+    "ids": [
+      4342
+    ],
+    "quantity": 3
+  },
+  {
+    "kind": "kill",
+    "questId": 4972,
+    "map": "bonecastle",
+    "monsters": [
+      "Fallen Deathknight"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 4973,
+    "map": "bonecastle",
+    "monsters": [
+      "Undead Waiter"
+    ]
+  },
+  {
+    "kind": "mapItem",
+    "questId": 4974,
+    "map": "bonecastle",
+    "ids": [
+      4343
+    ],
+    "quantity": 2
+  },
+  {
+    "kind": "mapItem",
+    "questId": 4974,
+    "map": "bonecastle",
+    "ids": [
+      4344
+    ],
+    "quantity": 2
+  },
+  {
+    "kind": "mapItem",
+    "questId": 4974,
+    "map": "bonecastle",
+    "ids": [
+      4345
+    ],
+    "quantity": 3
+  },
+  {
+    "kind": "kill",
+    "questId": 4974,
+    "map": "bonecastle",
+    "monsters": [
+      "Undead Knight"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 4975,
+    "map": "bonecastle",
+    "monsters": [
+      "Ghoul"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 4976,
+    "map": "bonecastle",
+    "monsters": [
+      "The Butcher"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 4977,
+    "map": "bonecastle",
+    "monsters": [
+      "Skeletal Warrior"
+    ]
+  },
+  {
+    "kind": "mapItem",
+    "questId": 4978,
+    "map": "bonecastle",
+    "ids": [
+      4346,
+      4347,
+      4348
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 4978,
+    "map": "bonecastle",
+    "monsters": [
+      "Skeletal Warrior"
+    ]
+  },
+  {
+    "kind": "mapItem",
+    "questId": 4979,
+    "map": "bonecastle",
+    "ids": [
+      4349,
+      4350,
+      4351
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 4979,
+    "map": "bonecastle",
+    "monsters": [
+      "Skeletal Warrior"
+    ]
+  },
+  {
+    "kind": "plan",
+    "questId": 4980,
+    "actions": [
+      {
+        "kind": "hunt",
+        "map": "bonecastle",
+        "monster": "Grateful Undead",
+        "item": "Song Request Ticket",
+        "quantity": 5
+      },
+      {
+        "kind": "hunt",
+        "map": "bonecastle",
+        "monster": "That 70's Zombie",
+        "item": "Sweet Dancing Shoes",
+        "quantity": 2
+      }
+    ]
+  },
+  {
+    "kind": "plan",
+    "questId": 4981,
+    "actions": [
+      {
+        "kind": "hunt",
+        "map": "bonecastle",
+        "cell": "r8",
+        "pad": "Left",
+        "monster": "Skeletal Warrior",
+        "item": "Undead Humerus Bones",
+        "quantity": 5
+      }
+    ]
+  },
+  {
+    "kind": "plan",
+    "questId": 4982,
+    "actions": [
+      {
+        "kind": "hunt",
+        "map": "bonecastle",
+        "cell": "Enter",
+        "pad": "Spawn",
+        "monster": "Undead Guard",
+        "item": "Yellow, Green"
+      },
+      {
+        "kind": "hunt",
+        "map": "bonecastle",
+        "cell": "r3",
+        "pad": "Bottom",
+        "monster": "Undead Knight",
+        "item": "Red, Red"
+      },
+      {
+        "kind": "hunt",
+        "map": "bonecastle",
+        "cell": "r8",
+        "pad": "Left",
+        "monster": "Skeletal Warrior",
+        "item": "Blue, Green, Red"
+      }
+    ]
+  },
+  {
+    "kind": "mapItem",
+    "questId": 4983,
+    "map": "bonecastle",
+    "ids": [
+      4352
+    ]
+  },
+  {
+    "kind": "mapItem",
+    "questId": 4984,
+    "map": "bonecastle",
+    "ids": [
+      4353
+    ],
+    "quantity": 4
+  },
+  {
+    "kind": "kill",
+    "questId": 4985,
+    "map": "bonecastle",
+    "monsters": [
+      "Turtle"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 4986,
+    "map": "bonecastle",
+    "monsters": [
+      "Turtle",
+      "Turtle",
+      "Turtle",
+      "Turtle"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 4987,
+    "map": "bonecastle",
+    "monsters": [
+      "Snuggles, Torturer"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 4988,
+    "map": "bonecastle",
+    "monsters": [
+      "Jon Bones",
+      "Oberon Marrowtell",
+      "Baskerville",
+      "Knight of Lichens"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 4989,
+    "map": "bonecastle",
+    "monsters": [
+      "Rot Tin Tin"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 4990,
+    "map": "bonecastle",
+    "monsters": [
+      "Undead Golden Knight",
+      "Undead Golden Knight",
+      "Undead Golden Knight"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 4991,
+    "map": "bonecastle",
+    "monsters": [
+      "Undead Knight",
+      "Skeletal Warrior"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 4992,
+    "map": "bonecastle",
+    "monsters": [
+      "Vaden"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 4996,
+    "map": "towersilver",
+    "monsters": [
+      "Flying Spyball"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 4997,
+    "map": "towersilver",
+    "monsters": [
+      "Fallen Emperor Statue"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 4999,
+    "map": "towersilver",
+    "monsters": [
+      "Undead Knight",
+      "Undead Guard"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 4998,
+    "map": "towersilver",
+    "monsters": [
+      "Fallen DeathKnight",
+      "Undead Warrior"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 5000,
+    "map": "towersilver",
+    "monsters": [
+      "Flying Spyball",
+      "Fallen DeathKnight",
+      "Undead Warrior",
+      "Undead Knight",
+      "Undead Guard"
+    ]
+  },
+  {
+    "kind": "mapItem",
+    "questId": 5001,
+    "map": "towersilver",
+    "ids": [
+      4368,
+      4369,
+      4370,
+      4371,
+      4372
+    ]
+  },
+  {
+    "kind": "mapItem",
+    "questId": 5002,
+    "map": "towersilver",
+    "ids": [
+      4373
+    ],
+    "quantity": 3
+  },
+  {
+    "kind": "kill",
+    "questId": 5003,
+    "map": "towersilver",
+    "monsters": [
+      "Bloody Scary"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 5004,
+    "map": "towersilver",
+    "monsters": [
+      "Bone Creeper"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 5005,
+    "map": "towersilver",
+    "monsters": [
+      "Ghoul"
+    ]
+  },
+  {
+    "kind": "mapItem",
+    "questId": 5006,
+    "map": "towersilver",
+    "ids": [
+      4374
+    ],
+    "quantity": 5
+  },
+  {
+    "kind": "kill",
+    "questId": 5007,
+    "map": "towersilver",
+    "monsters": [
+      "Undead Golden Knight"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 5008,
+    "map": "towersilver",
+    "monsters": [
+      "Flester The Silver"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 5009,
+    "map": "towersilver",
+    "monsters": [
+      "Fallen DeathKnight",
+      "Undead Knight",
+      "Undead Warrior",
+      "Ghoul",
+      "Undead Guard"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 5010,
+    "map": "towersilver",
+    "monsters": [
+      "Bloody Scary"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 5011,
+    "map": "towergold",
+    "monsters": [
+      "Grim Souldier"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 5012,
+    "map": "towergold",
+    "monsters": [
+      "Undead Golden Knight"
+    ]
+  },
+  {
+    "kind": "mapItem",
+    "questId": 5013,
+    "map": "towergold",
+    "ids": [
+      4375
+    ],
+    "quantity": 5
+  },
+  {
+    "kind": "kill",
+    "questId": 5013,
+    "map": "towergold",
+    "monsters": [
+      "Skullspider"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 5014,
+    "map": "towergold",
+    "monsters": [
+      "Vampire Bat"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 5015,
+    "map": "towergold",
+    "monsters": [
+      "Webbed Ghoul"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 5016,
+    "map": "towergold",
+    "monsters": [
+      "Bone Widow"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 5017,
+    "map": "towergold",
+    "monsters": [
+      "Book Maggot"
+    ]
+  },
+  {
+    "kind": "mapItem",
+    "questId": 5018,
+    "map": "towergold",
+    "ids": [
+      4376
+    ],
+    "quantity": 6
+  },
+  {
+    "kind": "kill",
+    "questId": 5018,
+    "map": "towergold",
+    "monsters": [
+      "Bone Creeper"
+    ]
+  },
+  {
+    "kind": "mapItem",
+    "questId": 5019,
+    "map": "towergold",
+    "ids": [
+      4377
+    ],
+    "quantity": 3
+  },
+  {
+    "kind": "kill",
+    "questId": 5020,
+    "map": "towergold",
+    "monsters": [
+      "Undead Knight",
+      "Undead Guard"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 5021,
+    "map": "towergold",
+    "monsters": [
+      "Fallen Emperor Statue"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 5022,
+    "map": "towergold",
+    "monsters": [
+      "Yurrod the Gold"
+    ]
+  }
+];
+
+export const definition = defineGeneratedStory(
+  {
+    id: "story.throneof-darkness.01b-vaden-bone-towers-mem",
+    category: "Story",
+    map: "bonecastle",
+    meta
+  },
+  steps
+);
+
+export const main = definition.run;
+
+export default definition;

@@ -1,0 +1,126 @@
+import { defineGeneratedStory, type StoryStep } from "../runner.js";
+
+export const meta = {
+  "name": "Shadowlord Keep",
+  "description": "This is the second part of the Shadow War story arc. It will take you to the Shadowlord Keep area and start the quest.",
+  "tags": [
+    "story",
+    "quest",
+    "shadow-war",
+    "shadowlord-keep",
+    "shadows",
+    "of",
+    "war",
+    "02shadowlord",
+    "keep"
+  ],
+  "version": "0.1.0"
+};
+
+const steps: StoryStep[] = [
+  {
+    "kind": "mapItem",
+    "questId": 6856,
+    "map": "shadowlordkeep",
+    "ids": [
+      6390
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 6856,
+    "map": "shadowlordkeep",
+    "monsters": [
+      "Shadow Gunner"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 6857,
+    "map": "shadowlordkeep",
+    "monsters": [
+      "Shadow Gunner"
+    ]
+  },
+  {
+    "kind": "plan",
+    "questId": 6858,
+    "actions": [
+      {
+        "kind": "hunt",
+        "map": "shadowlordkeep",
+        "monster": "Shadow Mage"
+      }
+    ]
+  },
+  {
+    "kind": "mapItem",
+    "questId": 6859,
+    "map": "shadowlordkeep",
+    "ids": [
+      6391
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 6860,
+    "map": "shadowlordkeep",
+    "monsters": [
+      "Shadow Imp"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 6861,
+    "map": "shadowlordkeep",
+    "monsters": [
+      "Shadow Mage"
+    ]
+  },
+  {
+    "kind": "mapItem",
+    "questId": 6862,
+    "map": "shadowlordkeep",
+    "ids": [
+      6392
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 6862,
+    "map": "shadowlordkeep",
+    "monsters": [
+      "Stray Energy"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 6863,
+    "map": "shadowlordkeep",
+    "monsters": [
+      "Portal Guard"
+    ]
+  },
+  {
+    "kind": "mapItem",
+    "questId": 6864,
+    "map": "timestream",
+    "ids": [
+      6393
+    ]
+  }
+];
+
+export const definition = defineGeneratedStory(
+  {
+    id: "story.shadows-of-war.02shadowlord-keep",
+    category: "Story",
+    map: "shadowlordkeep",
+    meta
+  },
+  steps
+);
+
+export const main = definition.run;
+
+export default definition;

@@ -1,0 +1,112 @@
+import { defineGeneratedStory, type StoryStep } from "./runner.js";
+
+export const meta = {
+  "name": "Shadow Void Story",
+  "description": "This will finish the ShadowVoid Story.",
+  "tags": [
+    "story",
+    "quest",
+    "shadow-void",
+    "shadow",
+    "void"
+  ],
+  "version": "0.1.0"
+};
+
+const steps: StoryStep[] = [
+  {
+    "kind": "kill",
+    "questId": 7123,
+    "map": "ShadowVoid",
+    "monsters": [
+      "Light Matter"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 7124,
+    "map": "ShadowVoid",
+    "monsters": [
+      "Shadowsprite"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 7125,
+    "map": "ShadowVoid",
+    "monsters": [
+      "Light Matter"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 7126,
+    "map": "ShadowVoid",
+    "monsters": [
+      "Shadowfiend"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 7127,
+    "map": "ShadowVoid",
+    "monsters": [
+      "Shadowfiend"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 7128,
+    "map": "ShadowVoid",
+    "monsters": [
+      "Shadowfiend",
+      "Light Matter"
+    ]
+  },
+  {
+    "kind": "mapItem",
+    "questId": 7129,
+    "map": "ShadowVoid",
+    "ids": [
+      6765
+    ]
+  },
+  {
+    "kind": "mapItem",
+    "questId": 7130,
+    "map": "ShadowVoid",
+    "ids": [
+      6766
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 7130,
+    "map": "ShadowVoid",
+    "monsters": [
+      "Light Matter"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 7131,
+    "map": "ShadowVoid",
+    "monsters": [
+      "Fragment of Doom"
+    ]
+  }
+];
+
+export const definition = defineGeneratedStory(
+  {
+    id: "story.shadow-void",
+    category: "Story",
+    map: "ShadowVoid",
+    meta
+  },
+  steps
+);
+
+export const main = definition.run;
+
+export default definition;

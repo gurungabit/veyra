@@ -8,7 +8,7 @@
     "dev:renderer": "vite --host 127.0.0.1",
     "start": "pnpm build && electron .",
     "build": "pnpm build:deps && pnpm build:electron && vite build",
-    "build:deps": "pnpm --filter @veyra/protocol --filter @veyra/core --filter @veyra/runtime --filter @veyra/scripts --filter @veyra/script-tools build",
+    "build:deps": "pnpm --filter @veyra/protocol --filter @veyra/core --filter @veyra/runtime --filter @veyra/script-tools build",
     "build:electron": "tsc -p tsconfig.electron.json",
     "typecheck": "tsc -b tsconfig.json tsconfig.electron.json",
     "test": "vitest run --passWithNoTests",

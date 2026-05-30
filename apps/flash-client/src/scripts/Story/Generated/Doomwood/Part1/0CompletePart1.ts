@@ -1,0 +1,1439 @@
+import { defineGeneratedStory, type StoryStep } from "../../runner.js";
+
+export const meta = {
+  "name": "Complete Doomwood Part 1",
+  "description": "This will complete the Doomwood Part 1 story.",
+  "tags": [
+    "story",
+    "quest",
+    "doomwood",
+    "complete",
+    "part1",
+    "0complete"
+  ],
+  "version": "0.1.0"
+};
+
+const steps: StoryStep[] = [
+  {
+    "kind": "chain",
+    "questId": 1080
+  },
+  {
+    "kind": "plan",
+    "questId": 1064,
+    "actions": [
+      {
+        "kind": "hunt",
+        "map": "doomwood",
+        "monster": "Doomwood Ectomancer",
+        "item": "Ball of Ectoplasm",
+        "quantity": 3
+      },
+      {
+        "kind": "hunt",
+        "map": "doomwood",
+        "monster": "Doomwood Bonemuncher",
+        "item": "Bonespike Collar",
+        "quantity": 4
+      },
+      {
+        "kind": "hunt",
+        "map": "doomwood",
+        "cell": "r8",
+        "pad": "Right",
+        "monster": "Doomwood Soldier",
+        "item": "Distal Fingerbone",
+        "quantity": 4
+      }
+    ]
+  },
+  {
+    "kind": "mapItem",
+    "questId": 1065,
+    "map": "doomwood",
+    "ids": [
+      423
+    ],
+    "quantity": 5
+  },
+  {
+    "kind": "plan",
+    "questId": 1066,
+    "actions": [
+      {
+        "kind": "hunt",
+        "map": "doomwood",
+        "cell": "r6",
+        "pad": "Right",
+        "monster": "*",
+        "item": "Warrior Reinforced"
+      }
+    ]
+  },
+  {
+    "kind": "mapItem",
+    "questId": 1067,
+    "map": "doomwood",
+    "ids": [
+      422
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 1068,
+    "map": "doomwood",
+    "monsters": [
+      "Undead Paladin"
+    ]
+  },
+  {
+    "kind": "plan",
+    "questId": 1069,
+    "actions": [
+      {
+        "kind": "hunt",
+        "map": "doomwood",
+        "monster": "Doomwood Bonemuncher",
+        "item": "Muncher Mandibles",
+        "quantity": 3
+      },
+      {
+        "kind": "hunt",
+        "map": "doomwood",
+        "monster": "Doomwood Bonemuncher",
+        "item": "Stained Skulls",
+        "quantity": 3
+      },
+      {
+        "kind": "hunt",
+        "map": "doomwood",
+        "monster": "Doomwood Ectomancer",
+        "item": "Ecto-Coated Cloth Scraps",
+        "quantity": 3
+      },
+      {
+        "kind": "hunt",
+        "map": "doomwood",
+        "monster": "Doomwood Soldier",
+        "item": "Fractured Tibia",
+        "quantity": 3
+      }
+    ]
+  },
+  {
+    "kind": "plan",
+    "questId": 1070,
+    "actions": [
+      {
+        "kind": "mapItem",
+        "map": "doomundead",
+        "id": 427
+      },
+      {
+        "kind": "hunt",
+        "map": "doomundead",
+        "cell": "r3",
+        "pad": "Right",
+        "monster": "*",
+        "item": "Light Knight Lifeforce",
+        "quantity": 5
+      }
+    ]
+  },
+  {
+    "kind": "chain",
+    "questId": 1089
+  },
+  {
+    "kind": "chain",
+    "questId": 1080
+  },
+  {
+    "kind": "plan",
+    "questId": 1064,
+    "actions": [
+      {
+        "kind": "hunt",
+        "map": "doomwood",
+        "monster": "Doomwood Ectomancer",
+        "item": "Ball of Ectoplasm",
+        "quantity": 3
+      },
+      {
+        "kind": "hunt",
+        "map": "doomwood",
+        "monster": "Doomwood Bonemuncher",
+        "item": "Bonespike Collar",
+        "quantity": 4
+      },
+      {
+        "kind": "hunt",
+        "map": "doomwood",
+        "cell": "r8",
+        "pad": "Right",
+        "monster": "Doomwood Soldier",
+        "item": "Distal Fingerbone",
+        "quantity": 4
+      }
+    ]
+  },
+  {
+    "kind": "mapItem",
+    "questId": 1065,
+    "map": "doomwood",
+    "ids": [
+      423
+    ],
+    "quantity": 5
+  },
+  {
+    "kind": "plan",
+    "questId": 1066,
+    "actions": [
+      {
+        "kind": "hunt",
+        "map": "doomwood",
+        "cell": "r6",
+        "pad": "Right",
+        "monster": "*",
+        "item": "Warrior Reinforced"
+      }
+    ]
+  },
+  {
+    "kind": "mapItem",
+    "questId": 1067,
+    "map": "doomwood",
+    "ids": [
+      422
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 1068,
+    "map": "doomwood",
+    "monsters": [
+      "Undead Paladin"
+    ]
+  },
+  {
+    "kind": "plan",
+    "questId": 1069,
+    "actions": [
+      {
+        "kind": "hunt",
+        "map": "doomwood",
+        "monster": "Doomwood Bonemuncher",
+        "item": "Muncher Mandibles",
+        "quantity": 3
+      },
+      {
+        "kind": "hunt",
+        "map": "doomwood",
+        "monster": "Doomwood Bonemuncher",
+        "item": "Stained Skulls",
+        "quantity": 3
+      },
+      {
+        "kind": "hunt",
+        "map": "doomwood",
+        "monster": "Doomwood Ectomancer",
+        "item": "Ecto-Coated Cloth Scraps",
+        "quantity": 3
+      },
+      {
+        "kind": "hunt",
+        "map": "doomwood",
+        "monster": "Doomwood Soldier",
+        "item": "Fractured Tibia",
+        "quantity": 3
+      }
+    ]
+  },
+  {
+    "kind": "plan",
+    "questId": 1070,
+    "actions": [
+      {
+        "kind": "mapItem",
+        "map": "doomundead",
+        "id": 427
+      },
+      {
+        "kind": "hunt",
+        "map": "doomundead",
+        "cell": "r3",
+        "pad": "Right",
+        "monster": "*",
+        "item": "Light Knight Lifeforce",
+        "quantity": 5
+      }
+    ]
+  },
+  {
+    "kind": "chain",
+    "questId": 1089
+  },
+  {
+    "kind": "mapItem",
+    "questId": 1081,
+    "map": "maul",
+    "ids": [
+      435
+    ]
+  },
+  {
+    "kind": "mapItem",
+    "questId": 1082,
+    "map": "maul",
+    "ids": [
+      434
+    ],
+    "quantity": 13
+  },
+  {
+    "kind": "kill",
+    "questId": 1083,
+    "map": "maul",
+    "monsters": [
+      "Personal Chopper",
+      "Slimeskull"
+    ]
+  },
+  {
+    "kind": "plan",
+    "questId": 1084,
+    "actions": [
+      {
+        "kind": "hunt",
+        "map": "maul",
+        "cell": "r2",
+        "pad": "Left",
+        "monster": "*",
+        "item": "Body Part Donation",
+        "quantity": 10
+      },
+      {
+        "kind": "mapItem",
+        "map": "maul",
+        "id": 436,
+        "quantity": 2
+      }
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 1085,
+    "map": "maul",
+    "monsters": [
+      "Creature Creation"
+    ]
+  },
+  {
+    "kind": "chain",
+    "questId": 1080
+  },
+  {
+    "kind": "plan",
+    "questId": 1064,
+    "actions": [
+      {
+        "kind": "hunt",
+        "map": "doomwood",
+        "monster": "Doomwood Ectomancer",
+        "item": "Ball of Ectoplasm",
+        "quantity": 3
+      },
+      {
+        "kind": "hunt",
+        "map": "doomwood",
+        "monster": "Doomwood Bonemuncher",
+        "item": "Bonespike Collar",
+        "quantity": 4
+      },
+      {
+        "kind": "hunt",
+        "map": "doomwood",
+        "cell": "r8",
+        "pad": "Right",
+        "monster": "Doomwood Soldier",
+        "item": "Distal Fingerbone",
+        "quantity": 4
+      }
+    ]
+  },
+  {
+    "kind": "mapItem",
+    "questId": 1065,
+    "map": "doomwood",
+    "ids": [
+      423
+    ],
+    "quantity": 5
+  },
+  {
+    "kind": "plan",
+    "questId": 1066,
+    "actions": [
+      {
+        "kind": "hunt",
+        "map": "doomwood",
+        "cell": "r6",
+        "pad": "Right",
+        "monster": "*",
+        "item": "Warrior Reinforced"
+      }
+    ]
+  },
+  {
+    "kind": "mapItem",
+    "questId": 1067,
+    "map": "doomwood",
+    "ids": [
+      422
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 1068,
+    "map": "doomwood",
+    "monsters": [
+      "Undead Paladin"
+    ]
+  },
+  {
+    "kind": "plan",
+    "questId": 1069,
+    "actions": [
+      {
+        "kind": "hunt",
+        "map": "doomwood",
+        "monster": "Doomwood Bonemuncher",
+        "item": "Muncher Mandibles",
+        "quantity": 3
+      },
+      {
+        "kind": "hunt",
+        "map": "doomwood",
+        "monster": "Doomwood Bonemuncher",
+        "item": "Stained Skulls",
+        "quantity": 3
+      },
+      {
+        "kind": "hunt",
+        "map": "doomwood",
+        "monster": "Doomwood Ectomancer",
+        "item": "Ecto-Coated Cloth Scraps",
+        "quantity": 3
+      },
+      {
+        "kind": "hunt",
+        "map": "doomwood",
+        "monster": "Doomwood Soldier",
+        "item": "Fractured Tibia",
+        "quantity": 3
+      }
+    ]
+  },
+  {
+    "kind": "plan",
+    "questId": 1070,
+    "actions": [
+      {
+        "kind": "mapItem",
+        "map": "doomundead",
+        "id": 427
+      },
+      {
+        "kind": "hunt",
+        "map": "doomundead",
+        "cell": "r3",
+        "pad": "Right",
+        "monster": "*",
+        "item": "Light Knight Lifeforce",
+        "quantity": 5
+      }
+    ]
+  },
+  {
+    "kind": "chain",
+    "questId": 1089
+  },
+  {
+    "kind": "mapItem",
+    "questId": 1081,
+    "map": "maul",
+    "ids": [
+      435
+    ]
+  },
+  {
+    "kind": "mapItem",
+    "questId": 1082,
+    "map": "maul",
+    "ids": [
+      434
+    ],
+    "quantity": 13
+  },
+  {
+    "kind": "kill",
+    "questId": 1083,
+    "map": "maul",
+    "monsters": [
+      "Personal Chopper",
+      "Slimeskull"
+    ]
+  },
+  {
+    "kind": "plan",
+    "questId": 1084,
+    "actions": [
+      {
+        "kind": "hunt",
+        "map": "maul",
+        "cell": "r2",
+        "pad": "Left",
+        "monster": "*",
+        "item": "Body Part Donation",
+        "quantity": 10
+      },
+      {
+        "kind": "mapItem",
+        "map": "maul",
+        "id": 436,
+        "quantity": 2
+      }
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 1085,
+    "map": "maul",
+    "monsters": [
+      "Creature Creation"
+    ]
+  },
+  {
+    "kind": "plan",
+    "questId": 1087,
+    "actions": [
+      {
+        "kind": "hunt",
+        "map": "necrotower",
+        "cell": "r2",
+        "pad": "Left",
+        "monster": "Doomwood Treeant",
+        "item": "Pain-per",
+        "quantity": 5
+      },
+      {
+        "kind": "hunt",
+        "map": "necrotower",
+        "cell": "r2",
+        "pad": "Left",
+        "monster": "Slimeskull",
+        "item": "Toxic Goo",
+        "quantity": 5
+      }
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 1088,
+    "map": "doomwood",
+    "monsters": [
+      "Doomwood Soldier",
+      "Doomwood Soldier"
+    ]
+  },
+  {
+    "kind": "plan",
+    "questId": 1090,
+    "actions": [
+      {
+        "kind": "hunt",
+        "map": "necrotower",
+        "monster": 4,
+        "item": "Seal Components"
+      }
+    ]
+  },
+  {
+    "kind": "mapItem",
+    "questId": 1091,
+    "map": "necrotower",
+    "ids": [
+      438
+    ]
+  },
+  {
+    "kind": "chain",
+    "questId": 1092
+  },
+  {
+    "kind": "chain",
+    "questId": 1080
+  },
+  {
+    "kind": "plan",
+    "questId": 1064,
+    "actions": [
+      {
+        "kind": "hunt",
+        "map": "doomwood",
+        "monster": "Doomwood Ectomancer",
+        "item": "Ball of Ectoplasm",
+        "quantity": 3
+      },
+      {
+        "kind": "hunt",
+        "map": "doomwood",
+        "monster": "Doomwood Bonemuncher",
+        "item": "Bonespike Collar",
+        "quantity": 4
+      },
+      {
+        "kind": "hunt",
+        "map": "doomwood",
+        "cell": "r8",
+        "pad": "Right",
+        "monster": "Doomwood Soldier",
+        "item": "Distal Fingerbone",
+        "quantity": 4
+      }
+    ]
+  },
+  {
+    "kind": "mapItem",
+    "questId": 1065,
+    "map": "doomwood",
+    "ids": [
+      423
+    ],
+    "quantity": 5
+  },
+  {
+    "kind": "plan",
+    "questId": 1066,
+    "actions": [
+      {
+        "kind": "hunt",
+        "map": "doomwood",
+        "cell": "r6",
+        "pad": "Right",
+        "monster": "*",
+        "item": "Warrior Reinforced"
+      }
+    ]
+  },
+  {
+    "kind": "mapItem",
+    "questId": 1067,
+    "map": "doomwood",
+    "ids": [
+      422
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 1068,
+    "map": "doomwood",
+    "monsters": [
+      "Undead Paladin"
+    ]
+  },
+  {
+    "kind": "plan",
+    "questId": 1069,
+    "actions": [
+      {
+        "kind": "hunt",
+        "map": "doomwood",
+        "monster": "Doomwood Bonemuncher",
+        "item": "Muncher Mandibles",
+        "quantity": 3
+      },
+      {
+        "kind": "hunt",
+        "map": "doomwood",
+        "monster": "Doomwood Bonemuncher",
+        "item": "Stained Skulls",
+        "quantity": 3
+      },
+      {
+        "kind": "hunt",
+        "map": "doomwood",
+        "monster": "Doomwood Ectomancer",
+        "item": "Ecto-Coated Cloth Scraps",
+        "quantity": 3
+      },
+      {
+        "kind": "hunt",
+        "map": "doomwood",
+        "monster": "Doomwood Soldier",
+        "item": "Fractured Tibia",
+        "quantity": 3
+      }
+    ]
+  },
+  {
+    "kind": "plan",
+    "questId": 1070,
+    "actions": [
+      {
+        "kind": "mapItem",
+        "map": "doomundead",
+        "id": 427
+      },
+      {
+        "kind": "hunt",
+        "map": "doomundead",
+        "cell": "r3",
+        "pad": "Right",
+        "monster": "*",
+        "item": "Light Knight Lifeforce",
+        "quantity": 5
+      }
+    ]
+  },
+  {
+    "kind": "chain",
+    "questId": 1089
+  },
+  {
+    "kind": "mapItem",
+    "questId": 1081,
+    "map": "maul",
+    "ids": [
+      435
+    ]
+  },
+  {
+    "kind": "mapItem",
+    "questId": 1082,
+    "map": "maul",
+    "ids": [
+      434
+    ],
+    "quantity": 13
+  },
+  {
+    "kind": "kill",
+    "questId": 1083,
+    "map": "maul",
+    "monsters": [
+      "Personal Chopper",
+      "Slimeskull"
+    ]
+  },
+  {
+    "kind": "plan",
+    "questId": 1084,
+    "actions": [
+      {
+        "kind": "hunt",
+        "map": "maul",
+        "cell": "r2",
+        "pad": "Left",
+        "monster": "*",
+        "item": "Body Part Donation",
+        "quantity": 10
+      },
+      {
+        "kind": "mapItem",
+        "map": "maul",
+        "id": 436,
+        "quantity": 2
+      }
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 1085,
+    "map": "maul",
+    "monsters": [
+      "Creature Creation"
+    ]
+  },
+  {
+    "kind": "plan",
+    "questId": 1087,
+    "actions": [
+      {
+        "kind": "hunt",
+        "map": "necrotower",
+        "cell": "r2",
+        "pad": "Left",
+        "monster": "Doomwood Treeant",
+        "item": "Pain-per",
+        "quantity": 5
+      },
+      {
+        "kind": "hunt",
+        "map": "necrotower",
+        "cell": "r2",
+        "pad": "Left",
+        "monster": "Slimeskull",
+        "item": "Toxic Goo",
+        "quantity": 5
+      }
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 1088,
+    "map": "doomwood",
+    "monsters": [
+      "Doomwood Soldier",
+      "Doomwood Soldier"
+    ]
+  },
+  {
+    "kind": "plan",
+    "questId": 1090,
+    "actions": [
+      {
+        "kind": "hunt",
+        "map": "necrotower",
+        "monster": 4,
+        "item": "Seal Components"
+      }
+    ]
+  },
+  {
+    "kind": "mapItem",
+    "questId": 1091,
+    "map": "necrotower",
+    "ids": [
+      438
+    ]
+  },
+  {
+    "kind": "chain",
+    "questId": 1092
+  },
+  {
+    "kind": "kill",
+    "questId": 1112,
+    "map": "necroU",
+    "monsters": [
+      "Ghoul"
+    ]
+  },
+  {
+    "kind": "mapItem",
+    "questId": 1113,
+    "map": "necroU",
+    "ids": [
+      450
+    ],
+    "quantity": 5
+  },
+  {
+    "kind": "plan",
+    "questId": 1114,
+    "actions": [
+      {
+        "kind": "hunt",
+        "map": "necroU",
+        "monster": "Ghoul",
+        "item": "Undead Wishes"
+      },
+      {
+        "kind": "hunt",
+        "map": "necroU",
+        "monster": "Doomwood Soldier",
+        "item": "Undead Dreams"
+      },
+      {
+        "kind": "hunt",
+        "map": "necroU",
+        "monster": "Doomwood Soldier",
+        "item": "Undead Ambitions"
+      }
+    ]
+  },
+  {
+    "kind": "mapItem",
+    "questId": 1115,
+    "map": "necroU",
+    "ids": [
+      449
+    ],
+    "quantity": 6
+  },
+  {
+    "kind": "kill",
+    "questId": 1116,
+    "map": "necroU",
+    "monsters": [
+      "Doomwood Soldier",
+      "Doomwood Soldier"
+    ]
+  },
+  {
+    "kind": "mapItem",
+    "questId": 1117,
+    "map": "necroU",
+    "ids": [
+      451
+    ],
+    "quantity": 3
+  },
+  {
+    "kind": "kill",
+    "questId": 1117,
+    "map": "necroU",
+    "monsters": [
+      "Doomwood Treeant"
+    ]
+  },
+  {
+    "kind": "mapItem",
+    "questId": 1118,
+    "map": "necroU",
+    "ids": [
+      452
+    ],
+    "quantity": 5
+  },
+  {
+    "kind": "kill",
+    "questId": 1118,
+    "map": "necroU",
+    "monsters": [
+      "Slimeskull"
+    ]
+  },
+  {
+    "kind": "mapItem",
+    "questId": 1119,
+    "map": "necroU",
+    "ids": [
+      453
+    ],
+    "quantity": 5
+  },
+  {
+    "kind": "kill",
+    "questId": 1120,
+    "map": "necroU",
+    "monsters": [
+      "Doomwood Soldier"
+    ]
+  },
+  {
+    "kind": "mapItem",
+    "questId": 1121,
+    "map": "necroU",
+    "ids": [
+      454
+    ],
+    "quantity": 3
+  },
+  {
+    "kind": "mapItem",
+    "questId": 1121,
+    "map": "necroU",
+    "ids": [
+      455
+    ],
+    "quantity": 3
+  },
+  {
+    "kind": "kill",
+    "questId": 1121,
+    "map": "necroU",
+    "monsters": [
+      "Shelleton",
+      "Necro U"
+    ]
+  },
+  {
+    "kind": "chain",
+    "questId": 1154
+  },
+  {
+    "kind": "kill",
+    "questId": 1170,
+    "map": "vordredboss",
+    "monsters": [
+      "Ultra Vordred"
+    ]
+  },
+  {
+    "kind": "plan",
+    "questId": 1123,
+    "actions": [
+      {
+        "kind": "hunt",
+        "map": "temple",
+        "cell": "r2",
+        "pad": "Up",
+        "monster": "SlimeSkull",
+        "item": "Slimeskull Trophy",
+        "quantity": 3
+      },
+      {
+        "kind": "hunt",
+        "map": "temple",
+        "cell": "r2",
+        "pad": "Up",
+        "monster": "Doomwood Bonemuncher",
+        "item": "Munched Boneshard",
+        "quantity": 3
+      },
+      {
+        "kind": "hunt",
+        "map": "temple",
+        "cell": "r2",
+        "pad": "Up",
+        "monster": "Shelleton",
+        "item": "Shelleton Shrapnel",
+        "quantity": 3
+      }
+    ]
+  },
+  {
+    "kind": "plan",
+    "questId": 1124,
+    "actions": [
+      {
+        "kind": "mapItem",
+        "map": "temple",
+        "id": 456,
+        "quantity": 6
+      },
+      {
+        "kind": "hunt",
+        "map": "temple",
+        "cell": "r3",
+        "pad": "Up",
+        "monster": "Undead Mage",
+        "item": "Necrotic Rune",
+        "quantity": 3
+      },
+      {
+        "kind": "hunt",
+        "map": "temple",
+        "cell": "r3",
+        "pad": "Up",
+        "monster": "Doomwood Ectomancer",
+        "item": "Ecto-Covered Rune",
+        "quantity": 3
+      }
+    ]
+  },
+  {
+    "kind": "plan",
+    "questId": 1125,
+    "actions": [
+      {
+        "kind": "hunt",
+        "map": "temple",
+        "cell": "r4",
+        "pad": "Up",
+        "monster": "Ghoul",
+        "item": "Ghoulish Gear"
+      },
+      {
+        "kind": "hunt",
+        "map": "temple",
+        "cell": "r4",
+        "pad": "Up",
+        "monster": "Lich",
+        "item": "Haunted Habiliment"
+      }
+    ]
+  },
+  {
+    "kind": "plan",
+    "questId": 1126,
+    "actions": [
+      {
+        "kind": "mapItem",
+        "map": "temple",
+        "id": 457,
+        "quantity": 8
+      },
+      {
+        "kind": "hunt",
+        "map": "temple",
+        "cell": "r5",
+        "pad": "Up",
+        "monster": "Skeletal Fire Mage",
+        "item": "Flame Extinguished",
+        "quantity": 6
+      }
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 1127,
+    "map": "temple",
+    "monsters": [
+      "Doomwood Ectomancer"
+    ]
+  },
+  {
+    "kind": "plan",
+    "questId": 1128,
+    "actions": [
+      {
+        "kind": "hunt",
+        "map": "temple",
+        "cell": "r2",
+        "pad": "Up",
+        "monster": "Doomwood Bonemuncher",
+        "item": "Masticated Mandible",
+        "quantity": 2
+      },
+      {
+        "kind": "hunt",
+        "map": "temple",
+        "cell": "r7",
+        "pad": "Up",
+        "monster": "Sanguine Souleater",
+        "item": "Freed Soul",
+        "quantity": 4
+      }
+    ]
+  },
+  {
+    "kind": "mapItem",
+    "questId": 1129,
+    "map": "temple",
+    "ids": [
+      458
+    ],
+    "quantity": 12
+  },
+  {
+    "kind": "kill",
+    "questId": 1130,
+    "map": "temple",
+    "monsters": [
+      "Doomwood Ectomancer",
+      "Skeletal Fire Mage"
+    ]
+  },
+  {
+    "kind": "mapItem",
+    "questId": 1131,
+    "map": "temple",
+    "ids": [
+      459
+    ],
+    "quantity": 8
+  },
+  {
+    "kind": "kill",
+    "questId": 1131,
+    "map": "temple",
+    "monsters": [
+      "Ghoul"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 1132,
+    "map": "temple",
+    "monsters": [
+      "Doomwood Ectomancer"
+    ]
+  },
+  {
+    "kind": "mapItem",
+    "questId": 1133,
+    "map": "temple",
+    "ids": [
+      460
+    ],
+    "quantity": 10
+  },
+  {
+    "kind": "kill",
+    "questId": 1133,
+    "map": "temple",
+    "monsters": [
+      "Sanguine Souleater"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 1134,
+    "map": "temple",
+    "monsters": [
+      "SlimeSkull",
+      "Doomwood Ectomancer"
+    ]
+  },
+  {
+    "kind": "mapItem",
+    "questId": 1135,
+    "map": "temple",
+    "ids": [
+      461
+    ],
+    "quantity": 12
+  },
+  {
+    "kind": "kill",
+    "questId": 1137,
+    "map": "temple",
+    "monsters": [
+      "Doomwood Soldier"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 1138,
+    "map": "temple",
+    "monsters": [
+      "Ghoul"
+    ]
+  },
+  {
+    "kind": "mapItem",
+    "questId": 1139,
+    "map": "temple",
+    "ids": [
+      462
+    ],
+    "quantity": 10
+  },
+  {
+    "kind": "kill",
+    "questId": 1140,
+    "map": "temple",
+    "monsters": [
+      "Doomwood Bonemuncher",
+      "Skeleton"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 1141,
+    "map": "temple",
+    "monsters": [
+      "Undead Mage",
+      "Skeletal Fire Mage"
+    ]
+  },
+  {
+    "kind": "mapItem",
+    "questId": 1142,
+    "map": "temple",
+    "ids": [
+      463
+    ],
+    "quantity": 6
+  },
+  {
+    "kind": "kill",
+    "questId": 1142,
+    "map": "temple",
+    "monsters": [
+      "Shelleton",
+      "Skeleton"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 1143,
+    "map": "temple",
+    "monsters": [
+      "Lich"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 1144,
+    "map": "temple",
+    "monsters": [
+      "Dracolich"
+    ]
+  },
+  {
+    "kind": "mapItem",
+    "questId": 1145,
+    "map": "temple",
+    "ids": [
+      464
+    ],
+    "quantity": 10
+  },
+  {
+    "kind": "kill",
+    "questId": 1146,
+    "map": "temple",
+    "monsters": [
+      "Doomwood Bonemuncher"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 1147,
+    "map": "temple",
+    "monsters": [
+      "Cryptkeeper Lich"
+    ]
+  },
+  {
+    "kind": "plan",
+    "questId": 1148,
+    "actions": [
+      {
+        "kind": "hunt",
+        "map": "temple",
+        "cell": "r2",
+        "pad": "Up",
+        "monster": "Shelleton",
+        "item": "Basilisk's Scale"
+      },
+      {
+        "kind": "hunt",
+        "map": "temple",
+        "cell": "r2",
+        "pad": "Up",
+        "monster": "Shelleton",
+        "item": "Scroll of Magic Inversion"
+      },
+      {
+        "kind": "jump",
+        "cell": "Enter",
+        "pad": "Spawn"
+      },
+      {
+        "kind": "buy",
+        "map": "temple",
+        "shopId": 287,
+        "item": "Scroll of Cure Petrification"
+      }
+    ]
+  },
+  {
+    "kind": "mapItem",
+    "questId": 1155,
+    "map": "lab",
+    "ids": [
+      488
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 1156,
+    "map": "lab",
+    "monsters": [
+      "Ant Giant"
+    ]
+  },
+  {
+    "kind": "mapItem",
+    "questId": 1157,
+    "map": "lab",
+    "ids": [
+      489
+    ],
+    "quantity": 3
+  },
+  {
+    "kind": "kill",
+    "questId": 1157,
+    "map": "lab",
+    "monsters": [
+      "Ant Giant"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 1158,
+    "map": "lab",
+    "monsters": [
+      "Ant Giant"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 1159,
+    "map": "lab",
+    "monsters": [
+      "Ant Giant"
+    ]
+  },
+  {
+    "kind": "mapItem",
+    "questId": 1160,
+    "map": "lab",
+    "ids": [
+      490
+    ],
+    "quantity": 6
+  },
+  {
+    "kind": "mapItem",
+    "questId": 1161,
+    "map": "lab",
+    "ids": [
+      491
+    ],
+    "quantity": 7
+  },
+  {
+    "kind": "kill",
+    "questId": 1161,
+    "map": "lab",
+    "monsters": [
+      "Giant Scorpion"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 1162,
+    "map": "lab",
+    "monsters": [
+      "Ant Giant"
+    ]
+  },
+  {
+    "kind": "mapItem",
+    "questId": 1163,
+    "map": "lab",
+    "ids": [
+      492
+    ],
+    "quantity": 10
+  },
+  {
+    "kind": "mapItem",
+    "questId": 1164,
+    "map": "mountain",
+    "ids": [
+      493
+    ]
+  },
+  {
+    "kind": "mapItem",
+    "questId": 1169,
+    "map": "mountain",
+    "ids": [
+      494
+    ]
+  }
+];
+
+export const definition = defineGeneratedStory(
+  {
+    id: "story.doomwood.part1.0complete-part1",
+    category: "Story",
+    map: "doomwood",
+    meta
+  },
+  steps
+);
+
+export const main = definition.run;
+
+export default definition;

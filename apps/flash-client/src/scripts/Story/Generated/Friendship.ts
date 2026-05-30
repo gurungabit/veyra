@@ -1,0 +1,104 @@
+import { defineGeneratedStory, type StoryStep } from "./runner.js";
+
+export const meta = {
+  "name": "Friendship Story",
+  "description": "This will complete the Friendship storyline.",
+  "tags": [
+    "story",
+    "quest",
+    "friendship",
+    "greyguard",
+    "battleodium",
+    "npc"
+  ],
+  "version": "0.1.0"
+};
+
+const steps: StoryStep[] = [
+  {
+    "kind": "mapItem",
+    "questId": 9099,
+    "map": "battleodium",
+    "ids": [
+      11202
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 9100,
+    "map": "battleodium",
+    "monsters": [
+      "Diemond"
+    ]
+  },
+  {
+    "kind": "mapItem",
+    "questId": 9101,
+    "map": "battleodium",
+    "ids": [
+      11203
+    ],
+    "quantity": 3
+  },
+  {
+    "kind": "plan",
+    "questId": 9102,
+    "actions": []
+  },
+  {
+    "kind": "mapItem",
+    "questId": 9103,
+    "map": "greyguard",
+    "ids": [
+      11205
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 9103,
+    "map": "greyguard",
+    "monsters": [
+      "Gloombloom",
+      "Carcass Creeper",
+      "Fearweaver",
+      "Darkbark",
+      "Twilighteeth",
+      "Maulignant"
+    ]
+  },
+  {
+    "kind": "plan",
+    "questId": 9104,
+    "actions": []
+  },
+  {
+    "kind": "kill",
+    "questId": 9105,
+    "map": "greyguard",
+    "monsters": [
+      "Carcass Creeper"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 9106,
+    "map": "greyguard",
+    "monsters": [
+      "Odium"
+    ]
+  }
+];
+
+export const definition = defineGeneratedStory(
+  {
+    id: "story.friendship",
+    category: "Story",
+    map: "battleodium",
+    meta
+  },
+  steps
+);
+
+export const main = definition.run;
+
+export default definition;

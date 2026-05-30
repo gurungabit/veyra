@@ -1,0 +1,149 @@
+import { defineGeneratedStory, type StoryStep } from "../runner.js";
+
+export const meta = {
+  "name": "Trygve",
+  "description": "This script will complete the storyline in /trygve.",
+  "tags": [
+    "story",
+    "hollowborn",
+    "saga",
+    "trygve",
+    "neofortress",
+    "lae",
+    "01trygve"
+  ],
+  "version": "0.1.0"
+};
+
+const steps: StoryStep[] = [
+  {
+    "kind": "kill",
+    "questId": 8289,
+    "map": "trygve",
+    "monsters": [
+      "Vindicator Recruit"
+    ]
+  },
+  {
+    "kind": "mapItem",
+    "questId": 8290,
+    "map": "trygve",
+    "ids": [
+      9036
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 8290,
+    "map": "trygve",
+    "monsters": [
+      "Blood Eagle"
+    ]
+  },
+  {
+    "kind": "mapItem",
+    "questId": 8291,
+    "map": "trygve",
+    "ids": [
+      9037
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 8291,
+    "map": "trygve",
+    "monsters": [
+      "Vindicator Recruit"
+    ]
+  },
+  {
+    "kind": "mapItem",
+    "questId": 8292,
+    "map": "trygve",
+    "ids": [
+      9038
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 8292,
+    "map": "trygve",
+    "monsters": [
+      "Rune Boar"
+    ]
+  },
+  {
+    "kind": "mapItem",
+    "questId": 8293,
+    "map": "trygve",
+    "ids": [
+      9039
+    ],
+    "quantity": 3
+  },
+  {
+    "kind": "kill",
+    "questId": 8293,
+    "map": "trygve",
+    "monsters": [
+      "Vindicator Recruit"
+    ]
+  },
+  {
+    "kind": "mapItem",
+    "questId": 8294,
+    "map": "trygve",
+    "ids": [
+      9040
+    ],
+    "quantity": 8
+  },
+  {
+    "kind": "kill",
+    "questId": 8295,
+    "map": "trygve",
+    "monsters": [
+      "Blood Eagle",
+      "Rune Boar"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 8296,
+    "map": "trygve",
+    "monsters": [
+      "Vindicator Recruit"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 8297,
+    "map": "trygve",
+    "monsters": [
+      "Blood Eagle",
+      "Vindicator Recruit"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 8298,
+    "map": "trygve",
+    "monsters": [
+      "Gramiel"
+    ]
+  }
+];
+
+export const definition = defineGeneratedStory(
+  {
+    id: "story.hollowborn.01trygve",
+    category: "Story",
+    map: "trygve",
+    meta
+  },
+  steps
+);
+
+export const main = definition.run;
+
+export default definition;

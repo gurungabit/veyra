@@ -1,0 +1,507 @@
+import { defineGeneratedStory, type StoryStep } from "../runner.js";
+
+export const meta = {
+  "name": "Sepulchure's Rise",
+  "description": "This will finish the Sepulchure's Rise quest.",
+  "tags": [
+    "story",
+    "quest",
+    "sepulchure-saga",
+    "sepulchures-rise",
+    "sepulchure",
+    "saga",
+    "03sepulchures",
+    "rise"
+  ],
+  "version": "0.1.0"
+};
+
+const steps: StoryStep[] = [
+  {
+    "kind": "plan",
+    "questId": 6356,
+    "actions": [
+      {
+        "kind": "buy",
+        "map": "valleyofdoom",
+        "shopId": 1599,
+        "item": "Valen Gear",
+        "quantity": 1
+      }
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 6357,
+    "map": "valleyofdoom",
+    "monsters": [
+      "Shadow Imp"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 6358,
+    "map": "valleyofdoom",
+    "monsters": [
+      "Shadow Imp"
+    ]
+  },
+  {
+    "kind": "mapItem",
+    "questId": 6359,
+    "map": "valleyofdoom",
+    "ids": [
+      5873
+    ],
+    "quantity": 8
+  },
+  {
+    "kind": "kill",
+    "questId": 6360,
+    "map": "valleyofdoom",
+    "monsters": [
+      "Shadow Beast",
+      "Shadow Person"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 6361,
+    "map": "valleyofdoom",
+    "monsters": [
+      "Doom Guardian"
+    ]
+  },
+  {
+    "kind": "mapItem",
+    "questId": 6362,
+    "map": "valleyofdoom",
+    "ids": [
+      5872
+    ]
+  },
+  {
+    "kind": "plan",
+    "questId": 6363,
+    "actions": [
+      {
+        "kind": "hunt",
+        "map": "valleyofdoom",
+        "cell": "r7",
+        "pad": "Left",
+        "monster": "Doom Star",
+        "item": "Doomstar Destroyed"
+      },
+      {
+        "kind": "hunt",
+        "map": "valleyofdoom",
+        "cell": "r7",
+        "pad": "Left",
+        "monster": "Doom Scythe",
+        "item": "Doomscythe Destroyed"
+      },
+      {
+        "kind": "hunt",
+        "map": "valleyofdoom",
+        "cell": "r7",
+        "pad": "Left",
+        "monster": "Doom Axe",
+        "item": "Doomaxe Destroyed"
+      },
+      {
+        "kind": "hunt",
+        "map": "valleyofdoom",
+        "cell": "r8",
+        "pad": "Left",
+        "monster": "Doom Blade",
+        "item": "Doom Blade Destroyed"
+      },
+      {
+        "kind": "hunt",
+        "map": "valleyofdoom",
+        "cell": "r8",
+        "pad": "Left",
+        "monster": "Doom Knight Armor",
+        "item": "Doom Knight Armor Destroyed"
+      }
+    ]
+  },
+  {
+    "kind": "plan",
+    "questId": 6364,
+    "actions": [
+      {
+        "kind": "hunt",
+        "map": "valleyofdoom",
+        "monster": 25,
+        "item": "Doomknight Armor Defeated"
+      }
+    ]
+  },
+  {
+    "kind": "mapItem",
+    "questId": 6365,
+    "map": "guardiantower",
+    "ids": [
+      5871
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 6366,
+    "map": "guardiantower",
+    "monsters": [
+      "Slime"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 6367,
+    "map": "guardiantower",
+    "monsters": [
+      "Yargol Magebane"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 6369,
+    "map": "valleyofdoom",
+    "monsters": [
+      "Shadow Imp"
+    ]
+  },
+  {
+    "kind": "mapItem",
+    "questId": 6370,
+    "map": "ebonslate",
+    "ids": [
+      5895
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 6371,
+    "map": "ebonslate",
+    "monsters": [
+      "Mind Con-Troll"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 6372,
+    "map": "ebonslate",
+    "monsters": [
+      "Sp-Eye"
+    ]
+  },
+  {
+    "kind": "mapItem",
+    "questId": 6373,
+    "map": "ebonslate",
+    "ids": [
+      5896
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 6373,
+    "map": "ebonslate",
+    "monsters": [
+      "Ebonslate Guard"
+    ]
+  },
+  {
+    "kind": "mapItem",
+    "questId": 6374,
+    "map": "ebonslate",
+    "ids": [
+      5897
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 6374,
+    "map": "ebonslate",
+    "monsters": [
+      "Lycan Brute",
+      "Lycan Brute"
+    ]
+  },
+  {
+    "kind": "mapItem",
+    "questId": 6375,
+    "map": "ebonslate",
+    "ids": [
+      5898
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 6376,
+    "map": "ebonslate",
+    "monsters": [
+      "Ebonslate Knight"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 6377,
+    "map": "ebonslate",
+    "monsters": [
+      "Mind Con-Troll"
+    ]
+  },
+  {
+    "kind": "mapItem",
+    "questId": 6378,
+    "map": "ebonslate",
+    "ids": [
+      5899
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 6379,
+    "map": "ebonslate",
+    "monsters": [
+      "Ebonslate Knight"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 6380,
+    "map": "ebonslate",
+    "monsters": [
+      "Ebonslate Bruiser"
+    ]
+  },
+  {
+    "kind": "plan",
+    "questId": 6381,
+    "actions": [
+      {
+        "kind": "join",
+        "map": "ebonslate",
+        "cell": "r11",
+        "pad": "Left"
+      }
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 6382,
+    "map": "guardiantowerb",
+    "monsters": [
+      "Slime"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 6383,
+    "map": "guardiantowerb",
+    "monsters": [
+      "Slime"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 6384,
+    "map": "guardiantowerb",
+    "monsters": [
+      "Yargol Magebane"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 6385,
+    "map": "guardiantowerb",
+    "monsters": [
+      "Slime"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 6386,
+    "map": "guardiantowerb",
+    "monsters": [
+      "Guardian Selby",
+      "Guardian Garen"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 6387,
+    "map": "guardiantowerb",
+    "monsters": [
+      "Guardian Garen",
+      "Guardian Selby"
+    ]
+  },
+  {
+    "kind": "mapItem",
+    "questId": 6388,
+    "map": "guardiantowerb",
+    "ids": [
+      5901
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 6388,
+    "map": "guardiantowerb",
+    "monsters": [
+      "Guardian Bolton"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 6389,
+    "map": "ebondungeon",
+    "monsters": [
+      "Ebonslate Imp"
+    ]
+  },
+  {
+    "kind": "mapItem",
+    "questId": 6390,
+    "map": "ebondungeon",
+    "ids": [
+      5902
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 6391,
+    "map": "ebondungeon",
+    "monsters": [
+      "Ebon Dungeon Guard"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 6392,
+    "map": "ebondungeon",
+    "monsters": [
+      "Elite Dungeon Guard"
+    ]
+  },
+  {
+    "kind": "mapItem",
+    "questId": 6393,
+    "map": "ebondungeon",
+    "ids": [
+      5903,
+      5904
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 6394,
+    "map": "ebondungeon",
+    "monsters": [
+      "Dethrix"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 6395,
+    "map": "ebondungeon",
+    "monsters": [
+      "Ebon Dungeon Guard"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 6399,
+    "map": "alteonfight",
+    "monsters": [
+      "King Alteon"
+    ]
+  },
+  {
+    "kind": "mapItem",
+    "questId": 6400,
+    "map": "alteonfight",
+    "ids": [
+      5910
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 6401,
+    "map": "darkplane",
+    "monsters": [
+      "Shadow Beast"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 6402,
+    "map": "darkplane",
+    "monsters": [
+      "Guardian Knight"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 6403,
+    "map": "darkplane",
+    "monsters": [
+      "Light Spirit"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 6404,
+    "map": "darkplane",
+    "monsters": [
+      "Shadow Beast"
+    ]
+  },
+  {
+    "kind": "mapItem",
+    "questId": 6405,
+    "map": "darkplane",
+    "ids": [
+      5911
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 6406,
+    "map": "darkplane",
+    "monsters": [
+      "Guardian Knight"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 6407,
+    "map": "darkplane",
+    "monsters": [
+      "Victorious"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 6408,
+    "map": "darkplane",
+    "monsters": [
+      "Shadow Beast"
+    ]
+  }
+];
+
+export const definition = defineGeneratedStory(
+  {
+    id: "story.sepulchure-saga.03sepulchures-rise",
+    category: "Story",
+    map: "valleyofdoom",
+    meta
+  },
+  steps
+);
+
+export const main = definition.run;
+
+export default definition;

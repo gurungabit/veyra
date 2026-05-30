@@ -1,0 +1,155 @@
+import { defineGeneratedStory, type StoryStep } from "../runner.js";
+
+export const meta = {
+  "name": "Ruined Crown",
+  "description": "This will finish the Ruined Crown quest.",
+  "tags": [
+    "story",
+    "quest",
+    "shadow-war",
+    "ruined-crown",
+    "shadows",
+    "of",
+    "war",
+    "16ruined",
+    "crown"
+  ],
+  "version": "0.1.0"
+};
+
+const steps: StoryStep[] = [
+  {
+    "kind": "mapItem",
+    "questId": 8778,
+    "map": "ruinedcrown",
+    "ids": [
+      10380,
+      10382,
+      10383
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 8779,
+    "map": "ruinedcrown",
+    "monsters": [
+      "Mana-Burdened Knight",
+      "Mana-Burdened Minion"
+    ]
+  },
+  {
+    "kind": "mapItem",
+    "questId": 8780,
+    "map": "ruinedcrown",
+    "ids": [
+      10384
+    ],
+    "quantity": 6
+  },
+  {
+    "kind": "kill",
+    "questId": 8781,
+    "map": "ruinedcrown",
+    "monsters": [
+      "Mana-Burdened Mage"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 8782,
+    "map": "ruinedcrown",
+    "monsters": [
+      "Mana-Burdened Knight",
+      "Mana-Burdened Minion"
+    ]
+  },
+  {
+    "kind": "mapItem",
+    "questId": 8784,
+    "map": "ruinedcrown",
+    "ids": [
+      10385
+    ],
+    "quantity": 6
+  },
+  {
+    "kind": "kill",
+    "questId": 8783,
+    "map": "ruinedcrown",
+    "monsters": [
+      "Frenzied Mana"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 8785,
+    "map": "ruinedcrown",
+    "monsters": [
+      "Mana-Burdened Mage"
+    ]
+  },
+  {
+    "kind": "mapItem",
+    "questId": 8786,
+    "map": "ruinedcrown",
+    "ids": [
+      10386
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 8786,
+    "map": "ruinedcrown",
+    "monsters": [
+      "Frenzied Mana"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 8787,
+    "map": "ruinedcrown",
+    "monsters": [
+      "Calamitous Warlic"
+    ]
+  },
+  {
+    "kind": "plan",
+    "questId": 8788,
+    "actions": [
+      {
+        "kind": "hunt",
+        "map": "ruinedcrown",
+        "monster": "Frenzied Mana",
+        "item": "Mana Residue",
+        "quantity": 8
+      },
+      {
+        "kind": "hunt",
+        "map": "ruinedcrown",
+        "monster": "Mana-Burdened Mage",
+        "item": "Mage's Blood Sample",
+        "quantity": 8
+      },
+      {
+        "kind": "hunt",
+        "map": "ruinedcrown",
+        "monster": "Calamitous Warlic",
+        "item": "Warlic's Favor"
+      }
+    ]
+  }
+];
+
+export const definition = defineGeneratedStory(
+  {
+    id: "story.shadows-of-war.16ruined-crown",
+    category: "Story",
+    map: "ruinedcrown",
+    meta
+  },
+  steps
+);
+
+export const main = definition.run;
+
+export default definition;

@@ -1,0 +1,127 @@
+import { defineGeneratedStory, type StoryStep } from "./runner.js";
+
+export const meta = {
+  "name": "Fable Forest Story",
+  "description": "This will finish the Fable Forest Story.",
+  "tags": [
+    "story",
+    "quest",
+    "fable-forest",
+    "fable",
+    "forest"
+  ],
+  "version": "0.1.0"
+};
+
+const steps: StoryStep[] = [
+  {
+    "kind": "kill",
+    "questId": 3300,
+    "map": "greendragon",
+    "monsters": [
+      "Greenguard Dragon"
+    ]
+  },
+  {
+    "kind": "mapItem",
+    "questId": 3301,
+    "map": "fableforest",
+    "ids": [
+      2425
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 3302,
+    "map": "fableforest",
+    "monsters": [
+      "Fire Elemental"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 3304,
+    "map": "fableforest",
+    "monsters": [
+      "Bloodwolf"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 3305,
+    "map": "fableforest",
+    "monsters": [
+      "Water Elemental"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 3306,
+    "map": "fableforest",
+    "monsters": [
+      "Aqueevil"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 3307,
+    "map": "fableforest",
+    "monsters": [
+      "Earth Elemental"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 3308,
+    "map": "fableforest",
+    "monsters": [
+      "Undead Satyr"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 3309,
+    "map": "fableforest",
+    "monsters": [
+      "Wind Elemental"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 3310,
+    "map": "fableforest",
+    "monsters": [
+      "Forest Fury"
+    ]
+  },
+  {
+    "kind": "mapItem",
+    "questId": 3311,
+    "map": "fableforest",
+    "ids": [
+      2424
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 3313,
+    "map": "fableforest",
+    "monsters": [
+      "Forest Guardian"
+    ]
+  }
+];
+
+export const definition = defineGeneratedStory(
+  {
+    id: "story.fable-forest",
+    category: "Story",
+    map: "greendragon",
+    meta
+  },
+  steps
+);
+
+export const main = definition.run;
+
+export default definition;

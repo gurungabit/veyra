@@ -1,0 +1,714 @@
+import { defineGeneratedStory, type StoryStep } from "../runner.js";
+
+export const meta = {
+  "name": "Atlas Falls Story",
+  "description": "This will finish Misaru's questline in /atlasfalls.",
+  "tags": [
+    "story",
+    "quest",
+    "legion",
+    "dage",
+    "atlas",
+    "atlasfalls",
+    "atlas-atlasfalls",
+    "general slaine",
+    "slaine",
+    "falls"
+  ],
+  "version": "0.1.0"
+};
+
+const steps: StoryStep[] = [
+  {
+    "kind": "kill",
+    "questId": 7968,
+    "map": "sevencircles",
+    "monsters": [
+      "Limbo Guard"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 7969,
+    "map": "sevencircles",
+    "monsters": [
+      "Luxuria Guard"
+    ]
+  },
+  {
+    "kind": "plan",
+    "questId": 7970,
+    "actions": [
+      {
+        "kind": "hunt",
+        "map": "sevencircles",
+        "cell": "r2",
+        "pad": "Left",
+        "monster": "Limbo Guard",
+        "item": "Aura of Happiness",
+        "quantity": 4
+      },
+      {
+        "kind": "hunt",
+        "map": "sevencircles",
+        "cell": "r2",
+        "pad": "Left",
+        "monster": "Limbo Guard",
+        "item": "Aura of Power"
+      },
+      {
+        "kind": "hunt",
+        "map": "sevencircles",
+        "cell": "r3",
+        "pad": "Left",
+        "monster": "Luxuria Guard",
+        "item": "Aura of Pleasure"
+      }
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 7971,
+    "map": "sevencircles",
+    "monsters": [
+      "Luxuria"
+    ]
+  },
+  {
+    "kind": "mapItem",
+    "questId": 7972,
+    "map": "sevencircles",
+    "ids": [
+      8206
+    ],
+    "quantity": 3
+  },
+  {
+    "kind": "kill",
+    "questId": 7973,
+    "map": "sevencircles",
+    "monsters": [
+      "Gluttony Guard"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 7974,
+    "map": "sevencircles",
+    "monsters": [
+      "Gluttony"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 7975,
+    "map": "sevencircles",
+    "monsters": [
+      "Avarice Guard"
+    ]
+  },
+  {
+    "kind": "plan",
+    "questId": 7976,
+    "actions": [
+      {
+        "kind": "hunt",
+        "map": "sevencircles",
+        "monster": "Limbo Guard",
+        "item": "Limbo Guards Defeated",
+        "quantity": 2
+      },
+      {
+        "kind": "hunt",
+        "map": "sevencircles",
+        "monster": "Luxuria Guard",
+        "item": "Lust Guards Defeated",
+        "quantity": 2
+      },
+      {
+        "kind": "hunt",
+        "map": "sevencircles",
+        "monster": "Gluttony Guard",
+        "item": "Gluttony Guard Defeated"
+      },
+      {
+        "kind": "hunt",
+        "map": "sevencircles",
+        "monster": "Avarice Guard",
+        "item": "Avarice Guards Defeated",
+        "quantity": 2
+      }
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 7977,
+    "map": "sevencircles",
+    "monsters": [
+      "Avarice"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 7968,
+    "map": "sevencircles",
+    "monsters": [
+      "Limbo Guard"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 7969,
+    "map": "sevencircles",
+    "monsters": [
+      "Luxuria Guard"
+    ]
+  },
+  {
+    "kind": "plan",
+    "questId": 7970,
+    "actions": [
+      {
+        "kind": "hunt",
+        "map": "sevencircles",
+        "cell": "r2",
+        "pad": "Left",
+        "monster": "Limbo Guard",
+        "item": "Aura of Happiness",
+        "quantity": 4
+      },
+      {
+        "kind": "hunt",
+        "map": "sevencircles",
+        "cell": "r2",
+        "pad": "Left",
+        "monster": "Limbo Guard",
+        "item": "Aura of Power"
+      },
+      {
+        "kind": "hunt",
+        "map": "sevencircles",
+        "cell": "r3",
+        "pad": "Left",
+        "monster": "Luxuria Guard",
+        "item": "Aura of Pleasure"
+      }
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 7971,
+    "map": "sevencircles",
+    "monsters": [
+      "Luxuria"
+    ]
+  },
+  {
+    "kind": "mapItem",
+    "questId": 7972,
+    "map": "sevencircles",
+    "ids": [
+      8206
+    ],
+    "quantity": 3
+  },
+  {
+    "kind": "kill",
+    "questId": 7973,
+    "map": "sevencircles",
+    "monsters": [
+      "Gluttony Guard"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 7974,
+    "map": "sevencircles",
+    "monsters": [
+      "Gluttony"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 7975,
+    "map": "sevencircles",
+    "monsters": [
+      "Avarice Guard"
+    ]
+  },
+  {
+    "kind": "plan",
+    "questId": 7976,
+    "actions": [
+      {
+        "kind": "hunt",
+        "map": "sevencircles",
+        "monster": "Limbo Guard",
+        "item": "Limbo Guards Defeated",
+        "quantity": 2
+      },
+      {
+        "kind": "hunt",
+        "map": "sevencircles",
+        "monster": "Luxuria Guard",
+        "item": "Lust Guards Defeated",
+        "quantity": 2
+      },
+      {
+        "kind": "hunt",
+        "map": "sevencircles",
+        "monster": "Gluttony Guard",
+        "item": "Gluttony Guard Defeated"
+      },
+      {
+        "kind": "hunt",
+        "map": "sevencircles",
+        "monster": "Avarice Guard",
+        "item": "Avarice Guards Defeated",
+        "quantity": 2
+      }
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 7977,
+    "map": "sevencircles",
+    "monsters": [
+      "Avarice"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 7979,
+    "map": "sevencircleswar",
+    "monsters": [
+      "Wrath Guard"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 7980,
+    "map": "sevencircleswar",
+    "monsters": [
+      "Wrath Guard"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 7981,
+    "map": "sevencircleswar",
+    "monsters": [
+      "Wrath Guard"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 7982,
+    "map": "sevencircleswar",
+    "monsters": [
+      "Wrath"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 7983,
+    "map": "sevencircleswar",
+    "monsters": [
+      "Heresy Guard"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 7984,
+    "map": "sevencircleswar",
+    "monsters": [
+      "Violence's Gatekeeper"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 7985,
+    "map": "sevencircleswar",
+    "monsters": [
+      "Violence Guard"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 7986,
+    "map": "sevencircleswar",
+    "monsters": [
+      "Geryon"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 7987,
+    "map": "sevencircleswar",
+    "monsters": [
+      "Violence"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 7988,
+    "map": "sevencircleswar",
+    "monsters": [
+      "Treachery Guard"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 7989,
+    "map": "sevencircleswar",
+    "monsters": [
+      "Treachery"
+    ]
+  },
+  {
+    "kind": "plan",
+    "questId": 7990,
+    "actions": [
+      {
+        "kind": "hunt",
+        "map": "sevencircleswar",
+        "cell": "r17",
+        "pad": "Left",
+        "monster": "The Beast",
+        "item": "The Beast Defeated"
+      }
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 10105,
+    "map": "atlaspromenade",
+    "monsters": [
+      "Twisted Warrior"
+    ]
+  },
+  {
+    "kind": "mapItem",
+    "questId": 10106,
+    "map": "atlaspromenade",
+    "ids": [
+      14204
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 10107,
+    "map": "atlaspromenade",
+    "monsters": [
+      "Lethe Wraith"
+    ]
+  },
+  {
+    "kind": "mapItem",
+    "questId": 10108,
+    "map": "atlaspromenade",
+    "ids": [
+      14205
+    ]
+  },
+  {
+    "kind": "mapItem",
+    "questId": 10109,
+    "map": "atlaspromenade",
+    "ids": [
+      14206
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 10109,
+    "map": "atlaspromenade",
+    "monsters": [
+      "Atlas Knight"
+    ]
+  },
+  {
+    "kind": "mapItem",
+    "questId": 10110,
+    "map": "atlaspromenade",
+    "ids": [
+      14207
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 10110,
+    "map": "atlaspromenade",
+    "monsters": [
+      "Atlas Light Magus"
+    ]
+  },
+  {
+    "kind": "mapItem",
+    "questId": 10114,
+    "map": "atlaspromenade",
+    "ids": [
+      14208
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 10112,
+    "map": "atlaspromenade",
+    "monsters": [
+      "Wrath Guard"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 10113,
+    "map": "atlaspromenade",
+    "monsters": [
+      "Usurper Lord Slaine"
+    ]
+  },
+  {
+    "kind": "mapItem",
+    "questId": 10116,
+    "map": "atlaskingdom",
+    "ids": [
+      14252
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 10116,
+    "map": "atlaskingdom",
+    "monsters": [
+      "Atlas Knight"
+    ]
+  },
+  {
+    "kind": "mapItem",
+    "questId": 10117,
+    "map": "atlaskingdom",
+    "ids": [
+      14253,
+      14254,
+      14255
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 10118,
+    "map": "atlaskingdom",
+    "monsters": [
+      "Atlas Light Magus"
+    ]
+  },
+  {
+    "kind": "mapItem",
+    "questId": 10119,
+    "map": "atlaskingdom",
+    "ids": [
+      14256,
+      14257
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 10120,
+    "map": "atlaskingdom",
+    "monsters": [
+      "Coelho"
+    ]
+  },
+  {
+    "kind": "mapItem",
+    "questId": 10121,
+    "map": "atlaskingdom",
+    "ids": [
+      14258,
+      14259,
+      14260
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 10122,
+    "map": "atlaskingdom",
+    "monsters": [
+      "Atlas Leo"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 10123,
+    "map": "atlaskingdom",
+    "monsters": [
+      "Atlas Elite"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 10125,
+    "map": "atlaskingdom",
+    "monsters": [
+      "Executioner Ladon"
+    ]
+  },
+  {
+    "kind": "mapItem",
+    "questId": 10127,
+    "map": "atlasfalls",
+    "ids": [
+      14283,
+      14284
+    ]
+  },
+  {
+    "kind": "plan",
+    "questId": 10129,
+    "actions": [
+      {
+        "kind": "hunt",
+        "map": "atlasfalls",
+        "monster": "Ladon",
+        "item": "Ladon's Shreds"
+      }
+    ]
+  },
+  {
+    "kind": "mapItem",
+    "questId": 10129,
+    "map": "atlasfalls",
+    "ids": [
+      14285
+    ],
+    "quantity": 4
+  },
+  {
+    "kind": "mapItem",
+    "questId": 10130,
+    "map": "atlasfalls",
+    "ids": [
+      14286,
+      14287
+    ]
+  },
+  {
+    "kind": "plan",
+    "questId": 10131,
+    "actions": [
+      {
+        "kind": "hunt",
+        "map": "atlasfalls",
+        "monster": "Atlas Leo",
+        "item": "Leo Heart",
+        "quantity": 8,
+        "isTemp": true
+      }
+    ]
+  },
+  {
+    "kind": "mapItem",
+    "questId": 10131,
+    "map": "atlasfalls",
+    "ids": [
+      14288
+    ],
+    "quantity": 4
+  },
+  {
+    "kind": "plan",
+    "questId": 10132,
+    "actions": [
+      {
+        "kind": "hunt",
+        "map": "atlasfalls",
+        "cell": "r7",
+        "pad": "Right",
+        "monster": "Atlas Elite",
+        "item": "Elite's Skull",
+        "quantity": 8,
+        "isTemp": true
+      }
+    ]
+  },
+  {
+    "kind": "mapItem",
+    "questId": 10132,
+    "map": "atlasfalls",
+    "ids": [
+      14289
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 10133,
+    "map": "atlasfalls",
+    "monsters": [
+      "Atlas Executioner"
+    ]
+  },
+  {
+    "kind": "plan",
+    "questId": 10134,
+    "actions": [
+      {
+        "kind": "hunt",
+        "map": "atlasfalls",
+        "monster": "Sundered Soul",
+        "item": "Soul Condemned",
+        "quantity": 21,
+        "isTemp": true
+      }
+    ]
+  },
+  {
+    "kind": "mapItem",
+    "questId": 10134,
+    "map": "atlasfalls",
+    "ids": [
+      14290
+    ],
+    "quantity": 4
+  },
+  {
+    "kind": "plan",
+    "questId": 10135,
+    "actions": [
+      {
+        "kind": "hunt",
+        "map": "atlasfalls",
+        "monster": "Princess Arethusa",
+        "item": "Arethusa's Crown"
+      }
+    ]
+  },
+  {
+    "kind": "mapItem",
+    "questId": 10135,
+    "map": "atlasfalls",
+    "ids": [
+      14291
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 10136,
+    "map": "atlasfalls",
+    "monsters": [
+      "King Zedek"
+    ]
+  }
+];
+
+export const definition = defineGeneratedStory(
+  {
+    id: "story.legion.atlas-falls",
+    category: "Story",
+    map: "sevencircles",
+    meta
+  },
+  steps
+);
+
+export const main = definition.run;
+
+export default definition;

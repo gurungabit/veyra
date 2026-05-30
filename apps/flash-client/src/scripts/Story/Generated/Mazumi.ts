@@ -1,0 +1,90 @@
+import { defineGeneratedStory, type StoryStep } from "./runner.js";
+
+export const meta = {
+  "name": "Mazumi Story",
+  "description": "This will finish the Mazumi Story.",
+  "tags": [
+    "story",
+    "quest",
+    "mazumi"
+  ],
+  "version": "0.1.0"
+};
+
+const steps: StoryStep[] = [
+  {
+    "kind": "kill",
+    "questId": 90,
+    "map": "pirates",
+    "monsters": [
+      "Fishman Soldier"
+    ]
+  },
+  {
+    "kind": "plan",
+    "questId": 91,
+    "actions": [
+      {
+        "kind": "hunt",
+        "map": "greenguardwest",
+        "monster": "Kittarian",
+        "item": "Kittarian's Wallet",
+        "quantity": 2
+      },
+      {
+        "kind": "hunt",
+        "map": "greenguardwest",
+        "monster": "River Fishman",
+        "item": "River Fishman's Wallet",
+        "quantity": 2
+      },
+      {
+        "kind": "hunt",
+        "map": "greenguardwest",
+        "monster": "Slime",
+        "item": "Slime-Soaked Wallet",
+        "quantity": 2
+      },
+      {
+        "kind": "hunt",
+        "map": "greenguardwest",
+        "cell": "West3",
+        "pad": "Up",
+        "monster": "Frogzard",
+        "item": "Frogzard's Lint Hoard",
+        "quantity": 2
+      },
+      {
+        "kind": "hunt",
+        "map": "greenguardwest",
+        "cell": "West12",
+        "pad": "Up",
+        "monster": "Big Bad Boar",
+        "item": "Big Bad Boar's Wallet"
+      }
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 92,
+    "map": "greenguardwest",
+    "monsters": [
+      "Breken the Vile",
+      "Ogug Stoneaxe"
+    ]
+  }
+];
+
+export const definition = defineGeneratedStory(
+  {
+    id: "story.mazumi",
+    category: "Story",
+    map: "pirates",
+    meta
+  },
+  steps
+);
+
+export const main = definition.run;
+
+export default definition;

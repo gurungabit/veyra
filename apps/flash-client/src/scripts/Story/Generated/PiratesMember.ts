@@ -1,0 +1,105 @@
+import { defineGeneratedStory, type StoryStep } from "./runner.js";
+
+export const meta = {
+  "name": "Pirates Story (Member)",
+  "description": "This will finish the Pirates Story.",
+  "tags": [
+    "story",
+    "quest",
+    "pirates",
+    "member"
+  ],
+  "version": "0.1.0"
+};
+
+const steps: StoryStep[] = [
+  {
+    "kind": "mapItem",
+    "questId": 1534,
+    "map": "pirates",
+    "ids": [
+      769
+    ],
+    "quantity": 3
+  },
+  {
+    "kind": "kill",
+    "questId": 1535,
+    "map": "pirates",
+    "monsters": [
+      "Undead Pirate"
+    ]
+  },
+  {
+    "kind": "mapItem",
+    "questId": 1536,
+    "map": "pirates",
+    "ids": [
+      770
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 1537,
+    "map": "pirates",
+    "monsters": [
+      "Undead Pirate"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 1538,
+    "map": "pirates",
+    "monsters": [
+      "Undead Pirate"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 1539,
+    "map": "pirates",
+    "monsters": [
+      "Undead Pirate"
+    ]
+  },
+  {
+    "kind": "mapItem",
+    "questId": 1540,
+    "map": "pirates",
+    "ids": [
+      771
+    ],
+    "quantity": 10
+  },
+  {
+    "kind": "mapItem",
+    "questId": 1541,
+    "map": "pirates",
+    "ids": [
+      772
+    ],
+    "quantity": 10
+  },
+  {
+    "kind": "kill",
+    "questId": 1541,
+    "map": "pirates",
+    "monsters": [
+      "Undead Pirate"
+    ]
+  }
+];
+
+export const definition = defineGeneratedStory(
+  {
+    id: "story.pirates-member",
+    category: "Story",
+    map: "pirates",
+    meta
+  },
+  steps
+);
+
+export const main = definition.run;
+
+export default definition;

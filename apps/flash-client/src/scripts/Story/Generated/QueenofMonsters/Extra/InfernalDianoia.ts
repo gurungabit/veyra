@@ -1,0 +1,281 @@
+import { defineGeneratedStory, type StoryStep } from "../../runner.js";
+
+export const meta = {
+  "name": "Infernal Dianoia",
+  "description": "This will finish the Azalith's quests in /infernaldianoia.",
+  "tags": [
+    "story",
+    "quest",
+    "queen of monster",
+    "celestial realm",
+    "infernaldianoia",
+    "aranx",
+    "azalith",
+    "extra",
+    "qom",
+    "queenof",
+    "monsters",
+    "infernal",
+    "dianoia"
+  ],
+  "version": "0.1.0"
+};
+
+const steps: StoryStep[] = [
+  {
+    "kind": "kill",
+    "questId": 7674,
+    "map": "CelestialPast",
+    "monsters": [
+      "Blessed Deer",
+      "Blessed Bear",
+      "Blessed Centaur",
+      "Blessed Hydra"
+    ]
+  },
+  {
+    "kind": "mapItem",
+    "questId": 7675,
+    "map": "CelestialPast",
+    "ids": [
+      7592
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 7675,
+    "map": "CelestialPast",
+    "monsters": [
+      "Blessed Deer"
+    ]
+  },
+  {
+    "kind": "mapItem",
+    "questId": 7676,
+    "map": "CelestialPast",
+    "ids": [
+      7593
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 7676,
+    "map": "CelestialPast",
+    "monsters": [
+      "Blessed Deer"
+    ]
+  },
+  {
+    "kind": "mapItem",
+    "questId": 7677,
+    "map": "CelestialPast",
+    "ids": [
+      7594
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 7677,
+    "map": "CelestialPast",
+    "monsters": [
+      "Blessed Deer",
+      "Blessed Centaur",
+      "Blessed Hydra",
+      "Blessed Bear"
+    ]
+  },
+  {
+    "kind": "mapItem",
+    "questId": 7678,
+    "map": "CelestialPast",
+    "ids": [
+      7595
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 7678,
+    "map": "CelestialPast",
+    "monsters": [
+      "Well Guardian"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 7679,
+    "map": "CelestialPast",
+    "monsters": [
+      "Infernal Soldier"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 7680,
+    "map": "CelestialPast",
+    "monsters": [
+      "Infernal Soldier"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 7681,
+    "map": "CelestialPast",
+    "monsters": [
+      "Azalith"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 10073,
+    "map": "infernalparadise",
+    "monsters": [
+      "Infernal Mage"
+    ]
+  },
+  {
+    "kind": "mapItem",
+    "questId": 10074,
+    "map": "infernalparadise",
+    "ids": [
+      14158
+    ],
+    "quantity": 5
+  },
+  {
+    "kind": "kill",
+    "questId": 10075,
+    "map": "infernalparadise",
+    "monsters": [
+      "Infernal Malxas"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 10076,
+    "map": "infernalparadise",
+    "monsters": [
+      "Infernal Knight"
+    ]
+  },
+  {
+    "kind": "mapItem",
+    "questId": 10077,
+    "map": "infernalparadise",
+    "ids": [
+      14159
+    ],
+    "quantity": 5
+  },
+  {
+    "kind": "mapItem",
+    "questId": 10079,
+    "map": "infernalparadise",
+    "ids": [
+      14160
+    ],
+    "quantity": 6
+  },
+  {
+    "kind": "kill",
+    "questId": 10080,
+    "map": "infernalparadise",
+    "monsters": [
+      "Infernal Mage"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 10083,
+    "map": "infernalparadise",
+    "monsters": [
+      "Infernal Knight"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 10081,
+    "map": "infernalparadise",
+    "monsters": [
+      "Azalith"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 10085,
+    "map": "infernaldianoia",
+    "monsters": [
+      "Infernal Pegasus"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 10086,
+    "map": "infernaldianoia",
+    "monsters": [
+      "Bright Dominion"
+    ]
+  },
+  {
+    "kind": "mapItem",
+    "questId": 10087,
+    "map": "infernaldianoia",
+    "ids": [
+      14174
+    ],
+    "quantity": 7
+  },
+  {
+    "kind": "kill",
+    "questId": 10089,
+    "map": "infernaldianoia",
+    "monsters": [
+      "Fallen Arthelyn"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 10090,
+    "map": "infernaldianoia",
+    "monsters": [
+      "Eudae"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 10092,
+    "map": "infernaldianoia",
+    "monsters": [
+      "Avatar of Time"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 10093,
+    "map": "infernaldianoia",
+    "monsters": [
+      "Eudae"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 10094,
+    "map": "infernaldianoia",
+    "monsters": [
+      "Aranx, Nightstar"
+    ]
+  }
+];
+
+export const definition = defineGeneratedStory(
+  {
+    id: "story.queenof-monsters.extra.infernal-dianoia",
+    category: "Story",
+    map: "CelestialPast",
+    meta
+  },
+  steps
+);
+
+export const main = definition.run;
+
+export default definition;

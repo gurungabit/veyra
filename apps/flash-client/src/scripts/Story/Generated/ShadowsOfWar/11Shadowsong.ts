@@ -1,0 +1,114 @@
+import { defineGeneratedStory, type StoryStep } from "../runner.js";
+
+export const meta = {
+  "name": "Shadow Song",
+  "description": "This will finish the Shadow Song quest.",
+  "tags": [
+    "story",
+    "quest",
+    "shadow-war",
+    "shadow-song",
+    "shadows",
+    "of",
+    "war",
+    "11shadowsong"
+  ],
+  "version": "0.1.0"
+};
+
+const steps: StoryStep[] = [
+  {
+    "kind": "plan",
+    "questId": 7340,
+    "actions": [
+      {
+        "kind": "hunt",
+        "map": "shadowsong",
+        "monster": "Shadowflame Troll"
+      }
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 7341,
+    "map": "shadowsong",
+    "monsters": [
+      "Tune-A-Fish"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 7342,
+    "map": "shadowsong",
+    "monsters": [
+      "Beatle"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 7343,
+    "map": "shadowsong",
+    "monsters": [
+      "Shattered Crystal"
+    ]
+  },
+  {
+    "kind": "plan",
+    "questId": 7344,
+    "actions": [
+      {
+        "kind": "hunt",
+        "map": "shadowsong",
+        "monster": "Shadowflame Ur-Troll",
+        "item": "Mega Shadow Medal",
+        "quantity": 3
+      }
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 7345,
+    "map": "shadowsong",
+    "monsters": [
+      "Mozard"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 7346,
+    "map": "shadowsong",
+    "monsters": [
+      "Pachelbel's Cannon"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 7347,
+    "map": "shadowsong",
+    "monsters": [
+      "Mozard"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 7348,
+    "map": "shadowsong",
+    "monsters": [
+      "Oh'Garr"
+    ]
+  }
+];
+
+export const definition = defineGeneratedStory(
+  {
+    id: "story.shadows-of-war.11shadowsong",
+    category: "Story",
+    map: "shadowsong",
+    meta
+  },
+  steps
+);
+
+export const main = definition.run;
+
+export default definition;

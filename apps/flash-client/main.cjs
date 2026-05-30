@@ -44,6 +44,7 @@ function createWindow() {
     minWidth: 960,
     minHeight: 620,
     title: "Veyra",
+    show: true,
     backgroundColor: "#050505",
     autoHideMenuBar: true,
     webPreferences: {
@@ -91,6 +92,10 @@ function createWindow() {
   }
 
   mainWindow.loadURL(url.toString());
+  mainWindow.show();
+  mainWindow.moveTop();
+  mainWindow.focus();
+  app.focus({ steal: true });
   mainWindow.once("closed", () => {
     mainWindow = undefined;
   });

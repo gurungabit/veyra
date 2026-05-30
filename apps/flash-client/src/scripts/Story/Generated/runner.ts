@@ -1,0 +1,28 @@
+import type { Bot } from "../../../bot.js";
+import { FarmJoeRuntime, type FarmJoeRuntimeOptions } from "../../FarmJoeKits/FarmJoeRuntime.js";
+import { runStorySteps, type StoryStep } from "../StoryRuntime.js";
+
+export type { StoryStep };
+
+export interface GeneratedStoryDefinition {
+  id: string;
+  category: "Story";
+  map: string;
+  meta: {
+    name: string;
+    description: string;
+    tags: string[];
+    version: string;
+  };
+  run: (bot: Bot, options?: FarmJoeRuntimeOptions) => Promise<void>;
+}
+
+export function defineGeneratedStory(
+  definition: Omit<GeneratedStoryDefinition, "run">,
+  steps: StoryStep[]
+): GeneratedStoryDefinition {
+  return {
+    ...definition,
+    run: (bot, options = {}) => runStorySteps(new FarmJoeRuntime(bot, options), steps, definition.meta.name)
+  };
+}

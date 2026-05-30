@@ -1,0 +1,72 @@
+import { defineGeneratedStory, type StoryStep } from "./runner.js";
+
+export const meta = {
+  "name": "Necro Project",
+  "description": "This will finish the Necro Project story.",
+  "tags": [
+    "story",
+    "quest",
+    "necroproject",
+    "sally",
+    "necro",
+    "project"
+  ],
+  "version": "0.1.0"
+};
+
+const steps: StoryStep[] = [
+  {
+    "kind": "kill",
+    "questId": 9897,
+    "map": "necrocavern",
+    "monsters": [
+      "Shadowstone Elemental"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 9898,
+    "map": "necroproject",
+    "monsters": [
+      "Noxborg"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 9899,
+    "map": "necroproject",
+    "monsters": [
+      "Noxore"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 9900,
+    "map": "necroproject",
+    "monsters": [
+      "Noxustrian"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 9901,
+    "map": "necroproject",
+    "monsters": [
+      "Imperial Noxus"
+    ]
+  }
+];
+
+export const definition = defineGeneratedStory(
+  {
+    id: "story.necro-project",
+    category: "Story",
+    map: "necrocavern",
+    meta
+  },
+  steps
+);
+
+export const main = definition.run;
+
+export default definition;

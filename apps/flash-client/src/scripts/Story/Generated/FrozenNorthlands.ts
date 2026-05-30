@@ -1,0 +1,82 @@
+import { defineGeneratedStory, type StoryStep } from "./runner.js";
+
+export const meta = {
+  "name": "Frozen Northlands Story",
+  "description": "This will finish the Frozen Northlands Story.",
+  "tags": [
+    "story",
+    "quest",
+    "frozen-northlands",
+    "frozen",
+    "northlands"
+  ],
+  "version": "0.1.0"
+};
+
+const steps: StoryStep[] = [
+  {
+    "kind": "kill",
+    "questId": 3634,
+    "map": "chaosnorth",
+    "monsters": [
+      "Chaotic Symbiote",
+      "Chaorruption"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 3635,
+    "map": "chaosnorth",
+    "monsters": [
+      "Chaorrupted Mage",
+      "Chaorrupted Mage",
+      "Chaorrupted Mage"
+    ]
+  },
+  {
+    "kind": "plan",
+    "questId": 3636,
+    "actions": [
+      {
+        "kind": "hunt",
+        "map": "chaosnorth",
+        "monster": "Chaos Gemrald",
+        "item": "Shard of Chaos",
+        "quantity": 13
+      }
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 3637,
+    "map": "chaosnorth",
+    "monsters": [
+      "Chaorruption",
+      "Chaos Sp-Eye",
+      "Chaorrupted Imp",
+      "Chaorrupted Mage"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 3638,
+    "map": "chaosnorth",
+    "monsters": [
+      "Chaorrupted Xan"
+    ]
+  }
+];
+
+export const definition = defineGeneratedStory(
+  {
+    id: "story.frozen-northlands",
+    category: "Story",
+    map: "chaosnorth",
+    meta
+  },
+  steps
+);
+
+export const main = definition.run;
+
+export default definition;

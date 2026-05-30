@@ -1,0 +1,204 @@
+import { defineGeneratedStory, type StoryStep } from "./runner.js";
+
+export const meta = {
+  "name": "StarSinc Story",
+  "description": "This will finish the StarSinc Story.",
+  "tags": [
+    "story",
+    "quest",
+    "starsinc",
+    "star",
+    "sinc"
+  ],
+  "version": "0.1.0"
+};
+
+const steps: StoryStep[] = [
+  {
+    "kind": "plan",
+    "questId": 4400,
+    "actions": [
+      {
+        "kind": "hunt",
+        "map": "starsinc",
+        "monster": "Star Sprites",
+        "item": "Stardust",
+        "quantity": 15
+      }
+    ]
+  },
+  {
+    "kind": "plan",
+    "questId": 4401,
+    "actions": [
+      {
+        "kind": "hunt",
+        "map": "starsinc",
+        "monster": "Star Sprites",
+        "item": "Sprite Magic Essence",
+        "quantity": 7
+      }
+    ]
+  },
+  {
+    "kind": "plan",
+    "questId": 4402,
+    "actions": [
+      {
+        "kind": "mapItem",
+        "map": "starsinc",
+        "id": 3607,
+        "quantity": 4
+      }
+    ]
+  },
+  {
+    "kind": "plan",
+    "questId": 4403,
+    "actions": [
+      {
+        "kind": "mapItem",
+        "map": "starsinc",
+        "id": 3608,
+        "quantity": 1
+      }
+    ]
+  },
+  {
+    "kind": "plan",
+    "questId": 4404,
+    "actions": [
+      {
+        "kind": "hunt",
+        "map": "starsinc",
+        "monster": "Infernal Imp",
+        "item": "Darkness Fragment",
+        "quantity": 5
+      },
+      {
+        "kind": "hunt",
+        "map": "starsinc",
+        "monster": "Living Star",
+        "item": "Light Fragment",
+        "quantity": 5
+      }
+    ]
+  },
+  {
+    "kind": "plan",
+    "questId": 4405,
+    "actions": [
+      {
+        "kind": "hunt",
+        "map": "watchtower",
+        "cell": "Frame2",
+        "pad": "Left",
+        "monster": "Chaos Spider",
+        "item": "Chaos Fragment",
+        "quantity": 10
+      }
+    ]
+  },
+  {
+    "kind": "plan",
+    "questId": 4406,
+    "actions": [
+      {
+        "kind": "hunt",
+        "map": "starsinc",
+        "monster": "Star Sprites",
+        "item": "Monster Killed",
+        "quantity": 15
+      }
+    ]
+  },
+  {
+    "kind": "plan",
+    "questId": 4407,
+    "actions": [
+      {
+        "kind": "hunt",
+        "map": "starsinc",
+        "monster": "Fortress Guard",
+        "item": "Guard Slain",
+        "quantity": 5
+      }
+    ]
+  },
+  {
+    "kind": "plan",
+    "questId": 4408,
+    "actions": [
+      {
+        "kind": "hunt",
+        "map": "starsinc",
+        "monster": "Fortress Guard",
+        "item": "Guard's Key"
+      }
+    ]
+  },
+  {
+    "kind": "plan",
+    "questId": 4409,
+    "actions": [
+      {
+        "kind": "hunt",
+        "map": "starsinc",
+        "monster": "Prime Dominus",
+        "item": "Prime Defeated"
+      },
+      {
+        "kind": "join",
+        "map": "whitemap"
+      }
+    ]
+  },
+  {
+    "kind": "plan",
+    "questId": 4410,
+    "actions": [
+      {
+        "kind": "mapItem",
+        "map": "starsinc",
+        "id": 3609,
+        "quantity": 6
+      },
+      {
+        "kind": "join",
+        "map": "whitemap"
+      }
+    ]
+  },
+  {
+    "kind": "plan",
+    "questId": 4412,
+    "actions": [
+      {
+        "kind": "hunt",
+        "map": "starsinc",
+        "cell": "r15",
+        "pad": "Left",
+        "monster": "Final",
+        "item": "Final Defeated"
+      },
+      {
+        "kind": "join",
+        "map": "whitemap"
+      }
+    ]
+  }
+];
+
+export const definition = defineGeneratedStory(
+  {
+    id: "story.star-sinc",
+    category: "Story",
+    map: "starsinc",
+    meta
+  },
+  steps
+);
+
+export const main = definition.run;
+
+export default definition;

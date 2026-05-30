@@ -1,0 +1,219 @@
+import { defineGeneratedStory, type StoryStep } from "../runner.js";
+
+export const meta = {
+  "name": "(Pax) Death Pit Story",
+  "description": "This will finish the Death Pit story.",
+  "tags": [
+    "story",
+    "death",
+    "pit",
+    "farm",
+    "pax",
+    "throne",
+    "darkness",
+    "throneof",
+    "04a"
+  ],
+  "version": "0.1.0"
+};
+
+const steps: StoryStep[] = [
+  {
+    "kind": "mapItem",
+    "questId": 5133,
+    "map": "DeathPit",
+    "ids": [
+      4484,
+      4485,
+      4486,
+      4487,
+      4488,
+      4489,
+      4490,
+      4491
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 5134,
+    "map": "DeathPit",
+    "monsters": [
+      "Training Dummy"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 5135,
+    "map": "DeathPit",
+    "monsters": [
+      "Omar the Meek"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 5136,
+    "map": "DeathPit",
+    "monsters": [
+      "Sneevil"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 5137,
+    "map": "DeathPit",
+    "monsters": [
+      "Hattori"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 5138,
+    "map": "DeathPit",
+    "monsters": [
+      "Slime",
+      "Giant Green Slime"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 5139,
+    "map": "DeathPit",
+    "monsters": [
+      "Sludgelord"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 5140,
+    "map": "DeathPit",
+    "monsters": [
+      "Salamander"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 5141,
+    "map": "DeathPit",
+    "monsters": [
+      "Trobble"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 5142,
+    "map": "DeathPit",
+    "monsters": [
+      "Trobble"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 5143,
+    "map": "DeathPit",
+    "monsters": [
+      "Horc Gladiator"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 5144,
+    "map": "DeathPit",
+    "monsters": [
+      "Drakel Brawler"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 5145,
+    "map": "DeathPit",
+    "monsters": [
+      "Drakel Gladiator"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 5146,
+    "map": "DeathPit",
+    "monsters": [
+      "Drakel Battlemaster"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 5147,
+    "map": "DeathPit",
+    "monsters": [
+      "General Gall"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 5148,
+    "map": "DeathPit",
+    "monsters": [
+      "Drakel Brawler"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 5149,
+    "map": "DeathPit",
+    "monsters": [
+      "General Velm"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 5150,
+    "map": "DeathPit",
+    "monsters": [
+      "Drakel Battlemaster"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 5151,
+    "map": "DeathPit",
+    "monsters": [
+      "General Chud"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 5152,
+    "map": "DeathPit",
+    "monsters": [
+      "Drakel Battlemaster"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 5153,
+    "map": "DeathPit",
+    "monsters": [
+      "General Hun'Gar"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 5154,
+    "map": "DeathPit",
+    "monsters": [
+      "Warlord Pax"
+    ]
+  }
+];
+
+export const definition = defineGeneratedStory(
+  {
+    id: "story.throneof-darkness.04a-pax-death-pit",
+    category: "Story",
+    map: "DeathPit",
+    meta
+  },
+  steps
+);
+
+export const main = definition.run;
+
+export default definition;

@@ -1,0 +1,129 @@
+import { defineGeneratedStory, type StoryStep } from "../runner.js";
+
+export const meta = {
+  "name": "Seraphic War",
+  "description": "This will finish the Seraphic War quest.",
+  "tags": [
+    "story",
+    "quest",
+    "legion",
+    "seraphic-war",
+    "seraphic",
+    "war"
+  ],
+  "version": "0.1.0"
+};
+
+const steps: StoryStep[] = [
+  {
+    "kind": "kill",
+    "questId": 6238,
+    "map": "worldsoul",
+    "monsters": [
+      "Dwakel Infiltrator",
+      "Dwakel Infiltrator",
+      "Dwakel Infiltrator",
+      "Dwakel Infiltrator"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 6239,
+    "map": "worldsoul",
+    "monsters": [
+      "Divine Water Elemental"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 6240,
+    "map": "worldsoul",
+    "monsters": [
+      "Divine Fire Elemental"
+    ]
+  },
+  {
+    "kind": "mapItem",
+    "questId": 6241,
+    "map": "worldsoul",
+    "ids": [
+      5681
+    ],
+    "quantity": 3
+  },
+  {
+    "kind": "kill",
+    "questId": 6241,
+    "map": "worldsoul",
+    "monsters": [
+      "Skeletal Squatter"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 6242,
+    "map": "worldsoul",
+    "monsters": [
+      "Radioactive Hydra"
+    ]
+  },
+  {
+    "kind": "mapItem",
+    "questId": 6243,
+    "map": "worldsoul",
+    "ids": [
+      5680
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 6243,
+    "map": "worldsoul",
+    "monsters": [
+      "Legion Dreadmarch"
+    ]
+  },
+  {
+    "kind": "plan",
+    "questId": 6244,
+    "actions": [
+      {
+        "kind": "hunt",
+        "map": "worldsoul",
+        "monster": "Legion Dreadmarch",
+        "item": "Legion Amulets",
+        "quantity": 3
+      }
+    ]
+  },
+  {
+    "kind": "mapItem",
+    "questId": 6244,
+    "map": "worldsoul",
+    "ids": [
+      5682
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 6245,
+    "map": "worldsoul",
+    "monsters": [
+      "Core Guardian"
+    ]
+  }
+];
+
+export const definition = defineGeneratedStory(
+  {
+    id: "story.legion.seraphic-war",
+    category: "Story",
+    map: "worldsoul",
+    meta
+  },
+  steps
+);
+
+export const main = definition.run;
+
+export default definition;

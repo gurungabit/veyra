@@ -10,7 +10,6 @@ Veyra is a TypeScript-first desktop automation runtime with an Electron Flash cl
 - `packages/protocol`: shared JSON-RPC contracts.
 - `packages/core`: bot API, settings, app paths, script catalog sync, logging.
 - `packages/runtime`: script lifecycle, cancellation, loading, status.
-- `packages/scripts`: TypeScript script library.
 - `packages/script-tools`: manifest generation and migration helpers.
 
 ## Data Directory

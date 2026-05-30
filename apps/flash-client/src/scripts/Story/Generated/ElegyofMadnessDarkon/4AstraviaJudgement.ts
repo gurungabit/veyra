@@ -1,0 +1,155 @@
+import { defineGeneratedStory, type StoryStep } from "../runner.js";
+
+export const meta = {
+  "name": "Astravia Judgement",
+  "description": "This will finish the Astravia Judgement quest.",
+  "tags": [
+    "story",
+    "quest",
+    "elegy-of-madness",
+    "darkon",
+    "astravia",
+    "judgement",
+    "elegyof",
+    "madness",
+    "4astravia"
+  ],
+  "version": "0.1.0"
+};
+
+const steps: StoryStep[] = [
+  {
+    "kind": "mapItem",
+    "questId": 8386,
+    "map": "astraviajudge",
+    "ids": [
+      9275
+    ],
+    "quantity": 6
+  },
+  {
+    "kind": "kill",
+    "questId": 8387,
+    "map": "astraviajudge",
+    "monsters": [
+      "Hand"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 8388,
+    "map": "astraviajudge",
+    "monsters": [
+      "Trumpeter"
+    ]
+  },
+  {
+    "kind": "plan",
+    "questId": 8389,
+    "actions": [
+      {
+        "kind": "hunt",
+        "map": "astraviajudge",
+        "cell": "r4",
+        "pad": "Left",
+        "monster": "Juror",
+        "item": "Jurors Repelled",
+        "quantity": 9
+      }
+    ]
+  },
+  {
+    "kind": "mapItem",
+    "questId": 8390,
+    "map": "astraviajudge",
+    "ids": [
+      9276
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 8390,
+    "map": "astraviajudge",
+    "monsters": [
+      "Trumpeter"
+    ]
+  },
+  {
+    "kind": "mapItem",
+    "questId": 8391,
+    "map": "astraviajudge",
+    "ids": [
+      9277
+    ],
+    "quantity": 8
+  },
+  {
+    "kind": "kill",
+    "questId": 8391,
+    "map": "astraviajudge",
+    "monsters": [
+      "Hand"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 8392,
+    "map": "astraviajudge",
+    "monsters": [
+      "Trumpeter"
+    ]
+  },
+  {
+    "kind": "plan",
+    "questId": 8393,
+    "actions": [
+      {
+        "kind": "hunt",
+        "map": "astraviajudge",
+        "cell": "r4",
+        "pad": "Left",
+        "monster": "Juror",
+        "item": "Jurors Shoved",
+        "quantity": 9
+      }
+    ]
+  },
+  {
+    "kind": "mapItem",
+    "questId": 8394,
+    "map": "astraviajudge",
+    "ids": [
+      9278
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 8394,
+    "map": "astraviajudge",
+    "monsters": [
+      "Shades"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 8395,
+    "map": "astraviajudge",
+    "monsters": [
+      "La"
+    ]
+  }
+];
+
+export const definition = defineGeneratedStory(
+  {
+    id: "story.elegyof-madness-darkon.4astravia-judgement",
+    category: "Story",
+    map: "astraviajudge",
+    meta
+  },
+  steps
+);
+
+export const main = definition.run;
+
+export default definition;

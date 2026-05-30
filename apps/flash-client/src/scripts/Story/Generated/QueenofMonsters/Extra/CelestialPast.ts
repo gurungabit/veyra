@@ -1,0 +1,137 @@
+import { defineGeneratedStory, type StoryStep } from "../../runner.js";
+
+export const meta = {
+  "name": "Celestial Past (Extra)",
+  "description": "This will finish the Celestial Past quest.",
+  "tags": [
+    "story",
+    "quest",
+    "queen-of-monsters",
+    "celestial-past",
+    "extra",
+    "queenof",
+    "monsters",
+    "celestial",
+    "past"
+  ],
+  "version": "0.1.0"
+};
+
+const steps: StoryStep[] = [
+  {
+    "kind": "kill",
+    "questId": 7674,
+    "map": "CelestialPast",
+    "monsters": [
+      "Blessed Deer",
+      "Blessed Bear",
+      "Blessed Centaur",
+      "Blessed Hydra"
+    ]
+  },
+  {
+    "kind": "mapItem",
+    "questId": 7675,
+    "map": "CelestialPast",
+    "ids": [
+      7592
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 7675,
+    "map": "CelestialPast",
+    "monsters": [
+      "Blessed Deer"
+    ]
+  },
+  {
+    "kind": "mapItem",
+    "questId": 7676,
+    "map": "CelestialPast",
+    "ids": [
+      7593
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 7676,
+    "map": "CelestialPast",
+    "monsters": [
+      "Blessed Deer"
+    ]
+  },
+  {
+    "kind": "mapItem",
+    "questId": 7677,
+    "map": "CelestialPast",
+    "ids": [
+      7594
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 7677,
+    "map": "CelestialPast",
+    "monsters": [
+      "Blessed Deer",
+      "Blessed Centaur",
+      "Blessed Hydra",
+      "Blessed Bear"
+    ]
+  },
+  {
+    "kind": "mapItem",
+    "questId": 7678,
+    "map": "CelestialPast",
+    "ids": [
+      7595
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 7678,
+    "map": "CelestialPast",
+    "monsters": [
+      "Well Guardian"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 7679,
+    "map": "CelestialPast",
+    "monsters": [
+      "Infernal Soldier"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 7680,
+    "map": "CelestialPast",
+    "monsters": [
+      "Infernal Soldier"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 7681,
+    "map": "CelestialPast",
+    "monsters": [
+      "Azalith"
+    ]
+  }
+];
+
+export const definition = defineGeneratedStory(
+  {
+    id: "story.queenof-monsters.extra.celestial-past",
+    category: "Story",
+    map: "CelestialPast",
+    meta
+  },
+  steps
+);
+
+export const main = definition.run;
+
+export default definition;

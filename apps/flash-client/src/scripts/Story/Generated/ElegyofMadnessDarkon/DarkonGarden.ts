@@ -1,0 +1,123 @@
+import { defineGeneratedStory, type StoryStep } from "../runner.js";
+
+export const meta = {
+  "name": "Darkon Garden",
+  "description": "This will finish the Darkon Garden quest.",
+  "tags": [
+    "story",
+    "quest",
+    "elegy-of-madness",
+    "darkon",
+    "garden",
+    "elegyof",
+    "madness"
+  ],
+  "version": "0.1.0"
+};
+
+const steps: StoryStep[] = [
+  {
+    "kind": "mapItem",
+    "questId": 7485,
+    "map": "garden",
+    "ids": [
+      7324
+    ],
+    "quantity": 10
+  },
+  {
+    "kind": "kill",
+    "questId": 7486,
+    "map": "garden",
+    "monsters": [
+      "Creature 343"
+    ]
+  },
+  {
+    "kind": "mapItem",
+    "questId": 7487,
+    "map": "garden",
+    "ids": [
+      7325
+    ],
+    "quantity": 10
+  },
+  {
+    "kind": "kill",
+    "questId": 7488,
+    "map": "garden",
+    "monsters": [
+      "Creature 83"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 7489,
+    "map": "garden",
+    "monsters": [
+      "Creature 343"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 7490,
+    "map": "garden",
+    "monsters": [
+      "Creature 72"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 7491,
+    "map": "garden",
+    "monsters": [
+      "Creature 83"
+    ]
+  },
+  {
+    "kind": "mapItem",
+    "questId": 7492,
+    "map": "garden",
+    "ids": [
+      7326
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 7492,
+    "map": "garden",
+    "monsters": [
+      "Creature 35"
+    ]
+  },
+  {
+    "kind": "mapItem",
+    "questId": 7493,
+    "map": "garden",
+    "ids": [
+      7327
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 7494,
+    "map": "garden",
+    "monsters": [
+      "Creature 12"
+    ]
+  }
+];
+
+export const definition = defineGeneratedStory(
+  {
+    id: "story.elegyof-madness-darkon.darkon-garden",
+    category: "Story",
+    map: "garden",
+    meta
+  },
+  steps
+);
+
+export const main = definition.run;
+
+export default definition;

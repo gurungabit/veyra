@@ -1,0 +1,185 @@
+import { defineGeneratedStory, type StoryStep } from "./runner.js";
+
+export const meta = {
+  "name": "Shadow Vault Story",
+  "description": "This will finish the Shadow Vault Story.",
+  "tags": [
+    "story",
+    "quest",
+    "shadow-vault",
+    "shadow",
+    "vault"
+  ],
+  "version": "0.1.0"
+};
+
+const steps: StoryStep[] = [
+  {
+    "kind": "mapItem",
+    "questId": 6781,
+    "map": "ShadowVault",
+    "ids": [
+      6310
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 6782,
+    "map": "ShadowVault",
+    "monsters": [
+      "Fallen Adventurer"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 6783,
+    "map": "ShadowVault",
+    "monsters": [
+      "Shadowscythe Minion",
+      "Fallen Adventurer"
+    ]
+  },
+  {
+    "kind": "plan",
+    "questId": 6784,
+    "actions": [
+      {
+        "kind": "mapItem",
+        "map": "ShadowVault",
+        "id": 6311,
+        "quantity": 1
+      },
+      {
+        "kind": "hunt",
+        "map": "shadowvault",
+        "cell": "r3a",
+        "pad": "Left",
+        "monster": "Shadowscythe Guard",
+        "item": "Shadowscythe Guard Slain"
+      }
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 6784,
+    "map": "ShadowVault",
+    "monsters": [
+      "Shadowscythe Guard"
+    ]
+  },
+  {
+    "kind": "chain",
+    "questId": 6784
+  },
+  {
+    "kind": "mapItem",
+    "questId": 6787,
+    "map": "ShadowVault",
+    "ids": [
+      6312
+    ]
+  },
+  {
+    "kind": "mapItem",
+    "questId": 6788,
+    "map": "ShadowVault",
+    "ids": [
+      6313
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 6788,
+    "map": "ShadowVault",
+    "monsters": [
+      "Spiderscythe",
+      "Shadowscythe Minion"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 6789,
+    "map": "ShadowVault",
+    "monsters": [
+      "Fallen Adventurer",
+      "Spiderscythe",
+      "Shadowscythe Minion"
+    ]
+  },
+  {
+    "kind": "mapItem",
+    "questId": 6790,
+    "map": "ShadowVault",
+    "ids": [
+      6314
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 6790,
+    "map": "ShadowVault",
+    "monsters": [
+      "Shadowstryke"
+    ]
+  },
+  {
+    "kind": "mapItem",
+    "questId": 6791,
+    "map": "ShadowVault",
+    "ids": [
+      6315
+    ],
+    "quantity": 5
+  },
+  {
+    "kind": "kill",
+    "questId": 6791,
+    "map": "ShadowVault",
+    "monsters": [
+      "Darkness"
+    ]
+  },
+  {
+    "kind": "mapItem",
+    "questId": 6792,
+    "map": "ShadowVault",
+    "ids": [
+      6316
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 6793,
+    "map": "ShadowVault",
+    "monsters": [
+      "Ancient Doomknight"
+    ]
+  },
+  {
+    "kind": "plan",
+    "questId": 6794,
+    "actions": [
+      {
+        "kind": "hunt",
+        "map": "ShadowVault",
+        "monster": 22,
+        "item": "Guard Slain",
+        "quantity": 100
+      }
+    ]
+  }
+];
+
+export const definition = defineGeneratedStory(
+  {
+    id: "story.shadow-vault",
+    category: "Story",
+    map: "ShadowVault",
+    meta
+  },
+  steps
+);
+
+export const main = definition.run;
+
+export default definition;

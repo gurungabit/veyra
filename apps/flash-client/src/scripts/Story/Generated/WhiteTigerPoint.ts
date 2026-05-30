@@ -1,0 +1,116 @@
+import { defineGeneratedStory, type StoryStep } from "./runner.js";
+
+export const meta = {
+  "name": "WhiteTigerPoint",
+  "description": "Does the quests in /whitetigerpoint.",
+  "tags": [
+    "story",
+    "whitetigerpoint",
+    "storyline",
+    "white tiger point",
+    "white tiger point storyline",
+    "white",
+    "tiger",
+    "point"
+  ],
+  "version": "0.1.0"
+};
+
+const steps: StoryStep[] = [
+  {
+    "kind": "kill",
+    "questId": 10320,
+    "map": "whitetigerpoint",
+    "monsters": [
+      "Astral Spirit"
+    ]
+  },
+  {
+    "kind": "mapItem",
+    "questId": 10321,
+    "map": "whitetigerpoint",
+    "ids": [
+      14656
+    ]
+  },
+  {
+    "kind": "mapItem",
+    "questId": 10321,
+    "map": "whitetigerpoint",
+    "ids": [
+      14657
+    ],
+    "quantity": 2
+  },
+  {
+    "kind": "kill",
+    "questId": 10322,
+    "map": "whitetigerpoint",
+    "monsters": [
+      "Byakko Cub"
+    ]
+  },
+  {
+    "kind": "mapItem",
+    "questId": 10323,
+    "map": "whitetigerpoint",
+    "ids": [
+      14658
+    ]
+  },
+  {
+    "kind": "mapItem",
+    "questId": 10323,
+    "map": "whitetigerpoint",
+    "ids": [
+      14659
+    ],
+    "quantity": 2
+  },
+  {
+    "kind": "kill",
+    "questId": 10325,
+    "map": "whitetigerpoint",
+    "monsters": [
+      "Rigel Stray"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 10326,
+    "map": "whitetigerpoint",
+    "monsters": [
+      "Lunar Haze"
+    ]
+  },
+  {
+    "kind": "mapItem",
+    "questId": 10327,
+    "map": "whitetigerpoint",
+    "ids": [
+      14660
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 10329,
+    "map": "whitetigerpoint",
+    "monsters": [
+      "Byakko"
+    ]
+  }
+];
+
+export const definition = defineGeneratedStory(
+  {
+    id: "story.white-tiger-point",
+    category: "Story",
+    map: "whitetigerpoint",
+    meta
+  },
+  steps
+);
+
+export const main = definition.run;
+
+export default definition;

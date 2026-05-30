@@ -1,0 +1,274 @@
+import { defineGeneratedStory, type StoryStep } from "../runner.js";
+
+export const meta = {
+  "name": "Pyrewatch",
+  "description": "This will finish the Pyrewatch quest.",
+  "tags": [
+    "story",
+    "quest",
+    "fire-island",
+    "pyrewatch",
+    "fireisland",
+    "02pyrewatch"
+  ],
+  "version": "0.1.0"
+};
+
+const steps: StoryStep[] = [
+  {
+    "kind": "kill",
+    "questId": 4054,
+    "map": "Embersea",
+    "monsters": [
+      "Flame Soldier",
+      "Storm Scout"
+    ]
+  },
+  {
+    "kind": "mapItem",
+    "questId": 4055,
+    "map": "Embersea",
+    "ids": [
+      3153
+    ],
+    "quantity": 22
+  },
+  {
+    "kind": "kill",
+    "questId": 4055,
+    "map": "Embersea",
+    "monsters": [
+      "Living Lava"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 4056,
+    "map": "Embersea",
+    "monsters": [
+      "Coal Creeper",
+      "Pyradon",
+      "Fyresyn"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 4070,
+    "map": "pyrewatch",
+    "monsters": [
+      "Lavazard",
+      "Fyreborn Tiger",
+      "Caustocrush"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 4071,
+    "map": "pyrewatch",
+    "monsters": [
+      "Fire Pikeman"
+    ]
+  },
+  {
+    "kind": "mapItem",
+    "questId": 4072,
+    "map": "pyrewatch",
+    "ids": [
+      3159
+    ],
+    "quantity": 12
+  },
+  {
+    "kind": "kill",
+    "questId": 4073,
+    "map": "pyrewatch",
+    "monsters": [
+      "Firestorm Knight",
+      "Firestorm Knight"
+    ]
+  },
+  {
+    "kind": "plan",
+    "questId": 4074,
+    "actions": [
+      {
+        "kind": "hunt",
+        "map": "Pyrewatch",
+        "monster": "Fire Pikeman",
+        "item": "Pikeman Slain",
+        "quantity": 3
+      },
+      {
+        "kind": "hunt",
+        "map": "Pyrewatch",
+        "monster": "Fire Pikeman",
+        "item": "Firestorm Helm",
+        "quantity": 6
+      },
+      {
+        "kind": "hunt",
+        "map": "Pyrewatch",
+        "monster": "Flame Soldier",
+        "item": "Flame Soldier Slain",
+        "quantity": 3
+      },
+      {
+        "kind": "hunt",
+        "map": "Pyrewatch",
+        "monster": "Caustocrush",
+        "item": "Caustocrush Slain",
+        "quantity": 3
+      }
+    ]
+  },
+  {
+    "kind": "mapItem",
+    "questId": 4075,
+    "map": "pyrewatch",
+    "ids": [
+      3160
+    ],
+    "quantity": 5
+  },
+  {
+    "kind": "kill",
+    "questId": 4075,
+    "map": "pyrewatch",
+    "monsters": [
+      "Lavazard"
+    ]
+  },
+  {
+    "kind": "plan",
+    "questId": 4076,
+    "actions": [
+      {
+        "kind": "hunt",
+        "map": "Pyrewatch",
+        "monster": "Lavazard",
+        "item": "Kindling",
+        "quantity": 3
+      },
+      {
+        "kind": "hunt",
+        "map": "Pyrewatch",
+        "monster": "Caustocrush",
+        "item": "Flint and Steel"
+      },
+      {
+        "kind": "hunt",
+        "map": "Pyrewatch",
+        "monster": "Coal Creeper",
+        "item": "Coal",
+        "quantity": 6
+      }
+    ]
+  },
+  {
+    "kind": "plan",
+    "questId": 4077,
+    "actions": [
+      {
+        "kind": "hunt",
+        "map": "Pyrewatch",
+        "monster": "Lavazard",
+        "item": "Wickskin Root",
+        "quantity": 3
+      },
+      {
+        "kind": "hunt",
+        "map": "Pyrewatch",
+        "monster": "Lavazard",
+        "item": "Zard Marrow",
+        "quantity": 3
+      },
+      {
+        "kind": "hunt",
+        "map": "Pyrewatch",
+        "monster": "Living Lava",
+        "item": "Living Lava Blood",
+        "quantity": 2
+      }
+    ]
+  },
+  {
+    "kind": "mapItem",
+    "questId": 4077,
+    "map": "Pyrewatch",
+    "ids": [
+      3161
+    ],
+    "quantity": 5
+  },
+  {
+    "kind": "kill",
+    "questId": 4078,
+    "map": "Pyrewatch",
+    "monsters": [
+      "Storm Scout"
+    ]
+  },
+  {
+    "kind": "plan",
+    "questId": 4079,
+    "actions": [
+      {
+        "kind": "hunt",
+        "map": "Pyrewatch",
+        "monster": "Storm Scout",
+        "item": "Polish"
+      },
+      {
+        "kind": "hunt",
+        "map": "Pyrewatch",
+        "monster": "Flame Soldier",
+        "item": "Cloth"
+      },
+      {
+        "kind": "hunt",
+        "map": "Pyrewatch",
+        "monster": "Flame Soldier",
+        "item": "Stand Legs",
+        "quantity": 8
+      },
+      {
+        "kind": "hunt",
+        "map": "Pyrewatch",
+        "monster": "Fyreborn Tiger",
+        "item": "Reflectors",
+        "quantity": 4
+      }
+    ]
+  },
+  {
+    "kind": "mapItem",
+    "questId": 4080,
+    "map": "Pyrewatch",
+    "ids": [
+      3162
+    ],
+    "quantity": 4
+  },
+  {
+    "kind": "kill",
+    "questId": 4081,
+    "map": "Pyrewatch",
+    "monsters": [
+      "Storm Scout"
+    ]
+  }
+];
+
+export const definition = defineGeneratedStory(
+  {
+    id: "story.fireisland.02pyrewatch",
+    category: "Story",
+    map: "Embersea",
+    meta
+  },
+  steps
+);
+
+export const main = definition.run;
+
+export default definition;

@@ -1,0 +1,236 @@
+import { defineGeneratedStory, type StoryStep } from "../runner.js";
+
+export const meta = {
+  "name": "(Beleen) Summer 2015 Adventure Map Story",
+  "description": "This will finish the Beleen story.",
+  "tags": [
+    "story",
+    "beleen",
+    "summer",
+    "2015",
+    "adventure",
+    "map",
+    "farm",
+    "summer2015adventure",
+    "3beleen"
+  ],
+  "version": "0.1.0"
+};
+
+const steps: StoryStep[] = [
+  {
+    "kind": "mapItem",
+    "questId": 4312,
+    "map": "Drearia",
+    "ids": [
+      3485
+    ]
+  },
+  {
+    "kind": "chain",
+    "questId": 4312
+  },
+  {
+    "kind": "kill",
+    "questId": 4313,
+    "map": "Drearia",
+    "monsters": [
+      "Dark Makai"
+    ]
+  },
+  {
+    "kind": "mapItem",
+    "questId": 4314,
+    "map": "Drearia",
+    "ids": [
+      3466
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 4314,
+    "map": "Drearia",
+    "monsters": [
+      "Dark Makai"
+    ]
+  },
+  {
+    "kind": "mapItem",
+    "questId": 4315,
+    "map": "Drearia",
+    "ids": [
+      3467
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 4315,
+    "map": "Drearia",
+    "monsters": [
+      "Green Rat"
+    ]
+  },
+  {
+    "kind": "mapItem",
+    "questId": 4316,
+    "map": "Drearia",
+    "ids": [
+      3468
+    ]
+  },
+  {
+    "kind": "mapItem",
+    "questId": 4317,
+    "map": "SwordHavenPink",
+    "ids": [
+      3469
+    ]
+  },
+  {
+    "kind": "mapItem",
+    "questId": 4318,
+    "map": "SwordHavenPink",
+    "ids": [
+      3486
+    ],
+    "quantity": 5
+  },
+  {
+    "kind": "kill",
+    "questId": 4318,
+    "map": "SwordHavenPink",
+    "monsters": [
+      "Pink Slime"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 4319,
+    "map": "SewerPink",
+    "monsters": [
+      "Pink Rat"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 4320,
+    "map": "SewerPink",
+    "monsters": [
+      "Cutie Grumbley"
+    ]
+  },
+  {
+    "kind": "mapItem",
+    "questId": 4321,
+    "map": "PineWoodPink",
+    "ids": [
+      3470
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 4321,
+    "map": "PineWoodPink",
+    "monsters": [
+      "Pink Grizzly"
+    ]
+  },
+  {
+    "kind": "mapItem",
+    "questId": 4322,
+    "map": "PineWoodPink",
+    "ids": [
+      3471
+    ],
+    "quantity": 5
+  },
+  {
+    "kind": "kill",
+    "questId": 4322,
+    "map": "PineWoodPink",
+    "monsters": [
+      "Pink Shell Turtle"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 4323,
+    "map": "PineWoodPink",
+    "monsters": [
+      "Sparkletooth"
+    ]
+  },
+  {
+    "kind": "mapItem",
+    "questId": 4324,
+    "map": "Citadel",
+    "ids": [
+      3472
+    ]
+  },
+  {
+    "kind": "plan",
+    "questId": 4325,
+    "actions": [
+      {
+        "kind": "mapItem",
+        "map": "Citadel",
+        "id": 3481
+      }
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 4326,
+    "map": "Pastelia",
+    "monsters": [
+      "Happy Cloud"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 4327,
+    "map": "Pastelia",
+    "monsters": [
+      "Cutie Makai"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 4328,
+    "map": "Pastelia",
+    "monsters": [
+      "Pink Rat"
+    ]
+  },
+  {
+    "kind": "mapItem",
+    "questId": 4329,
+    "map": "Pastelia",
+    "ids": [
+      3473
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 4330,
+    "map": "Pastelia",
+    "monsters": [
+      "Chaos Queen Beleen"
+    ]
+  }
+];
+
+export const definition = defineGeneratedStory(
+  {
+    id: "story.summer2015adventure-map.3beleen",
+    category: "Story",
+    map: "Drearia",
+    meta
+  },
+  steps
+);
+
+export const main = definition.run;
+
+export default definition;

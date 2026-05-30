@@ -1,0 +1,151 @@
+import { defineGeneratedStory, type StoryStep } from "../runner.js";
+
+export const meta = {
+  "name": "ByroDax",
+  "description": "This will finish the ByroDax quest.",
+  "tags": [
+    "story",
+    "quest",
+    "memets-realm",
+    "byrodax",
+    "memets",
+    "realm",
+    "8byro",
+    "dax"
+  ],
+  "version": "0.1.0"
+};
+
+const steps: StoryStep[] = [
+  {
+    "kind": "mapItem",
+    "questId": 7523,
+    "map": "byrodax",
+    "ids": [
+      7395
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 7524,
+    "map": "byrodax",
+    "monsters": [
+      "Security Droid"
+    ]
+  },
+  {
+    "kind": "mapItem",
+    "questId": 7525,
+    "map": "byrodax",
+    "ids": [
+      7396
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 7526,
+    "map": "byrodax",
+    "monsters": [
+      "Mutated Critter",
+      "Mutated Treeant"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 7527,
+    "map": "byrodax",
+    "monsters": [
+      "Mutated Treeant",
+      "Security Droid"
+    ]
+  },
+  {
+    "kind": "mapItem",
+    "questId": 7528,
+    "map": "byrodax",
+    "ids": [
+      7397
+    ],
+    "quantity": 10
+  },
+  {
+    "kind": "kill",
+    "questId": 7529,
+    "map": "byrodax",
+    "monsters": [
+      "Mutated Treeant"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 7530,
+    "map": "byrodax",
+    "monsters": [
+      "Security Droid"
+    ]
+  },
+  {
+    "kind": "mapItem",
+    "questId": 7531,
+    "map": "byrodax",
+    "ids": [
+      7398
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 7531,
+    "map": "byrodax",
+    "monsters": [
+      "Space Goop"
+    ]
+  },
+  {
+    "kind": "mapItem",
+    "questId": 7532,
+    "map": "byrodax",
+    "ids": [
+      7399
+    ],
+    "quantity": 10
+  },
+  {
+    "kind": "kill",
+    "questId": 7533,
+    "map": "byrodax",
+    "monsters": [
+      "Mutated Treeant",
+      "Space Goop"
+    ]
+  },
+  {
+    "kind": "mapItem",
+    "questId": 7534,
+    "map": "byrodax",
+    "ids": [
+      7400
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 7535,
+    "map": "byrodax",
+    "monsters": [
+      "Byro-Dax Monstrosity"
+    ]
+  }
+];
+
+export const definition = defineGeneratedStory(
+  {
+    id: "story.memets-realm.8byro-dax",
+    category: "Story",
+    map: "byrodax",
+    meta
+  },
+  steps
+);
+
+export const main = definition.run;
+
+export default definition;

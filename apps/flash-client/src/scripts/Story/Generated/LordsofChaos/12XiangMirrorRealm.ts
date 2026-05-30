@@ -1,0 +1,359 @@
+import { defineGeneratedStory, type StoryStep } from "../runner.js";
+
+export const meta = {
+  "name": "(Mirror Realm) Xiang",
+  "description": "This will finish the Xiang quest.",
+  "tags": [
+    "story",
+    "quest",
+    "chaos-saga",
+    "13-lords-of-chaos",
+    "mirror-realm",
+    "xiang",
+    "lordsof",
+    "chaos",
+    "12xiang",
+    "mirror",
+    "realm"
+  ],
+  "version": "0.1.0"
+};
+
+const steps: StoryStep[] = [
+  {
+    "kind": "mapItem",
+    "questId": 2909,
+    "map": "battleoff",
+    "ids": [
+      1779
+    ]
+  },
+  {
+    "kind": "mapItem",
+    "questId": 2910,
+    "map": "battleoff",
+    "ids": [
+      1780
+    ],
+    "quantity": 8
+  },
+  {
+    "kind": "kill",
+    "questId": 2911,
+    "map": "battleoff",
+    "monsters": [
+      "Evil Moglin"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 2912,
+    "map": "battleoff",
+    "monsters": [
+      "Evil Moglin"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 2913,
+    "map": "brightfall",
+    "monsters": [
+      "Undead Minion"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 2914,
+    "map": "brightfall",
+    "monsters": [
+      "Undead Mage"
+    ]
+  },
+  {
+    "kind": "mapItem",
+    "questId": 2915,
+    "map": "brightfall",
+    "ids": [
+      1781
+    ],
+    "quantity": 6
+  },
+  {
+    "kind": "mapItem",
+    "questId": 2916,
+    "map": "brightfall",
+    "ids": [
+      1782
+    ],
+    "quantity": 8
+  },
+  {
+    "kind": "kill",
+    "questId": 2917,
+    "map": "brightfall",
+    "monsters": [
+      "Painadin Overlord"
+    ]
+  },
+  {
+    "kind": "chain",
+    "questId": 2918
+  },
+  {
+    "kind": "kill",
+    "questId": 2919,
+    "map": "overworld",
+    "monsters": [
+      "Undead Minion"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 2920,
+    "map": "overworld",
+    "monsters": [
+      "Undead Minion"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 2921,
+    "map": "overworld",
+    "monsters": [
+      "Undead Minion"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 2922,
+    "map": "overworld",
+    "monsters": [
+      "Undead Mage"
+    ]
+  },
+  {
+    "kind": "mapItem",
+    "questId": 2923,
+    "map": "overworld",
+    "ids": [
+      1800
+    ],
+    "quantity": 6
+  },
+  {
+    "kind": "kill",
+    "questId": 2924,
+    "map": "overworld",
+    "monsters": [
+      "Undead Bruiser"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 2925,
+    "map": "overworld",
+    "monsters": [
+      "Undead Bruiser"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 2926,
+    "map": "overworld",
+    "monsters": [
+      "Undead Minion"
+    ]
+  },
+  {
+    "kind": "mapItem",
+    "questId": 2927,
+    "map": "overworld",
+    "ids": [
+      1801
+    ],
+    "quantity": 8
+  },
+  {
+    "kind": "kill",
+    "questId": 2928,
+    "map": "overworld",
+    "monsters": [
+      "Undead Minion"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 2929,
+    "map": "overworld",
+    "monsters": [
+      "Undead Minion"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 2930,
+    "map": "overworld",
+    "monsters": [
+      "Undead Minion"
+    ]
+  },
+  {
+    "kind": "mapItem",
+    "questId": 2931,
+    "map": "overworld",
+    "ids": [
+      1802
+    ],
+    "quantity": 10
+  },
+  {
+    "kind": "kill",
+    "questId": 2932,
+    "map": "overworld",
+    "monsters": [
+      "Undead Artix"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 3166,
+    "map": "reddeath",
+    "monsters": [
+      "Fire Leech"
+    ]
+  },
+  {
+    "kind": "mapItem",
+    "questId": 3167,
+    "map": "reddeath",
+    "ids": [
+      2178,
+      2179
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 3167,
+    "map": "reddeath",
+    "monsters": [
+      "Reddeath Moglin"
+    ]
+  },
+  {
+    "kind": "mapItem",
+    "questId": 3168,
+    "map": "reddeath",
+    "ids": [
+      2180
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 3169,
+    "map": "reddeath",
+    "monsters": [
+      "Fire Leech"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 3170,
+    "map": "reddeath",
+    "monsters": [
+      "Grim Widow"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 3171,
+    "map": "reddeath",
+    "monsters": [
+      "Swamp Wraith"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 3172,
+    "map": "reddeath",
+    "monsters": [
+      "Swamp Wraith"
+    ]
+  },
+  {
+    "kind": "mapItem",
+    "questId": 3183,
+    "map": "battleontown",
+    "ids": [
+      2203
+    ]
+  },
+  {
+    "kind": "plan",
+    "questId": 3187,
+    "actions": [
+      {
+        "kind": "hunt",
+        "map": "earthstorm",
+        "monster": "Shard Spinner",
+        "item": "Reflective Fragment",
+        "quantity": 5
+      },
+      {
+        "kind": "hunt",
+        "map": "bloodtuskwar",
+        "monster": "Chaotic Horcboar",
+        "item": "Vials of Blood",
+        "quantity": 5
+      },
+      {
+        "kind": "hunt",
+        "map": "bloodtuskwar",
+        "monster": "Chaos Tigriff",
+        "item": "Feathers",
+        "quantity": 5
+      },
+      {
+        "kind": "join",
+        "map": "mirrorportal"
+      }
+    ]
+  },
+  {
+    "kind": "plan",
+    "questId": 3188,
+    "actions": [
+      {
+        "kind": "buy",
+        "map": "mirrorportal",
+        "shopId": 774,
+        "item": "Shriekward Potion",
+        "quantity": 99
+      },
+      {
+        "kind": "hunt",
+        "map": "mirrorportal",
+        "monster": 1,
+        "item": "Chaos Harpy Defeated"
+      }
+    ]
+  },
+  {
+    "kind": "plan",
+    "questId": 3189,
+    "actions": []
+  }
+];
+
+export const definition = defineGeneratedStory(
+  {
+    id: "story.lordsof-chaos.12xiang-mirror-realm",
+    category: "Story",
+    map: "battleoff",
+    meta
+  },
+  steps
+);
+
+export const main = definition.run;
+
+export default definition;

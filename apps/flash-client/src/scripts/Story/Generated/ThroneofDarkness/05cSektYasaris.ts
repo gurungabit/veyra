@@ -1,0 +1,316 @@
+import { defineGeneratedStory, type StoryStep } from "../runner.js";
+
+export const meta = {
+  "name": "(Yasaris) Sekt Story",
+  "description": "This will finish the Sekt story.",
+  "tags": [
+    "story",
+    "sekt",
+    "farm",
+    "yasaris",
+    "throne",
+    "darkness",
+    "throneof",
+    "05c"
+  ],
+  "version": "0.1.0"
+};
+
+const steps: StoryStep[] = [
+  {
+    "kind": "mapItem",
+    "questId": 5213,
+    "map": "yasaris",
+    "ids": [
+      4590
+    ]
+  },
+  {
+    "kind": "mapItem",
+    "questId": 5214,
+    "map": "yasaris",
+    "ids": [
+      4576
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 5215,
+    "map": "yasaris",
+    "monsters": [
+      "Vortex Hawk"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 5216,
+    "map": "yasaris",
+    "monsters": [
+      "Sacred Serpent"
+    ]
+  },
+  {
+    "kind": "mapItem",
+    "questId": 5217,
+    "map": "yasaris",
+    "ids": [
+      4577
+    ]
+  },
+  {
+    "kind": "mapItem",
+    "questId": 5218,
+    "map": "yasaris",
+    "ids": [
+      4578
+    ]
+  },
+  {
+    "kind": "plan",
+    "questId": 5219,
+    "actions": [
+      {
+        "kind": "mapItem",
+        "map": "yasaris",
+        "id": 4579,
+        "quantity": 1
+      }
+    ]
+  },
+  {
+    "kind": "chain",
+    "questId": 5240
+  },
+  {
+    "kind": "mapItem",
+    "questId": 5220,
+    "map": "yasaris",
+    "ids": [
+      4591
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 5221,
+    "map": "yasaris",
+    "monsters": [
+      "Avatar of Anubyx",
+      "Inverted Avatar"
+    ]
+  },
+  {
+    "kind": "mapItem",
+    "questId": 5222,
+    "map": "yasaris",
+    "ids": [
+      4580
+    ]
+  },
+  {
+    "kind": "mapItem",
+    "questId": 5223,
+    "map": "yasaris",
+    "ids": [
+      4581
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 5224,
+    "map": "yasaris",
+    "monsters": [
+      "Avatar of Anubyx",
+      "Negastri Hound"
+    ]
+  },
+  {
+    "kind": "mapItem",
+    "questId": 5225,
+    "map": "yasaris",
+    "ids": [
+      4582
+    ]
+  },
+  {
+    "kind": "plan",
+    "questId": 5226,
+    "actions": [
+      {
+        "kind": "mapItem",
+        "map": "yasaris",
+        "id": 4583,
+        "quantity": 1
+      }
+    ]
+  },
+  {
+    "kind": "chain",
+    "questId": 5241
+  },
+  {
+    "kind": "mapItem",
+    "questId": 5227,
+    "map": "yasaris",
+    "ids": [
+      4592
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 5228,
+    "map": "yasaris",
+    "monsters": [
+      "Dimensional Crystal"
+    ]
+  },
+  {
+    "kind": "mapItem",
+    "questId": 5229,
+    "map": "yasaris",
+    "ids": [
+      4584
+    ]
+  },
+  {
+    "kind": "mapItem",
+    "questId": 5230,
+    "map": "yasaris",
+    "ids": [
+      4585
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 5230,
+    "map": "yasaris",
+    "monsters": [
+      "Tesseract Sprite"
+    ]
+  },
+  {
+    "kind": "mapItem",
+    "questId": 5231,
+    "map": "yasaris",
+    "ids": [
+      4593
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 5232,
+    "map": "yasaris",
+    "monsters": [
+      "Dimensional Crystal"
+    ]
+  },
+  {
+    "kind": "plan",
+    "questId": 5233,
+    "actions": [
+      {
+        "kind": "mapItem",
+        "map": "yasaris",
+        "id": 4595,
+        "quantity": 1
+      },
+      {
+        "kind": "mapItem",
+        "map": "yasaris",
+        "id": 4586,
+        "quantity": 1
+      }
+    ]
+  },
+  {
+    "kind": "chain",
+    "questId": 5242
+  },
+  {
+    "kind": "mapItem",
+    "questId": 5234,
+    "map": "yasaris",
+    "ids": [
+      4594
+    ]
+  },
+  {
+    "kind": "mapItem",
+    "questId": 5235,
+    "map": "yasaris",
+    "ids": [
+      4587
+    ],
+    "quantity": 4
+  },
+  {
+    "kind": "kill",
+    "questId": 5235,
+    "map": "yasaris",
+    "monsters": [
+      "Avatar of Serepthys"
+    ]
+  },
+  {
+    "kind": "mapItem",
+    "questId": 5236,
+    "map": "yasaris",
+    "ids": [
+      4588
+    ],
+    "quantity": 4
+  },
+  {
+    "kind": "kill",
+    "questId": 5237,
+    "map": "yasaris",
+    "monsters": [
+      "Spirit of Ptahmun"
+    ]
+  },
+  {
+    "kind": "mapItem",
+    "questId": 5238,
+    "map": "yasaris",
+    "ids": [
+      4589
+    ]
+  },
+  {
+    "kind": "plan",
+    "questId": 5238,
+    "actions": [
+      {
+        "kind": "mapItem",
+        "map": "yasaris",
+        "id": 4589,
+        "quantity": 1
+      }
+    ]
+  },
+  {
+    "kind": "chain",
+    "questId": 5243
+  },
+  {
+    "kind": "kill",
+    "questId": 5239,
+    "map": "yasaris",
+    "monsters": [
+      "Serepthys"
+    ]
+  }
+];
+
+export const definition = defineGeneratedStory(
+  {
+    id: "story.throneof-darkness.05c-sekt-yasaris",
+    category: "Story",
+    map: "yasaris",
+    meta
+  },
+  steps
+);
+
+export const main = definition.run;
+
+export default definition;

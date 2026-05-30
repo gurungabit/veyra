@@ -91,5 +91,3 @@ The harness includes one direct test script:
 - Cell: `r2`
 - Pad: `Top`
 - Target: `*`
-
-The shared rewrite package also exports the same script at `@veyra/scripts/farm/HighLevelXP`.

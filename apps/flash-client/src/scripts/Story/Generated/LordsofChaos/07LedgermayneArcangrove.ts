@@ -1,0 +1,436 @@
+import { defineGeneratedStory, type StoryStep } from "../runner.js";
+
+export const meta = {
+  "name": "(Arcangrove) Ledgermayne",
+  "description": "chaos-saga, 13-lords-of-chaos",
+  "tags": [
+    "story",
+    "quest",
+    "chaos-saga",
+    "13-lords-of-chaos",
+    "arcangrove",
+    "ledgermayne",
+    "lordsof",
+    "chaos",
+    "07ledgermayne"
+  ],
+  "version": "0.1.0"
+};
+
+const steps: StoryStep[] = [
+  {
+    "kind": "mapItem",
+    "questId": 805,
+    "map": "arcangrove",
+    "ids": [
+      139
+    ]
+  },
+  {
+    "kind": "mapItem",
+    "questId": 806,
+    "map": "cloister",
+    "ids": [
+      142
+    ]
+  },
+  {
+    "kind": "mapItem",
+    "questId": 807,
+    "map": "cloister",
+    "ids": [
+      140
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 808,
+    "map": "cloister",
+    "monsters": [
+      "Acornent"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 809,
+    "map": "cloister",
+    "monsters": [
+      "Karasu"
+    ]
+  },
+  {
+    "kind": "plan",
+    "questId": 810,
+    "actions": [
+      {
+        "kind": "mapItem",
+        "map": "cloister",
+        "id": 141,
+        "quantity": 3
+      }
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 811,
+    "map": "cloister",
+    "monsters": [
+      "Wendigo"
+    ]
+  },
+  {
+    "kind": "mapItem",
+    "questId": 813,
+    "map": "mudluk",
+    "ids": [
+      143
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 814,
+    "map": "mudluk",
+    "monsters": [
+      "Swamp Lurker"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 815,
+    "map": "mudluk",
+    "monsters": [
+      "Swamp Lurker"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 816,
+    "map": "arcangrove",
+    "monsters": [
+      "Gorillaphant"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 817,
+    "map": "mudluk",
+    "monsters": [
+      "Swamp Frogdrake"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 818,
+    "map": "mudluk",
+    "monsters": [
+      "Tiger Leech"
+    ]
+  },
+  {
+    "kind": "mapItem",
+    "questId": 825,
+    "map": "natatorium",
+    "ids": [
+      144
+    ]
+  },
+  {
+    "kind": "mapItem",
+    "questId": 826,
+    "map": "natatorium",
+    "ids": [
+      145
+    ],
+    "quantity": 12
+  },
+  {
+    "kind": "kill",
+    "questId": 827,
+    "map": "natatorium",
+    "monsters": [
+      "Anglerfish"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 828,
+    "map": "natatorium",
+    "monsters": [
+      "Merdraconian"
+    ]
+  },
+  {
+    "kind": "plan",
+    "questId": 829,
+    "actions": [
+      {
+        "kind": "hunt",
+        "map": "arcangrove",
+        "monster": "Seed Spitter",
+        "item": "Brain Coral",
+        "quantity": 5
+      },
+      {
+        "kind": "hunt",
+        "map": "cloister",
+        "monster": "Acornent",
+        "item": "Staghorns",
+        "quantity": 4
+      },
+      {
+        "kind": "hunt",
+        "map": "cloister",
+        "monster": "Karasu",
+        "item": "Sea Fan",
+        "quantity": 3
+      },
+      {
+        "kind": "hunt",
+        "map": "cloister",
+        "monster": "Wendigo",
+        "item": "Sea Whip"
+      },
+      {
+        "kind": "hunt",
+        "map": "mudluk",
+        "monster": "Swamp Frogdrake",
+        "item": "Anemones",
+        "quantity": 6
+      }
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 830,
+    "map": "natatorium",
+    "monsters": [
+      "Nessie"
+    ]
+  },
+  {
+    "kind": "mapItem",
+    "questId": 831,
+    "map": "gilead",
+    "ids": [
+      146
+    ]
+  },
+  {
+    "kind": "plan",
+    "questId": 832,
+    "actions": [
+      {
+        "kind": "hunt",
+        "map": "gilead",
+        "monster": "Earth Elemental",
+        "item": "Dregs Essence",
+        "quantity": 5
+      },
+      {
+        "kind": "hunt",
+        "map": "arcangrove",
+        "monster": "Seed Spitter",
+        "item": "Spitter Spirit",
+        "quantity": 4
+      }
+    ]
+  },
+  {
+    "kind": "plan",
+    "questId": 833,
+    "actions": [
+      {
+        "kind": "hunt",
+        "map": "gilead",
+        "monster": "Water Elemental",
+        "item": "Aqueous Essence",
+        "quantity": 5
+      },
+      {
+        "kind": "hunt",
+        "map": "natatorium",
+        "monster": "Merdraconian",
+        "item": "MerCore",
+        "quantity": 6
+      }
+    ]
+  },
+  {
+    "kind": "plan",
+    "questId": 834,
+    "actions": [
+      {
+        "kind": "hunt",
+        "map": "gilead",
+        "monster": "Wind Elemental",
+        "item": "Welkin Essence",
+        "quantity": 5
+      },
+      {
+        "kind": "hunt",
+        "map": "cloister",
+        "monster": "Karasu",
+        "item": "Karasu Soul",
+        "quantity": 8
+      }
+    ]
+  },
+  {
+    "kind": "plan",
+    "questId": 835,
+    "actions": [
+      {
+        "kind": "hunt",
+        "map": "gilead",
+        "monster": "Fire Elemental",
+        "item": "Pyre Essence",
+        "quantity": 5
+      },
+      {
+        "kind": "hunt",
+        "map": "mudluk",
+        "monster": "Swamp Frogdrake",
+        "item": "Fire Salamander",
+        "quantity": 5
+      }
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 836,
+    "map": "gilead",
+    "monsters": [
+      "Mana Elemental"
+    ]
+  },
+  {
+    "kind": "mapItem",
+    "questId": 838,
+    "map": "mafic",
+    "ids": [
+      147
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 839,
+    "map": "mafic",
+    "monsters": [
+      "Volcanic Maggot"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 840,
+    "map": "mafic",
+    "monsters": [
+      "Scoria Serpent"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 841,
+    "map": "mafic",
+    "monsters": [
+      "Living Fire"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 842,
+    "map": "mafic",
+    "monsters": [
+      "Mafic Dragon"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 843,
+    "map": "elemental",
+    "monsters": [
+      "Mana Imp"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 844,
+    "map": "elemental",
+    "monsters": [
+      "Mana Falcon"
+    ]
+  },
+  {
+    "kind": "plan",
+    "questId": 845,
+    "actions": [
+      {
+        "kind": "hunt",
+        "map": "mafic",
+        "monster": "Mafic Dragon",
+        "item": "Astral Orb of Mafic"
+      },
+      {
+        "kind": "hunt",
+        "map": "cloister",
+        "monster": "Wendigo",
+        "item": "Astral Orb of the Cloister"
+      },
+      {
+        "kind": "hunt",
+        "map": "mudluk",
+        "monster": "Tiger Leech",
+        "item": "Astral Orb of Mudluk"
+      },
+      {
+        "kind": "hunt",
+        "map": "natatorium",
+        "monster": "Nessie",
+        "item": "Astral Orb of Natatorium"
+      },
+      {
+        "kind": "hunt",
+        "map": "gilead",
+        "monster": "Mana Elemental",
+        "item": "Astral Orb of Gilead"
+      }
+    ]
+  },
+  {
+    "kind": "plan",
+    "questId": 846,
+    "actions": [
+      {
+        "kind": "packet",
+        "packet": "%xt%zm%updateQuest%1%847%"
+      },
+      {
+        "kind": "hunt",
+        "map": "elemental",
+        "monster": "Mana Golem",
+        "item": "Mana Golem Defeated"
+      }
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 847,
+    "map": "ledgermayne",
+    "monsters": [
+      "Ledgermayne"
+    ]
+  }
+];
+
+export const definition = defineGeneratedStory(
+  {
+    id: "story.lordsof-chaos.07ledgermayne-arcangrove",
+    category: "Story",
+    map: "arcangrove",
+    meta
+  },
+  steps
+);
+
+export const main = definition.run;
+
+export default definition;

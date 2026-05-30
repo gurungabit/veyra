@@ -1,0 +1,2727 @@
+import { defineGeneratedStory, type StoryStep } from "../runner.js";
+
+export const meta = {
+  "name": "Complete Queen of Monsters Story",
+  "description": "This will complete the Queen of Monsters story arc.",
+  "tags": [
+    "story",
+    "quest",
+    "queen-of-monsters",
+    "complete",
+    "all",
+    "queenof",
+    "monsters",
+    "0complete",
+    "qom"
+  ],
+  "version": "0.1.0"
+};
+
+const steps: StoryStep[] = [
+  {
+    "kind": "mapItem",
+    "questId": 4495,
+    "map": "celestialrealm",
+    "ids": [
+      3698
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 4495,
+    "map": "celestialrealm",
+    "monsters": [
+      "Celestial Bird of Paradise",
+      "Fallen Knight"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 4496,
+    "map": "celestialrealm",
+    "monsters": [
+      "Celestial Bird of Paradise",
+      "Fallen Knight"
+    ]
+  },
+  {
+    "kind": "mapItem",
+    "questId": 4497,
+    "map": "celestialrealm",
+    "ids": [
+      3696
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 4498,
+    "map": "celestialrealm",
+    "monsters": [
+      "Infernal Knight"
+    ]
+  },
+  {
+    "kind": "mapItem",
+    "questId": 4499,
+    "map": "celestialrealm",
+    "ids": [
+      3693
+    ]
+  },
+  {
+    "kind": "mapItem",
+    "questId": 4500,
+    "map": "lostruins",
+    "ids": [
+      3694
+    ],
+    "quantity": 3
+  },
+  {
+    "kind": "kill",
+    "questId": 4500,
+    "map": "lostruins",
+    "monsters": [
+      "Underworld Hound"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 4501,
+    "map": "lostruins",
+    "monsters": [
+      "Fallen Knight"
+    ]
+  },
+  {
+    "kind": "plan",
+    "questId": 4502,
+    "actions": [
+      {
+        "kind": "hunt",
+        "map": "lostruins",
+        "monster": "Underworld Hound",
+        "item": "Clue 1"
+      },
+      {
+        "kind": "hunt",
+        "map": "lostruins",
+        "monster": "Infernal Imp",
+        "item": "Clue 2"
+      },
+      {
+        "kind": "hunt",
+        "map": "lostruins",
+        "monster": "Fallen Knight",
+        "item": "Clue 3"
+      },
+      {
+        "kind": "hunt",
+        "map": "lostruins",
+        "cell": "r5",
+        "pad": "Left",
+        "monster": "Infernal Knight",
+        "item": "Clue 4"
+      }
+    ]
+  },
+  {
+    "kind": "plan",
+    "questId": 4503,
+    "actions": [
+      {
+        "kind": "buy",
+        "map": "fishing",
+        "shopId": 356,
+        "item": "Holy Oil"
+      },
+      {
+        "kind": "hunt",
+        "map": "lostruins",
+        "monster": 8,
+        "item": "Cage Key"
+      }
+    ]
+  },
+  {
+    "kind": "plan",
+    "questId": 4504,
+    "actions": [
+      {
+        "kind": "buy",
+        "map": "embersea",
+        "shopId": 1100,
+        "item": "Potent Guard Potion",
+        "quantity": 10
+      },
+      {
+        "kind": "hunt",
+        "map": "lostruins",
+        "monster": "Fallen Knight",
+        "item": "Infernal Enemy Defeated",
+        "quantity": 15
+      }
+    ]
+  },
+  {
+    "kind": "plan",
+    "questId": 4505,
+    "actions": [
+      {
+        "kind": "hunt",
+        "map": "lostruins",
+        "monster": "Fallen Knight",
+        "item": "Brimstone-Stained Gauntlet",
+        "quantity": 5
+      },
+      {
+        "kind": "hunt",
+        "map": "lostruins",
+        "monster": "Underworld Hound",
+        "item": "Onyx Spike",
+        "quantity": 3
+      },
+      {
+        "kind": "mapItem",
+        "map": "lostruins",
+        "id": 3697,
+        "quantity": 5
+      }
+    ]
+  },
+  {
+    "kind": "plan",
+    "questId": 4503,
+    "actions": [
+      {
+        "kind": "buy",
+        "map": "fishing",
+        "shopId": 356,
+        "item": "Holy Oil"
+      },
+      {
+        "kind": "hunt",
+        "map": "lostruins",
+        "monster": 8,
+        "item": "Cage Key"
+      }
+    ]
+  },
+  {
+    "kind": "mapItem",
+    "questId": 4506,
+    "map": "lostruins",
+    "ids": [
+      3695
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 4507,
+    "map": "lostruins",
+    "monsters": [
+      "Infernal Warlord"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 4509,
+    "map": "lostruinswar",
+    "monsters": [
+      "Infernal Imp"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 4508,
+    "map": "lostruinswar",
+    "monsters": [
+      "Diabolical Warlord"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 5374,
+    "map": "infernalspire",
+    "monsters": [
+      "Fallen Knight",
+      "Underworld Hound"
+    ]
+  },
+  {
+    "kind": "mapItem",
+    "questId": 5375,
+    "map": "infernalspire",
+    "ids": [
+      4729
+    ]
+  },
+  {
+    "kind": "mapItem",
+    "questId": 5375,
+    "map": "infernalspire",
+    "ids": [
+      4730
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 5375,
+    "map": "infernalspire",
+    "monsters": [
+      "Fallen Knight",
+      "Underworld Hound"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 5376,
+    "map": "infernalspire",
+    "monsters": [
+      "Helzekiel"
+    ]
+  },
+  {
+    "kind": "plan",
+    "questId": 5377,
+    "actions": [
+      {
+        "kind": "hunt",
+        "map": "infernalspire",
+        "cell": "r7",
+        "pad": "Left",
+        "monster": "Dungeon Fiend",
+        "item": "Infernal Key",
+        "quantity": 6
+      },
+      {
+        "kind": "hunt",
+        "map": "infernalspire",
+        "cell": "r7",
+        "pad": "Left",
+        "monster": "Dungeon Fiend",
+        "item": "Dungeon Fiend Slain",
+        "quantity": 6
+      },
+      {
+        "kind": "hunt",
+        "map": "infernalspire",
+        "cell": "r7",
+        "pad": "Left",
+        "monster": "Infernal Hound",
+        "item": "Infernal Hound Slain",
+        "quantity": 6
+      }
+    ]
+  },
+  {
+    "kind": "mapItem",
+    "questId": 5378,
+    "map": "infernalspire",
+    "ids": [
+      4731
+    ],
+    "quantity": 6
+  },
+  {
+    "kind": "mapItem",
+    "questId": 5379,
+    "map": "infernalspire",
+    "ids": [
+      4732
+    ],
+    "quantity": 6
+  },
+  {
+    "kind": "kill",
+    "questId": 5379,
+    "map": "infernalspire",
+    "monsters": [
+      "Dungeon Fiend"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 5380,
+    "map": "infernalspire",
+    "monsters": [
+      "Garvodeus"
+    ]
+  },
+  {
+    "kind": "plan",
+    "questId": 5381,
+    "actions": [
+      {
+        "kind": "hunt",
+        "map": "infernalspire",
+        "cell": "r13",
+        "pad": "Left",
+        "monster": "Fallen Knight",
+        "item": "Override Code"
+      },
+      {
+        "kind": "hunt",
+        "map": "infernalspire",
+        "cell": "r13",
+        "pad": "Left",
+        "monster": "Fallen Knight",
+        "item": "Fallen Knight Slain",
+        "quantity": 6
+      },
+      {
+        "kind": "hunt",
+        "map": "infernalspire",
+        "monster": "Infernal Imp",
+        "item": "Infernal Imp Slain",
+        "quantity": 6
+      }
+    ]
+  },
+  {
+    "kind": "mapItem",
+    "questId": 5382,
+    "map": "infernalspire",
+    "ids": [
+      4733
+    ]
+  },
+  {
+    "kind": "mapItem",
+    "questId": 5383,
+    "map": "infernalspire",
+    "ids": [
+      4734
+    ],
+    "quantity": 4
+  },
+  {
+    "kind": "kill",
+    "questId": 5384,
+    "map": "infernalspire",
+    "monsters": [
+      "Azkorath"
+    ]
+  },
+  {
+    "kind": "plan",
+    "questId": 5385,
+    "actions": [
+      {
+        "kind": "hunt",
+        "map": "infernalspire",
+        "monster": "Infernal Knight",
+        "item": "Infernal Knight Slain",
+        "quantity": 8
+      },
+      {
+        "kind": "hunt",
+        "map": "infernalspire",
+        "monster": "Grievous Fiend",
+        "item": "Grievous Fiend Slain",
+        "quantity": 8
+      }
+    ]
+  },
+  {
+    "kind": "mapItem",
+    "questId": 5386,
+    "map": "infernalspire",
+    "ids": [
+      4735
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 5387,
+    "map": "infernalspire",
+    "monsters": [
+      "Malxas"
+    ]
+  },
+  {
+    "kind": "plan",
+    "questId": 5404,
+    "actions": []
+  },
+  {
+    "kind": "plan",
+    "questId": 5405,
+    "actions": [
+      {
+        "kind": "hunt",
+        "map": "sandsea",
+        "monster": "Oasis Monkey",
+        "item": "Pally Luwak Beans"
+      }
+    ]
+  },
+  {
+    "kind": "chain",
+    "questId": 5404
+  },
+  {
+    "kind": "kill",
+    "questId": 5406,
+    "map": "doompally",
+    "monsters": [
+      "Doomwood Ectomancer"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 5407,
+    "map": "doompally",
+    "monsters": [
+      "Doomwood Soldier"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 5408,
+    "map": "doompally",
+    "monsters": [
+      "Doomwood Ectomancer"
+    ]
+  },
+  {
+    "kind": "mapItem",
+    "questId": 5409,
+    "map": "doompally",
+    "ids": [
+      4758
+    ]
+  },
+  {
+    "kind": "mapItem",
+    "questId": 5410,
+    "map": "doompally",
+    "ids": [
+      4759
+    ],
+    "quantity": 5
+  },
+  {
+    "kind": "kill",
+    "questId": 5410,
+    "map": "doompally",
+    "monsters": [
+      "Doomwood Bonemuncher"
+    ]
+  },
+  {
+    "kind": "mapItem",
+    "questId": 5411,
+    "map": "doompally",
+    "ids": [
+      4761
+    ]
+  },
+  {
+    "kind": "mapItem",
+    "questId": 5411,
+    "map": "doompally",
+    "ids": [
+      4760
+    ],
+    "quantity": 6
+  },
+  {
+    "kind": "kill",
+    "questId": 5412,
+    "map": "doompally",
+    "monsters": [
+      "Doomwood Treeant"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 5413,
+    "map": "doompally",
+    "monsters": [
+      "Doomwood Ectomancer"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 5414,
+    "map": "doompally",
+    "monsters": [
+      "Doomwood Bonemuncher"
+    ]
+  },
+  {
+    "kind": "mapItem",
+    "questId": 5415,
+    "map": "doompally",
+    "ids": [
+      4762
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 5416,
+    "map": "doompally",
+    "monsters": [
+      "Skeletal Subjugator"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 5487,
+    "map": "DarkoviaInvasion",
+    "monsters": [
+      "Underworld Hound",
+      "Infernal Imp"
+    ]
+  },
+  {
+    "kind": "mapItem",
+    "questId": 5488,
+    "map": "DarkoviaInvasion",
+    "ids": [
+      4905
+    ],
+    "quantity": 6
+  },
+  {
+    "kind": "kill",
+    "questId": 5489,
+    "map": "DarkoviaInvasion",
+    "monsters": [
+      "Grievous Fiend"
+    ]
+  },
+  {
+    "kind": "mapItem",
+    "questId": 5490,
+    "map": "SafiriaInvasion",
+    "ids": [
+      4904
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 5491,
+    "map": "SafiriaInvasion",
+    "monsters": [
+      "Fallen Knight",
+      "Infernal Knight"
+    ]
+  },
+  {
+    "kind": "mapItem",
+    "questId": 5492,
+    "map": "SafiriaInvasion",
+    "ids": [
+      4895
+    ],
+    "quantity": 6
+  },
+  {
+    "kind": "mapItem",
+    "questId": 5492,
+    "map": "SafiriaInvasion",
+    "ids": [
+      4896
+    ]
+  },
+  {
+    "kind": "mapItem",
+    "questId": 5493,
+    "map": "SafiriaInvasion",
+    "ids": [
+      4897
+    ],
+    "quantity": 9
+  },
+  {
+    "kind": "mapItem",
+    "questId": 5494,
+    "map": "SafiriaInvasion",
+    "ids": [
+      4898,
+      4899
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 5494,
+    "map": "SafiriaInvasion",
+    "monsters": [
+      "Blood Maggot"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 5495,
+    "map": "SafiriaInvasion",
+    "monsters": [
+      "Ma'alech"
+    ]
+  },
+  {
+    "kind": "mapItem",
+    "questId": 5496,
+    "map": "LycanInvasion",
+    "ids": [
+      4900
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 5497,
+    "map": "LycanInvasion",
+    "monsters": [
+      "Infernal Knight",
+      "Fallen Knight"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 5498,
+    "map": "LycanInvasion",
+    "monsters": [
+      "Dire Wolf"
+    ]
+  },
+  {
+    "kind": "mapItem",
+    "questId": 5499,
+    "map": "LycanInvasion",
+    "ids": [
+      4901
+    ]
+  },
+  {
+    "kind": "mapItem",
+    "questId": 5499,
+    "map": "LycanInvasion",
+    "ids": [
+      4903
+    ],
+    "quantity": 6
+  },
+  {
+    "kind": "kill",
+    "questId": 5500,
+    "map": "LycanInvasion",
+    "monsters": [
+      "Lord Balax'el"
+    ]
+  },
+  {
+    "kind": "mapItem",
+    "questId": 5501,
+    "map": "SafiriaInvasion",
+    "ids": [
+      4902
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 5501,
+    "map": "SafiriaInvasion",
+    "monsters": [
+      "Fallen Knight"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 5502,
+    "map": "SafiriaInvasion",
+    "monsters": [
+      "Shadow Imp",
+      "Revenant"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 5503,
+    "map": "SafiriaInvasion",
+    "monsters": [
+      "Noddharath"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 5487,
+    "map": "DarkoviaInvasion",
+    "monsters": [
+      "Underworld Hound",
+      "Infernal Imp"
+    ]
+  },
+  {
+    "kind": "mapItem",
+    "questId": 5488,
+    "map": "DarkoviaInvasion",
+    "ids": [
+      4905
+    ],
+    "quantity": 6
+  },
+  {
+    "kind": "kill",
+    "questId": 5489,
+    "map": "DarkoviaInvasion",
+    "monsters": [
+      "Grievous Fiend"
+    ]
+  },
+  {
+    "kind": "mapItem",
+    "questId": 5490,
+    "map": "SafiriaInvasion",
+    "ids": [
+      4904
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 5491,
+    "map": "SafiriaInvasion",
+    "monsters": [
+      "Fallen Knight",
+      "Infernal Knight"
+    ]
+  },
+  {
+    "kind": "mapItem",
+    "questId": 5492,
+    "map": "SafiriaInvasion",
+    "ids": [
+      4895
+    ],
+    "quantity": 6
+  },
+  {
+    "kind": "mapItem",
+    "questId": 5492,
+    "map": "SafiriaInvasion",
+    "ids": [
+      4896
+    ]
+  },
+  {
+    "kind": "mapItem",
+    "questId": 5493,
+    "map": "SafiriaInvasion",
+    "ids": [
+      4897
+    ],
+    "quantity": 9
+  },
+  {
+    "kind": "mapItem",
+    "questId": 5494,
+    "map": "SafiriaInvasion",
+    "ids": [
+      4898,
+      4899
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 5494,
+    "map": "SafiriaInvasion",
+    "monsters": [
+      "Blood Maggot"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 5495,
+    "map": "SafiriaInvasion",
+    "monsters": [
+      "Ma'alech"
+    ]
+  },
+  {
+    "kind": "mapItem",
+    "questId": 5496,
+    "map": "LycanInvasion",
+    "ids": [
+      4900
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 5497,
+    "map": "LycanInvasion",
+    "monsters": [
+      "Infernal Knight",
+      "Fallen Knight"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 5498,
+    "map": "LycanInvasion",
+    "monsters": [
+      "Dire Wolf"
+    ]
+  },
+  {
+    "kind": "mapItem",
+    "questId": 5499,
+    "map": "LycanInvasion",
+    "ids": [
+      4901
+    ]
+  },
+  {
+    "kind": "mapItem",
+    "questId": 5499,
+    "map": "LycanInvasion",
+    "ids": [
+      4903
+    ],
+    "quantity": 6
+  },
+  {
+    "kind": "kill",
+    "questId": 5500,
+    "map": "LycanInvasion",
+    "monsters": [
+      "Lord Balax'el"
+    ]
+  },
+  {
+    "kind": "mapItem",
+    "questId": 5501,
+    "map": "SafiriaInvasion",
+    "ids": [
+      4902
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 5501,
+    "map": "SafiriaInvasion",
+    "monsters": [
+      "Fallen Knight"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 5502,
+    "map": "SafiriaInvasion",
+    "monsters": [
+      "Shadow Imp",
+      "Revenant"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 5503,
+    "map": "SafiriaInvasion",
+    "monsters": [
+      "Noddharath"
+    ]
+  },
+  {
+    "kind": "mapItem",
+    "questId": 5543,
+    "map": "shadowfallinvasion",
+    "ids": [
+      5024
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 5544,
+    "map": "shadowfallinvasion",
+    "monsters": [
+      "Infernal Imp",
+      "Infernal Knight"
+    ]
+  },
+  {
+    "kind": "mapItem",
+    "questId": 5545,
+    "map": "shadowfallinvasion",
+    "ids": [
+      5025
+    ],
+    "quantity": 4
+  },
+  {
+    "kind": "mapItem",
+    "questId": 5545,
+    "map": "shadowfallinvasion",
+    "ids": [
+      5026
+    ],
+    "quantity": 4
+  },
+  {
+    "kind": "kill",
+    "questId": 5546,
+    "map": "shadowfallinvasion",
+    "monsters": [
+      "Infernal Imp"
+    ]
+  },
+  {
+    "kind": "mapItem",
+    "questId": 5547,
+    "map": "shadowfallinvasion",
+    "ids": [
+      5027
+    ],
+    "quantity": 5
+  },
+  {
+    "kind": "mapItem",
+    "questId": 5548,
+    "map": "shadowfallinvasion",
+    "ids": [
+      5028
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 5549,
+    "map": "shadowfallinvasion",
+    "monsters": [
+      "Bone Creeper"
+    ]
+  },
+  {
+    "kind": "mapItem",
+    "questId": 5550,
+    "map": "shadowfallinvasion",
+    "ids": [
+      5029
+    ]
+  },
+  {
+    "kind": "plan",
+    "questId": 5551,
+    "actions": [
+      {
+        "kind": "hunt",
+        "map": "shadowfallinvasion",
+        "monster": "Bone Guardian",
+        "item": "Bone Guardian Slain"
+      },
+      {
+        "kind": "hunt",
+        "map": "shadowfallinvasion",
+        "monster": "Bone Guardian",
+        "item": "Soul Fragment Retrievement"
+      }
+    ]
+  },
+  {
+    "kind": "plan",
+    "questId": 5552,
+    "actions": [
+      {
+        "kind": "hunt",
+        "map": "shadowfallinvasion",
+        "monster": "Nethermage",
+        "item": "Nethermage Slain",
+        "quantity": 4
+      },
+      {
+        "kind": "hunt",
+        "map": "shadowfallinvasion",
+        "monster": "Diabolical Scryer",
+        "item": "Diabolical Scryer Slain",
+        "quantity": 4
+      },
+      {
+        "kind": "hunt",
+        "map": "shadowfallinvasion",
+        "monster": "Fallen Knight",
+        "item": "Fallen Knight Slain",
+        "quantity": 4
+      }
+    ]
+  },
+  {
+    "kind": "mapItem",
+    "questId": 5553,
+    "map": "shadowfallinvasion",
+    "ids": [
+      5030
+    ],
+    "quantity": 9
+  },
+  {
+    "kind": "mapItem",
+    "questId": 5554,
+    "map": "shadowfallinvasion",
+    "ids": [
+      5031
+    ]
+  },
+  {
+    "kind": "mapItem",
+    "questId": 5555,
+    "map": "shadowfallinvasion",
+    "ids": [
+      5032
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 5555,
+    "map": "shadowfallinvasion",
+    "monsters": [
+      "Diabolical Scryer"
+    ]
+  },
+  {
+    "kind": "mapItem",
+    "questId": 5556,
+    "map": "shadowfallinvasion",
+    "ids": [
+      5033
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 5557,
+    "map": "shadowfallinvasion",
+    "monsters": [
+      "Lord Balax'el"
+    ]
+  },
+  {
+    "kind": "plan",
+    "questId": 5575,
+    "actions": [
+      {
+        "kind": "hunt",
+        "map": "safiriainvasion",
+        "cell": "r4",
+        "pad": "Left",
+        "monster": "Fallen Knight",
+        "item": "Fallen Knight's Armor",
+        "quantity": 5
+      },
+      {
+        "kind": "hunt",
+        "map": "safiriainvasion",
+        "cell": "r4",
+        "pad": "Left",
+        "monster": "Infernal Knight",
+        "item": "Infernal Knight's Armor",
+        "quantity": 5
+      }
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 5576,
+    "map": "shadowfallinvasion",
+    "monsters": [
+      "Nethermage"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 5577,
+    "map": "shadowfallinvasion",
+    "monsters": [
+      "Diabolical Scryer"
+    ]
+  },
+  {
+    "kind": "plan",
+    "questId": 5578,
+    "actions": [
+      {
+        "kind": "hunt",
+        "map": "DoomPally",
+        "cell": "r3",
+        "pad": "Right",
+        "monster": "*",
+        "item": "Doomwood Invaders Fought",
+        "quantity": 4
+      },
+      {
+        "kind": "hunt",
+        "map": "DarkoviaInvasion",
+        "cell": "Enter",
+        "pad": "Spawn",
+        "monster": "*",
+        "item": "Darkovia Invaders Fought",
+        "quantity": 4
+      },
+      {
+        "kind": "hunt",
+        "map": "shadowfallinvasion",
+        "cell": "r4",
+        "pad": "Left",
+        "monster": "*",
+        "item": "Shadowfall Invaders Fought",
+        "quantity": 4
+      }
+    ]
+  },
+  {
+    "kind": "mapItem",
+    "questId": 5579,
+    "map": "castleinvasion",
+    "ids": [
+      5055
+    ],
+    "quantity": 5
+  },
+  {
+    "kind": "mapItem",
+    "questId": 5579,
+    "map": "castleinvasion",
+    "ids": [
+      5056
+    ]
+  },
+  {
+    "kind": "mapItem",
+    "questId": 5580,
+    "map": "castleinvasion",
+    "ids": [
+      5058
+    ],
+    "quantity": 5
+  },
+  {
+    "kind": "kill",
+    "questId": 5581,
+    "map": "castleinvasion",
+    "monsters": [
+      "Infernal Knight",
+      "Fallen Knight",
+      "Nethermage"
+    ]
+  },
+  {
+    "kind": "plan",
+    "questId": 5582,
+    "actions": [
+      {
+        "kind": "hunt",
+        "map": "castleinvasion",
+        "cell": "r2a",
+        "pad": "Left",
+        "monster": "*"
+      }
+    ]
+  },
+  {
+    "kind": "mapItem",
+    "questId": 5583,
+    "map": "castleinvasion",
+    "ids": [
+      5057
+    ],
+    "quantity": 4
+  },
+  {
+    "kind": "kill",
+    "questId": 5584,
+    "map": "castleinvasion",
+    "monsters": [
+      "Infernal Imp",
+      "Underworld Hound"
+    ]
+  },
+  {
+    "kind": "plan",
+    "questId": 5585,
+    "actions": [
+      {
+        "kind": "hunt",
+        "map": "castleinvasion",
+        "cell": "r6a",
+        "pad": "Left",
+        "monster": "*"
+      }
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 5586,
+    "map": "castleinvasion",
+    "monsters": [
+      "Lord Balax'el"
+    ]
+  },
+  {
+    "kind": "mapItem",
+    "questId": 5791,
+    "map": "therift",
+    "ids": [
+      5228
+    ]
+  },
+  {
+    "kind": "mapItem",
+    "questId": 5803,
+    "map": "charredpath",
+    "ids": [
+      5248
+    ]
+  },
+  {
+    "kind": "mapItem",
+    "questId": 5804,
+    "map": "crashsite",
+    "ids": [
+      5249
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 5804,
+    "map": "crashsite",
+    "monsters": [
+      "Dwakel Warrior"
+    ]
+  },
+  {
+    "kind": "plan",
+    "questId": 5805,
+    "actions": [
+      {
+        "kind": "mapItem",
+        "map": "charredpath",
+        "id": 5256,
+        "quantity": 1
+      },
+      {
+        "kind": "hunt",
+        "map": "charredpath",
+        "cell": "r3",
+        "pad": "Left",
+        "monster": "Noxious Fumes",
+        "item": "Noxious Fumes Eradicated",
+        "quantity": 5
+      },
+      {
+        "kind": "hunt",
+        "map": "charredpath",
+        "cell": "r3",
+        "pad": "Left",
+        "monster": "Toxic Bile",
+        "item": "Toxic Bile Eradicated",
+        "quantity": 5
+      }
+    ]
+  },
+  {
+    "kind": "mapItem",
+    "questId": 5806,
+    "map": "charredpath",
+    "ids": [
+      5250
+    ],
+    "quantity": 6
+  },
+  {
+    "kind": "kill",
+    "questId": 5806,
+    "map": "charredpath",
+    "monsters": [
+      "Ragewing"
+    ]
+  },
+  {
+    "kind": "mapItem",
+    "questId": 5807,
+    "map": "charredpath",
+    "ids": [
+      5251
+    ],
+    "quantity": 3
+  },
+  {
+    "kind": "kill",
+    "questId": 5807,
+    "map": "charredpath",
+    "monsters": [
+      "Toxic Treeant"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 5808,
+    "map": "charredpath",
+    "monsters": [
+      "Infected Hare"
+    ]
+  },
+  {
+    "kind": "mapItem",
+    "questId": 5809,
+    "map": "charredpath",
+    "ids": [
+      5252
+    ],
+    "quantity": 6
+  },
+  {
+    "kind": "kill",
+    "questId": 5809,
+    "map": "charredpath",
+    "monsters": [
+      "Plague Spreader"
+    ]
+  },
+  {
+    "kind": "mapItem",
+    "questId": 5810,
+    "map": "charredpath",
+    "ids": [
+      5255
+    ]
+  },
+  {
+    "kind": "mapItem",
+    "questId": 5811,
+    "map": "therift",
+    "ids": [
+      5253
+    ],
+    "quantity": 4
+  },
+  {
+    "kind": "kill",
+    "questId": 5811,
+    "map": "therift",
+    "monsters": [
+      "Mana Chest"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 5812,
+    "map": "charredpath",
+    "monsters": [
+      "Toxic Wisteria"
+    ]
+  },
+  {
+    "kind": "mapItem",
+    "questId": 5813,
+    "map": "charredpath",
+    "ids": [
+      5254
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 5819,
+    "map": "charredpath",
+    "monsters": [
+      "Noxious Fumes"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 5820,
+    "map": "charredpath",
+    "monsters": [
+      "Plague Spreader"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 5821,
+    "map": "charredpath",
+    "monsters": [
+      "Infected Hare"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 5822,
+    "map": "farm",
+    "monsters": [
+      "Treeant"
+    ]
+  },
+  {
+    "kind": "plan",
+    "questId": 5823,
+    "actions": [
+      {
+        "kind": "hunt",
+        "map": "baconcat",
+        "cell": "r8",
+        "pad": "Left",
+        "monster": "Litter Elemental"
+      }
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 5824,
+    "map": "charredpath",
+    "monsters": [
+      "Zognax"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 5830,
+    "map": "charredpath",
+    "monsters": [
+      "Ravenous Parasite"
+    ]
+  },
+  {
+    "kind": "plan",
+    "questId": 5831,
+    "actions": [
+      {
+        "kind": "hunt",
+        "map": "skytower",
+        "cell": "r3",
+        "pad": "Bottom",
+        "monster": "Sunstone",
+        "item": "Sunstone",
+        "quantity": 3
+      },
+      {
+        "kind": "hunt",
+        "map": "skytower",
+        "cell": "r3",
+        "pad": "Bottom",
+        "monster": "Moonstone",
+        "item": "Moonstone",
+        "quantity": 3
+      },
+      {
+        "kind": "hunt",
+        "map": "skytower",
+        "cell": "r3",
+        "pad": "Bottom",
+        "monster": "Star Sapphire",
+        "item": "Star Sapphire",
+        "quantity": 3
+      }
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 5832,
+    "map": "sewerpink",
+    "monsters": [
+      "Cutie Grumbley"
+    ]
+  },
+  {
+    "kind": "plan",
+    "questId": 5833,
+    "actions": []
+  },
+  {
+    "kind": "plan",
+    "questId": 5834,
+    "actions": [
+      {
+        "kind": "hunt",
+        "map": "therift",
+        "monster": "Mana Chest",
+        "item": "Liquid Mana",
+        "quantity": 4
+      },
+      {
+        "kind": "hunt",
+        "map": "therift",
+        "monster": "Ravenous Parasite",
+        "item": "Parasite \"Spice\"",
+        "quantity": 4
+      }
+    ]
+  },
+  {
+    "kind": "chain",
+    "questId": 5833
+  },
+  {
+    "kind": "mapItem",
+    "questId": 5835,
+    "map": "charredpath",
+    "ids": [
+      5270
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 5836,
+    "map": "charredpath",
+    "monsters": [
+      "Pustulisk"
+    ]
+  },
+  {
+    "kind": "mapItem",
+    "questId": 5837,
+    "map": "underglade",
+    "ids": [
+      5271
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 5838,
+    "map": "underglade",
+    "monsters": [
+      "Tree Nymph",
+      "Forest Spirit"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 5839,
+    "map": "underglade",
+    "monsters": [
+      "Slime Spore"
+    ]
+  },
+  {
+    "kind": "mapItem",
+    "questId": 5840,
+    "map": "underglade",
+    "ids": [
+      5272
+    ],
+    "quantity": 8
+  },
+  {
+    "kind": "kill",
+    "questId": 5840,
+    "map": "underglade",
+    "monsters": [
+      "Forest Spirit"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 5841,
+    "map": "underglade",
+    "monsters": [
+      "Blackened Earth"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 5842,
+    "map": "underglade",
+    "monsters": [
+      "Luminous Fungus"
+    ]
+  },
+  {
+    "kind": "mapItem",
+    "questId": 5843,
+    "map": "underglade",
+    "ids": [
+      5273
+    ],
+    "quantity": 6
+  },
+  {
+    "kind": "kill",
+    "questId": 5843,
+    "map": "underglade",
+    "monsters": [
+      "Forest Spirit"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 5844,
+    "map": "underglade",
+    "monsters": [
+      "Twisted Goblin"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 5845,
+    "map": "underglade",
+    "monsters": [
+      "Gemstone Elemental"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 5846,
+    "map": "underglade",
+    "monsters": [
+      "Lunamoss"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 5847,
+    "map": "extriki",
+    "monsters": [
+      "Extriki"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 5849,
+    "map": "Pilgrimage",
+    "monsters": [
+      "SpiderWing",
+      "Urstrix"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 5850,
+    "map": "Pilgrimage",
+    "monsters": [
+      "Ravenous Parasite"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 5851,
+    "map": "Pilgrimage",
+    "monsters": [
+      "Extrikiti"
+    ]
+  },
+  {
+    "kind": "mapItem",
+    "questId": 5852,
+    "map": "Pilgrimage",
+    "ids": [
+      5289
+    ]
+  },
+  {
+    "kind": "mapItem",
+    "questId": 5852,
+    "map": "Pilgrimage",
+    "ids": [
+      5288
+    ],
+    "quantity": 3
+  },
+  {
+    "kind": "kill",
+    "questId": 5852,
+    "map": "Pilgrimage",
+    "monsters": [
+      "Extrikiti",
+      "Extrikiti"
+    ]
+  },
+  {
+    "kind": "plan",
+    "questId": 5853,
+    "actions": [
+      {
+        "kind": "mapItem",
+        "map": "pilgrimage",
+        "id": 5290,
+        "quantity": 6
+      },
+      {
+        "kind": "mapItem",
+        "map": "pilgrimage",
+        "id": 5291
+      }
+    ]
+  },
+  {
+    "kind": "mapItem",
+    "questId": 5854,
+    "map": "Pilgrimage",
+    "ids": [
+      5292
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 5854,
+    "map": "Pilgrimage",
+    "monsters": [
+      "Ravenous Parasite"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 5855,
+    "map": "Pilgrimage",
+    "monsters": [
+      "Lucky"
+    ]
+  },
+  {
+    "kind": "mapItem",
+    "questId": 6276,
+    "map": "guardiantree",
+    "ids": [
+      5769
+    ],
+    "quantity": 5
+  },
+  {
+    "kind": "kill",
+    "questId": 6276,
+    "map": "guardiantree",
+    "monsters": [
+      "Blossoming Treeant"
+    ]
+  },
+  {
+    "kind": "mapItem",
+    "questId": 6277,
+    "map": "guardiantree",
+    "ids": [
+      5776
+    ],
+    "quantity": 5
+  },
+  {
+    "kind": "mapItem",
+    "questId": 6277,
+    "map": "guardiantree",
+    "ids": [
+      5770
+    ],
+    "quantity": 5
+  },
+  {
+    "kind": "kill",
+    "questId": 6278,
+    "map": "guardiantree",
+    "monsters": [
+      "Corrupted Zard"
+    ]
+  },
+  {
+    "kind": "plan",
+    "questId": 6279,
+    "actions": [
+      {
+        "kind": "hunt",
+        "map": "guardiantree",
+        "cell": "r2a",
+        "pad": "Bottom",
+        "monster": "Seed Spitter",
+        "item": "Perfect Seed"
+      },
+      {
+        "kind": "mapItem",
+        "map": "guardiantree",
+        "id": 5771
+      }
+    ]
+  },
+  {
+    "kind": "mapItem",
+    "questId": 6280,
+    "map": "guardiantree",
+    "ids": [
+      5772
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 6281,
+    "map": "guardiantree",
+    "monsters": [
+      "Blossoming Treeant"
+    ]
+  },
+  {
+    "kind": "mapItem",
+    "questId": 6282,
+    "map": "guardiantree",
+    "ids": [
+      5773
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 6282,
+    "map": "guardiantree",
+    "monsters": [
+      "Pollen Cloud"
+    ]
+  },
+  {
+    "kind": "plan",
+    "questId": 6283,
+    "actions": [
+      {
+        "kind": "hunt",
+        "map": "guardiantree",
+        "cell": "r8",
+        "pad": "Left",
+        "monster": "Seed Spitter",
+        "item": "Life Energy",
+        "quantity": 8
+      }
+    ]
+  },
+  {
+    "kind": "mapItem",
+    "questId": 6284,
+    "map": "guardiantree",
+    "ids": [
+      5774
+    ]
+  },
+  {
+    "kind": "mapItem",
+    "questId": 6285,
+    "map": "guardiantree",
+    "ids": [
+      5775
+    ],
+    "quantity": 2
+  },
+  {
+    "kind": "kill",
+    "questId": 6285,
+    "map": "guardiantree",
+    "monsters": [
+      "Myconid"
+    ]
+  },
+  {
+    "kind": "plan",
+    "questId": 6286,
+    "actions": [
+      {
+        "kind": "hunt",
+        "map": "guardiantree",
+        "cell": "r12",
+        "pad": "Left",
+        "monster": "Terrane"
+      }
+    ]
+  },
+  {
+    "kind": "mapItem",
+    "questId": 5856,
+    "map": "TwistedCavern",
+    "ids": [
+      5293
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 5856,
+    "map": "TwistedCavern",
+    "monsters": [
+      "Extrikiti"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 5857,
+    "map": "TwistedCavern",
+    "monsters": [
+      "Infesting Swarm"
+    ]
+  },
+  {
+    "kind": "plan",
+    "questId": 5858,
+    "actions": [
+      {
+        "kind": "hunt",
+        "map": "TwistedCavern",
+        "monster": "Fungal Lord",
+        "item": "Fungal Lord Slain",
+        "quantity": 6
+      },
+      {
+        "kind": "hunt",
+        "map": "TwistedCavern",
+        "monster": "Seed Stalker",
+        "item": "Seed Stalker Slain",
+        "quantity": 6
+      },
+      {
+        "kind": "hunt",
+        "map": "TwistedCavern",
+        "monster": "Seed Stalker",
+        "item": "Scrap of Brown Cloth"
+      }
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 5859,
+    "map": "TwistedCavern",
+    "monsters": [
+      "Seed Stalker"
+    ]
+  },
+  {
+    "kind": "mapItem",
+    "questId": 5860,
+    "map": "TwistedCavern",
+    "ids": [
+      5294
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 5860,
+    "map": "TwistedCavern",
+    "monsters": [
+      "SpiderWing"
+    ]
+  },
+  {
+    "kind": "mapItem",
+    "questId": 5861,
+    "map": "TwistedCavern",
+    "ids": [
+      5295
+    ],
+    "quantity": 6
+  },
+  {
+    "kind": "plan",
+    "questId": 5862,
+    "actions": [
+      {
+        "kind": "hunt",
+        "map": "TwistedCavern",
+        "monster": "Urstrix",
+        "item": "Urstrix Slain",
+        "quantity": 6
+      },
+      {
+        "kind": "hunt",
+        "map": "TwistedCavern",
+        "monster": "Fungal Lord",
+        "item": "Fungal Lord Slain",
+        "quantity": 4
+      }
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 5863,
+    "map": "TwistedCavern",
+    "monsters": [
+      "Wall of Vines"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 5864,
+    "map": "TwistedCavern",
+    "monsters": [
+      "Lore Golem"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 5866,
+    "map": "BrokenWoods",
+    "monsters": [
+      "Urstrix",
+      "SpiderWing"
+    ]
+  },
+  {
+    "kind": "plan",
+    "questId": 5867,
+    "actions": [
+      {
+        "kind": "hunt",
+        "map": "brightoak",
+        "monster": "Hootbear",
+        "item": "Hootbear Feathers",
+        "quantity": 2
+      },
+      {
+        "kind": "hunt",
+        "map": "BrokenWoods",
+        "monster": "Urstrix",
+        "item": "Urstrix Feathers",
+        "quantity": 2
+      },
+      {
+        "kind": "hunt",
+        "map": "pines",
+        "monster": "LeatherWing",
+        "item": "LeatherWing Claws",
+        "quantity": 2
+      },
+      {
+        "kind": "hunt",
+        "map": "BrokenWoods",
+        "monster": "SpiderWing",
+        "item": "SpiderWing Claws",
+        "quantity": 2
+      }
+    ]
+  },
+  {
+    "kind": "mapItem",
+    "questId": 5868,
+    "map": "BrokenWoods",
+    "ids": [
+      5296
+    ],
+    "quantity": 4
+  },
+  {
+    "kind": "mapItem",
+    "questId": 5868,
+    "map": "BrokenWoods",
+    "ids": [
+      5297
+    ],
+    "quantity": 4
+  },
+  {
+    "kind": "kill",
+    "questId": 5868,
+    "map": "BrokenWoods",
+    "monsters": [
+      "Fungal Lord"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 5869,
+    "map": "BrokenWoods",
+    "monsters": [
+      "Extrikiti"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 5870,
+    "map": "BrokenWoods",
+    "monsters": [
+      "Urstrix",
+      "SpiderWing"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 5871,
+    "map": "charredpath",
+    "monsters": [
+      "Ravenous Parasite",
+      "Plague Spreader"
+    ]
+  },
+  {
+    "kind": "plan",
+    "questId": 5872,
+    "actions": [
+      {
+        "kind": "buy",
+        "map": "embersea",
+        "shopId": 1100,
+        "item": 1749,
+        "quantity": 25
+      },
+      {
+        "kind": "hunt",
+        "map": "Arcangrove",
+        "monster": "Seed Spitter",
+        "item": "Uncorrupted Spitter Seeds",
+        "quantity": 3
+      },
+      {
+        "kind": "hunt",
+        "map": "poisonforest",
+        "monster": "Treeant",
+        "item": "Treeant Berries",
+        "quantity": 4
+      }
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 5873,
+    "map": "brokenwoods",
+    "monsters": [
+      "Hive"
+    ]
+  },
+  {
+    "kind": "plan",
+    "questId": 5874,
+    "actions": [
+      {
+        "kind": "hunt",
+        "map": "Kolyaban",
+        "monster": "Poisonous Darkblood",
+        "item": "Acolyte's Medallion",
+        "quantity": 4
+      }
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 5876,
+    "map": "Kolyaban",
+    "monsters": [
+      "Twisted Aria"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 5877,
+    "map": "Kolyaban",
+    "monsters": [
+      "Kolyaban"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 8048,
+    "map": "forestreach",
+    "monsters": [
+      "Monstrous Imp",
+      "Eldritch Parasite"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 8049,
+    "map": "forestreach",
+    "monsters": [
+      "Chaos Spitter"
+    ]
+  },
+  {
+    "kind": "mapItem",
+    "questId": 8050,
+    "map": "forestreach",
+    "ids": [
+      8362
+    ],
+    "quantity": 5
+  },
+  {
+    "kind": "kill",
+    "questId": 8050,
+    "map": "forestreach",
+    "monsters": [
+      "Chaos Sp-eye"
+    ]
+  },
+  {
+    "kind": "mapItem",
+    "questId": 8051,
+    "map": "forestreach",
+    "ids": [
+      8363
+    ],
+    "quantity": 5
+  },
+  {
+    "kind": "kill",
+    "questId": 8051,
+    "map": "forestreach",
+    "monsters": [
+      "Chaos Spitter"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 8052,
+    "map": "forestreach",
+    "monsters": [
+      "EldritchWing",
+      "Chaos Sp-eye"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 8053,
+    "map": "forestreach",
+    "monsters": [
+      "Eldritch Parasite",
+      "Monstrous Imp"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 8054,
+    "map": "forestreach",
+    "monsters": [
+      "Chaos Spitter",
+      "Chaos Sp-eye"
+    ]
+  },
+  {
+    "kind": "mapItem",
+    "questId": 8055,
+    "map": "forestreach",
+    "ids": [
+      8364
+    ],
+    "quantity": 5
+  },
+  {
+    "kind": "kill",
+    "questId": 8056,
+    "map": "backroom",
+    "monsters": [
+      "Chaos Rat"
+    ]
+  },
+  {
+    "kind": "mapItem",
+    "questId": 8057,
+    "map": "backroom",
+    "ids": [
+      8365
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 8058,
+    "map": "backroom",
+    "monsters": [
+      "Chaos Rat"
+    ]
+  },
+  {
+    "kind": "mapItem",
+    "questId": 8059,
+    "map": "backroom",
+    "ids": [
+      8366
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 8060,
+    "map": "backroom",
+    "monsters": [
+      "Book Wyrm"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 8067,
+    "map": "deepforest",
+    "monsters": [
+      "Creeping Gaze"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 8068,
+    "map": "deepforest",
+    "monsters": [
+      "Eldritch Stalker"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 8069,
+    "map": "deepforest",
+    "monsters": [
+      "Terrarsite"
+    ]
+  },
+  {
+    "kind": "mapItem",
+    "questId": 8070,
+    "map": "deepforest",
+    "ids": [
+      8415
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 8071,
+    "map": "deepforest",
+    "monsters": [
+      "Deep Truffle"
+    ]
+  },
+  {
+    "kind": "mapItem",
+    "questId": 8072,
+    "map": "deepforest",
+    "ids": [
+      8416
+    ],
+    "quantity": 8
+  },
+  {
+    "kind": "kill",
+    "questId": 8073,
+    "map": "deepforest",
+    "monsters": [
+      "Creeping Gaze"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 8074,
+    "map": "deepforest",
+    "monsters": [
+      "Terrarsite"
+    ]
+  },
+  {
+    "kind": "mapItem",
+    "questId": 8075,
+    "map": "deepforest",
+    "ids": [
+      8418
+    ],
+    "quantity": 8
+  },
+  {
+    "kind": "kill",
+    "questId": 8076,
+    "map": "deepforest",
+    "monsters": [
+      "Deep Truffle"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 8077,
+    "map": "deepforest",
+    "monsters": [
+      "Deep Truffle"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 8078,
+    "map": "deepforest",
+    "monsters": [
+      "Cthulhoid"
+    ]
+  },
+  {
+    "kind": "mapItem",
+    "questId": 8079,
+    "map": "deepforest",
+    "ids": [
+      8419
+    ],
+    "quantity": 4
+  },
+  {
+    "kind": "mapItem",
+    "questId": 8079,
+    "map": "deepforest",
+    "ids": [
+      8420
+    ],
+    "quantity": 1
+  },
+  {
+    "kind": "kill",
+    "questId": 8080,
+    "map": "deepforest",
+    "monsters": [
+      "Aberrant Horror"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 8083,
+    "map": "transformation",
+    "monsters": [
+      "Monstrite"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 8084,
+    "map": "transformation",
+    "monsters": [
+      "Chaos Spitter"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 8085,
+    "map": "transformation",
+    "monsters": [
+      "Tentastrike"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 8086,
+    "map": "transformation",
+    "monsters": [
+      "Tentaflame"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 8087,
+    "map": "transformation",
+    "monsters": [
+      "Chaos Spitter"
+    ]
+  },
+  {
+    "kind": "plan",
+    "questId": 8088,
+    "actions": [
+      {
+        "kind": "hunt",
+        "map": "transformation",
+        "monster": "Monstrite",
+        "item": "Mortar Stone"
+      },
+      {
+        "kind": "hunt",
+        "map": "transformation",
+        "monster": "Monstrite",
+        "item": "Pestle Stone"
+      }
+    ]
+  },
+  {
+    "kind": "mapItem",
+    "questId": 8089,
+    "map": "transformation",
+    "ids": [
+      8435
+    ]
+  },
+  {
+    "kind": "mapItem",
+    "questId": 8089,
+    "map": "transformation",
+    "ids": [
+      8436
+    ]
+  },
+  {
+    "kind": "mapItem",
+    "questId": 8089,
+    "map": "transformation",
+    "ids": [
+      8437
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 8090,
+    "map": "transformation",
+    "monsters": [
+      "Deep Tunneler"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 8091,
+    "map": "transformation",
+    "monsters": [
+      "Monstrite"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 8092,
+    "map": "transformation",
+    "monsters": [
+      "Tentastrike",
+      "Deep Tunneler"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 8093,
+    "map": "transformation",
+    "monsters": [
+      "Eldritch Abomination"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 8094,
+    "map": "transformation",
+    "monsters": [
+      "Queen of Monsters"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 8096,
+    "map": "downbelow",
+    "monsters": [
+      "Earthwyrm"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 8097,
+    "map": "downbelow",
+    "monsters": [
+      "Rumbling Rubble"
+    ]
+  },
+  {
+    "kind": "mapItem",
+    "questId": 8098,
+    "map": "downbelow",
+    "ids": [
+      8491
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 8098,
+    "map": "downbelow",
+    "monsters": [
+      "Monstrous Flame"
+    ]
+  },
+  {
+    "kind": "mapItem",
+    "questId": 8099,
+    "map": "downbelow",
+    "ids": [
+      8492
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 8099,
+    "map": "downbelow",
+    "monsters": [
+      "Earthwyrm"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 8100,
+    "map": "downbelow",
+    "monsters": [
+      "Tentarachnid"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 8101,
+    "map": "downbelow",
+    "monsters": [
+      "Creeping Shadow"
+    ]
+  },
+  {
+    "kind": "mapItem",
+    "questId": 8102,
+    "map": "downbelow",
+    "ids": [
+      8493
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 8102,
+    "map": "downbelow",
+    "monsters": [
+      "Creeping Shadow"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 8103,
+    "map": "downbelow",
+    "monsters": [
+      "Guardian Golem"
+    ]
+  },
+  {
+    "kind": "mapItem",
+    "questId": 8104,
+    "map": "downbelow",
+    "ids": [
+      8494
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 8104,
+    "map": "downbelow",
+    "monsters": [
+      "Living Rage"
+    ]
+  },
+  {
+    "kind": "mapItem",
+    "questId": 8105,
+    "map": "downbelow",
+    "ids": [
+      8495
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 8105,
+    "map": "downbelow",
+    "monsters": [
+      "Living Rage"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 8106,
+    "map": "downbelow",
+    "monsters": [
+      "Anka"
+    ]
+  },
+  {
+    "kind": "plan",
+    "questId": 8107,
+    "actions": [
+      {
+        "kind": "hunt",
+        "map": "downbelow",
+        "cell": "Enter",
+        "pad": "Spawn",
+        "monster": "Earthwyrm",
+        "item": "Anka's Followers Slain",
+        "quantity": 1000,
+        "isTemp": false
+      },
+      {
+        "kind": "hunt",
+        "map": "downbelow",
+        "monster": "Anka",
+        "item": "Soul of Vengeance",
+        "quantity": 25,
+        "isTemp": false
+      }
+    ]
+  }
+];
+
+export const definition = defineGeneratedStory(
+  {
+    id: "story.queenof-monsters.0complete-qom",
+    category: "Story",
+    map: "celestialrealm",
+    meta
+  },
+  steps
+);
+
+export const main = definition.run;
+
+export default definition;

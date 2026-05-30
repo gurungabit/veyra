@@ -1,0 +1,211 @@
+import { defineGeneratedStory, type StoryStep } from "./runner.js";
+
+export const meta = {
+  "name": "Artix Wedding Story",
+  "description": "This will finish the Artix Wedding Story.",
+  "tags": [
+    "story",
+    "quest",
+    "artix wedding",
+    "wedding",
+    "artix"
+  ],
+  "version": "0.1.0"
+};
+
+const steps: StoryStep[] = [
+  {
+    "kind": "chain",
+    "questId": 3231
+  },
+  {
+    "kind": "kill",
+    "questId": 3232,
+    "map": "GrimskullAnnex",
+    "monsters": [
+      "Grim Fighter"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 3233,
+    "map": "GrimskullAnnex",
+    "monsters": [
+      "Grim Mage"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 3234,
+    "map": "GrimskullAnnex",
+    "monsters": [
+      "Grim Soldier"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 3235,
+    "map": "BattleWedding",
+    "monsters": [
+      "Silver Knight"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 3236,
+    "map": "BattleWedding",
+    "monsters": [
+      "Dark Knight"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 3237,
+    "map": "BattleWedding",
+    "monsters": [
+      "BrutalCorn"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 3238,
+    "map": "BattleWedding",
+    "monsters": [
+      "EbilCorp Ninja"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 3239,
+    "map": "BattleWedding",
+    "monsters": [
+      "EbilCorp Ninja"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 3240,
+    "map": "BattleWedding",
+    "monsters": [
+      "EbilCorp Shadowscythe"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 3241,
+    "map": "BattleWedding",
+    "monsters": [
+      "Platinum Mech Dragon"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 3242,
+    "map": "BattleWedding",
+    "monsters": [
+      "EbilCorp Ninja"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 3243,
+    "map": "BattleWedding",
+    "monsters": [
+      "Bellhop Human"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 3244,
+    "map": "BattleWedding",
+    "monsters": [
+      "Nightwyvern"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 3245,
+    "map": "BattleWedding",
+    "monsters": [
+      "Nightwyvern"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 3246,
+    "map": "BattleWedding",
+    "monsters": [
+      "Iron Hero"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 3247,
+    "map": "BattleWedding",
+    "monsters": [
+      "Bellhop Human"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 3248,
+    "map": "BattleWedding",
+    "monsters": [
+      "Evil Hotel Manager"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 3249,
+    "map": "BattleWedding",
+    "monsters": [
+      "Flying Eye"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 3250,
+    "map": "BattleWedding",
+    "monsters": [
+      "Jimmy the Eye Heart"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 3251,
+    "map": "BattleWedding",
+    "monsters": [
+      "BrutalCorn"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 3252,
+    "map": "BattleWedding",
+    "monsters": [
+      "Evil Hotel Manager"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 3253,
+    "map": "BattleWedding",
+    "monsters": [
+      "Platinum Mech Dragon"
+    ]
+  }
+];
+
+export const definition = defineGeneratedStory(
+  {
+    id: "story.artix-wedding",
+    category: "Story",
+    map: "GrimskullAnnex",
+    meta
+  },
+  steps
+);
+
+export const main = definition.run;
+
+export default definition;

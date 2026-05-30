@@ -1,0 +1,254 @@
+import { defineGeneratedStory, type StoryStep } from "../runner.js";
+
+export const meta = {
+  "name": "Brimstone",
+  "description": "This will finish the Brimstone quest.",
+  "tags": [
+    "story",
+    "quest",
+    "fire-island",
+    "brimstone",
+    "member",
+    "fireisland",
+    "07brimstone"
+  ],
+  "version": "0.1.0"
+};
+
+const steps: StoryStep[] = [
+  {
+    "kind": "plan",
+    "questId": 4107,
+    "actions": [
+      {
+        "kind": "hunt",
+        "map": "Brimstone",
+        "monster": "Brimstone Marauder",
+        "item": "Pieces of Gossip",
+        "quantity": 3
+      },
+      {
+        "kind": "hunt",
+        "map": "Brimstone",
+        "monster": "Brimstone Looter",
+        "item": "Bits of Hearsay",
+        "quantity": 3
+      },
+      {
+        "kind": "hunt",
+        "map": "Brimstone",
+        "monster": "Brimstone Bandit",
+        "item": "Overheard Conversations",
+        "quantity": 3
+      }
+    ]
+  },
+  {
+    "kind": "plan",
+    "questId": 4108,
+    "actions": [
+      {
+        "kind": "hunt",
+        "map": "Brimstone",
+        "monster": "Brimstone Marauder",
+        "item": "Cryptic Key",
+        "quantity": 4
+      },
+      {
+        "kind": "hunt",
+        "map": "Brimstone",
+        "monster": "Brimstone Looter",
+        "item": "Partial Cipher",
+        "quantity": 2
+      },
+      {
+        "kind": "hunt",
+        "map": "Brimstone",
+        "monster": "Brimstone Bandit",
+        "item": "Reliable(?) Translation",
+        "quantity": 2
+      }
+    ]
+  },
+  {
+    "kind": "plan",
+    "questId": 4109,
+    "actions": [
+      {
+        "kind": "hunt",
+        "map": "Brimstone",
+        "monster": "Brimstone Marauder",
+        "item": "Burned Letter"
+      },
+      {
+        "kind": "hunt",
+        "map": "Brimstone",
+        "monster": "Brimstone Looter",
+        "item": "Smudged Letter"
+      },
+      {
+        "kind": "hunt",
+        "map": "Brimstone",
+        "monster": "Brimstone Bandit",
+        "item": "Barely Legible Letter"
+      }
+    ]
+  },
+  {
+    "kind": "plan",
+    "questId": 4110,
+    "actions": [
+      {
+        "kind": "hunt",
+        "map": "Brimstone",
+        "monster": "Brimstone Marauder",
+        "item": "Marauders slain",
+        "quantity": 3
+      },
+      {
+        "kind": "hunt",
+        "map": "Brimstone",
+        "monster": "Fyreborn Tiger",
+        "item": "Fyreborn Tigers slain",
+        "quantity": 5
+      },
+      {
+        "kind": "hunt",
+        "map": "Brimstone",
+        "monster": "Fyresyn",
+        "item": "Fyresyn slain",
+        "quantity": 5
+      },
+      {
+        "kind": "hunt",
+        "map": "Brimstone",
+        "monster": "Brimstone Looter",
+        "item": "Looters slain",
+        "quantity": 3
+      },
+      {
+        "kind": "hunt",
+        "map": "Brimstone",
+        "monster": "Brimstone Bandit",
+        "item": "Bandits slain",
+        "quantity": 3
+      }
+    ]
+  },
+  {
+    "kind": "plan",
+    "questId": 4111,
+    "actions": [
+      {
+        "kind": "hunt",
+        "map": "Brimstone",
+        "monster": "Brimstone Bandit",
+        "item": "Bags of Mercantile Goods",
+        "quantity": 3
+      },
+      {
+        "kind": "hunt",
+        "map": "Brimstone",
+        "monster": "Brimstone Bandit",
+        "item": "Boxes of Raw Materials",
+        "quantity": 3
+      }
+    ]
+  },
+  {
+    "kind": "plan",
+    "questId": 4112,
+    "actions": [
+      {
+        "kind": "hunt",
+        "map": "Brimstone",
+        "monster": "Brimstone Bandit",
+        "item": "Talmin's Propoganda",
+        "quantity": 6
+      },
+      {
+        "kind": "hunt",
+        "map": "Brimstone",
+        "monster": "Brimstone Bandit",
+        "item": "Talmin's Doctrine",
+        "quantity": 3
+      }
+    ]
+  },
+  {
+    "kind": "plan",
+    "questId": 4113,
+    "actions": [
+      {
+        "kind": "hunt",
+        "map": "Brimstone",
+        "monster": "Fyresyn",
+        "item": "Fyresyns Put Down",
+        "quantity": 5
+      },
+      {
+        "kind": "hunt",
+        "map": "Brimstone",
+        "monster": "Fyreborn Tiger",
+        "item": "Fyreborn Tigers Put Down",
+        "quantity": 6
+      },
+      {
+        "kind": "hunt",
+        "map": "Brimstone",
+        "monster": "Pyradon",
+        "item": "Pyradons Put Down",
+        "quantity": 5
+      }
+    ]
+  },
+  {
+    "kind": "plan",
+    "questId": 4114,
+    "actions": [
+      {
+        "kind": "hunt",
+        "map": "Brimstone",
+        "monster": "Brimstone Bandit",
+        "item": "Bandit's Ear",
+        "quantity": 3
+      },
+      {
+        "kind": "hunt",
+        "map": "Brimstone",
+        "monster": "Brimstone Marauder",
+        "item": "Marauder's Finger",
+        "quantity": 3
+      },
+      {
+        "kind": "hunt",
+        "map": "Brimstone",
+        "monster": "Brimstone Looter",
+        "item": "Looter's Tooth",
+        "quantity": 3
+      }
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 4115,
+    "map": "Brimstone",
+    "monsters": [
+      "Chief Talmin"
+    ]
+  }
+];
+
+export const definition = defineGeneratedStory(
+  {
+    id: "story.fireisland.07brimstone-member",
+    category: "Story",
+    map: "Brimstone",
+    meta
+  },
+  steps
+);
+
+export const main = definition.run;
+
+export default definition;

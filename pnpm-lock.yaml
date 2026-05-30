@@ -121,15 +121,6 @@ importers:
         specifier: workspace:*
         version: link:../core
 
-  packages/scripts:
-    dependencies:
-      '@veyra/core':
-        specifier: workspace:*
-        version: link:../core
-      '@veyra/runtime':
-        specifier: workspace:*
-        version: link:../runtime
-
 packages:
 
   7zip-bin@5.2.0:

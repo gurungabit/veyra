@@ -1,0 +1,168 @@
+import { defineGeneratedStory, type StoryStep } from "./runner.js";
+
+export const meta = {
+  "name": "Concert Story (Member)",
+  "description": "This will finish the Concert quest.",
+  "tags": [
+    "story",
+    "quest",
+    "concert",
+    "member",
+    "mem"
+  ],
+  "version": "0.1.0"
+};
+
+const steps: StoryStep[] = [
+  {
+    "kind": "mapItem",
+    "questId": 1020,
+    "map": "vertigo",
+    "ids": [
+      390
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 1021,
+    "map": "vertigo",
+    "monsters": [
+      "Fear Muncher",
+      "Banished Banshee"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 1022,
+    "map": "vertigo",
+    "monsters": [
+      "Cloaked Fiend",
+      "Banished Banshee"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 1023,
+    "map": "vertigo",
+    "monsters": [
+      "Cloaked Fiend",
+      "Abandoned Dolly"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 1024,
+    "map": "vertigo",
+    "monsters": [
+      "Vertigo"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 1025,
+    "map": "darkness",
+    "monsters": [
+      "Fear Muncher",
+      "Banished Banshee"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 1026,
+    "map": "darkness",
+    "monsters": [
+      "Cloaked Fiend"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 1027,
+    "map": "darkness",
+    "monsters": [
+      "Banished Banshee",
+      "Abandoned Dolly"
+    ]
+  },
+  {
+    "kind": "mapItem",
+    "questId": 1028,
+    "map": "darkness",
+    "ids": [
+      392
+    ],
+    "quantity": 10
+  },
+  {
+    "kind": "kill",
+    "questId": 1029,
+    "map": "darkness",
+    "monsters": [
+      "Nyctox"
+    ]
+  },
+  {
+    "kind": "mapItem",
+    "questId": 1030,
+    "map": "feardeath",
+    "ids": [
+      391
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 1031,
+    "map": "feardeath",
+    "monsters": [
+      "Abandoned Dolly"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 1032,
+    "map": "feardeath",
+    "monsters": [
+      "Fear Muncher"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 1033,
+    "map": "feardeath",
+    "monsters": [
+      "Fear Muncher",
+      "Abandoned Dolly",
+      "Banished Banshee",
+      "Cloaked Fiend"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 1034,
+    "map": "feardeath",
+    "monsters": [
+      "Thanotops"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 1035,
+    "map": "fear",
+    "monsters": [
+      "Fear"
+    ]
+  }
+];
+
+export const definition = defineGeneratedStory(
+  {
+    id: "story.concert-mem",
+    category: "Story",
+    map: "vertigo",
+    meta
+  },
+  steps
+);
+
+export const main = definition.run;
+
+export default definition;

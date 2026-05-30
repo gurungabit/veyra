@@ -1,0 +1,1019 @@
+import { defineGeneratedStory, type StoryStep } from "../runner.js";
+
+export const meta = {
+  "name": "Isle Of Fotia / Core Isle Of Fotia",
+  "description": "Runs the Isle Of Fotia / Core Isle Of Fotia story route.",
+  "tags": [
+    "story",
+    "isle",
+    "of",
+    "fotia",
+    "core"
+  ],
+  "version": "0.1.0"
+};
+
+const steps: StoryStep[] = [
+  {
+    "kind": "kill",
+    "questId": 2942,
+    "map": "fotia",
+    "monsters": [
+      "Fotia Elemental"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 2943,
+    "map": "Fotia",
+    "monsters": [
+      "Fotia Spirit"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 2944,
+    "map": "Fotia",
+    "monsters": [
+      "Fotia Spirit"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 2945,
+    "map": "Fotia",
+    "monsters": [
+      "Femme Cult Worshiper"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 2946,
+    "map": "BattleUnderA",
+    "monsters": [
+      "Skeletal Fire Mage"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 2947,
+    "map": "BattleUnderA",
+    "monsters": [
+      "Skeletal Ice Mage"
+    ]
+  },
+  {
+    "kind": "plan",
+    "questId": 2948,
+    "actions": [
+      {
+        "kind": "hunt",
+        "map": "evilwarnul",
+        "cell": "r2",
+        "pad": "Down",
+        "monster": "*",
+        "item": "Archfiend's Favor",
+        "quantity": 50,
+        "isTemp": false
+      }
+    ]
+  },
+  {
+    "kind": "plan",
+    "questId": 2949,
+    "actions": []
+  },
+  {
+    "kind": "mapItem",
+    "questId": 2949,
+    "map": "Fotia",
+    "ids": [
+      1838
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 2942,
+    "map": "fotia",
+    "monsters": [
+      "Fotia Elemental"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 2943,
+    "map": "Fotia",
+    "monsters": [
+      "Fotia Spirit"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 2944,
+    "map": "Fotia",
+    "monsters": [
+      "Fotia Spirit"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 2945,
+    "map": "Fotia",
+    "monsters": [
+      "Femme Cult Worshiper"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 2946,
+    "map": "BattleUnderA",
+    "monsters": [
+      "Skeletal Fire Mage"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 2947,
+    "map": "BattleUnderA",
+    "monsters": [
+      "Skeletal Ice Mage"
+    ]
+  },
+  {
+    "kind": "plan",
+    "questId": 2948,
+    "actions": [
+      {
+        "kind": "hunt",
+        "map": "evilwarnul",
+        "cell": "r2",
+        "pad": "Down",
+        "monster": "*",
+        "item": "Archfiend's Favor",
+        "quantity": 50,
+        "isTemp": false
+      }
+    ]
+  },
+  {
+    "kind": "plan",
+    "questId": 2949,
+    "actions": []
+  },
+  {
+    "kind": "mapItem",
+    "questId": 2949,
+    "map": "Fotia",
+    "ids": [
+      1838
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 3010,
+    "map": "UnderRealm",
+    "monsters": [
+      "Underworld Soul"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 3011,
+    "map": "UnderRealm",
+    "monsters": [
+      "Grief"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 3012,
+    "map": "UnderRealm",
+    "monsters": [
+      "Anxiety"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 3013,
+    "map": "UnderRealm",
+    "monsters": [
+      "Disease"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 3014,
+    "map": "UnderRealm",
+    "monsters": [
+      "Old Age"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 3015,
+    "map": "UnderRealm",
+    "monsters": [
+      "Fear"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 3016,
+    "map": "UnderRealm",
+    "monsters": [
+      "Hunger"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 3017,
+    "map": "UnderRealm",
+    "monsters": [
+      "Death"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 3018,
+    "map": "UnderRealm",
+    "monsters": [
+      "Agony"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 3019,
+    "map": "UnderRealm",
+    "monsters": [
+      "Sleep"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 2942,
+    "map": "fotia",
+    "monsters": [
+      "Fotia Elemental"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 2943,
+    "map": "Fotia",
+    "monsters": [
+      "Fotia Spirit"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 2944,
+    "map": "Fotia",
+    "monsters": [
+      "Fotia Spirit"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 2945,
+    "map": "Fotia",
+    "monsters": [
+      "Femme Cult Worshiper"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 2946,
+    "map": "BattleUnderA",
+    "monsters": [
+      "Skeletal Fire Mage"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 2947,
+    "map": "BattleUnderA",
+    "monsters": [
+      "Skeletal Ice Mage"
+    ]
+  },
+  {
+    "kind": "plan",
+    "questId": 2948,
+    "actions": [
+      {
+        "kind": "hunt",
+        "map": "evilwarnul",
+        "cell": "r2",
+        "pad": "Down",
+        "monster": "*",
+        "item": "Archfiend's Favor",
+        "quantity": 50,
+        "isTemp": false
+      }
+    ]
+  },
+  {
+    "kind": "plan",
+    "questId": 2949,
+    "actions": []
+  },
+  {
+    "kind": "mapItem",
+    "questId": 2949,
+    "map": "Fotia",
+    "ids": [
+      1838
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 3010,
+    "map": "UnderRealm",
+    "monsters": [
+      "Underworld Soul"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 3011,
+    "map": "UnderRealm",
+    "monsters": [
+      "Grief"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 3012,
+    "map": "UnderRealm",
+    "monsters": [
+      "Anxiety"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 3013,
+    "map": "UnderRealm",
+    "monsters": [
+      "Disease"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 3014,
+    "map": "UnderRealm",
+    "monsters": [
+      "Old Age"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 3015,
+    "map": "UnderRealm",
+    "monsters": [
+      "Fear"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 3016,
+    "map": "UnderRealm",
+    "monsters": [
+      "Hunger"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 3017,
+    "map": "UnderRealm",
+    "monsters": [
+      "Death"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 3018,
+    "map": "UnderRealm",
+    "monsters": [
+      "Agony"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 3019,
+    "map": "UnderRealm",
+    "monsters": [
+      "Sleep"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 3022,
+    "map": "Styx",
+    "monsters": [
+      "Sullen Soul"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 3023,
+    "map": "Styx",
+    "monsters": [
+      "Wrathful Soul"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 3024,
+    "map": "Styx",
+    "monsters": [
+      "Styx Hydra"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 3025,
+    "map": "Styx",
+    "monsters": [
+      "Cerberus"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 2942,
+    "map": "fotia",
+    "monsters": [
+      "Fotia Elemental"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 2943,
+    "map": "Fotia",
+    "monsters": [
+      "Fotia Spirit"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 2944,
+    "map": "Fotia",
+    "monsters": [
+      "Fotia Spirit"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 2945,
+    "map": "Fotia",
+    "monsters": [
+      "Femme Cult Worshiper"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 2946,
+    "map": "BattleUnderA",
+    "monsters": [
+      "Skeletal Fire Mage"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 2947,
+    "map": "BattleUnderA",
+    "monsters": [
+      "Skeletal Ice Mage"
+    ]
+  },
+  {
+    "kind": "plan",
+    "questId": 2948,
+    "actions": [
+      {
+        "kind": "hunt",
+        "map": "evilwarnul",
+        "cell": "r2",
+        "pad": "Down",
+        "monster": "*",
+        "item": "Archfiend's Favor",
+        "quantity": 50,
+        "isTemp": false
+      }
+    ]
+  },
+  {
+    "kind": "plan",
+    "questId": 2949,
+    "actions": []
+  },
+  {
+    "kind": "mapItem",
+    "questId": 2949,
+    "map": "Fotia",
+    "ids": [
+      1838
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 3010,
+    "map": "UnderRealm",
+    "monsters": [
+      "Underworld Soul"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 3011,
+    "map": "UnderRealm",
+    "monsters": [
+      "Grief"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 3012,
+    "map": "UnderRealm",
+    "monsters": [
+      "Anxiety"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 3013,
+    "map": "UnderRealm",
+    "monsters": [
+      "Disease"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 3014,
+    "map": "UnderRealm",
+    "monsters": [
+      "Old Age"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 3015,
+    "map": "UnderRealm",
+    "monsters": [
+      "Fear"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 3016,
+    "map": "UnderRealm",
+    "monsters": [
+      "Hunger"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 3017,
+    "map": "UnderRealm",
+    "monsters": [
+      "Death"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 3018,
+    "map": "UnderRealm",
+    "monsters": [
+      "Agony"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 3019,
+    "map": "UnderRealm",
+    "monsters": [
+      "Sleep"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 3022,
+    "map": "Styx",
+    "monsters": [
+      "Sullen Soul"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 3023,
+    "map": "Styx",
+    "monsters": [
+      "Wrathful Soul"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 3024,
+    "map": "Styx",
+    "monsters": [
+      "Styx Hydra"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 3025,
+    "map": "Styx",
+    "monsters": [
+      "Cerberus"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 3034,
+    "map": "Judgement",
+    "monsters": [
+      "Underworld Imp"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 3035,
+    "map": "Judgement",
+    "monsters": [
+      "Raven"
+    ]
+  },
+  {
+    "kind": "plan",
+    "questId": 3036,
+    "actions": [
+      {
+        "kind": "join",
+        "map": "judgement"
+      },
+      {
+        "kind": "jump",
+        "cell": "r5",
+        "pad": "Left"
+      }
+    ]
+  },
+  {
+    "kind": "mapItem",
+    "questId": 3038,
+    "map": "Judgement",
+    "ids": [
+      1914
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 3039,
+    "map": "Judgement",
+    "monsters": [
+      "Rhadamanthys"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 3040,
+    "map": "Judgement",
+    "monsters": [
+      "Minos"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 3041,
+    "map": "Judgement",
+    "monsters": [
+      "Aeacus"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 3042,
+    "map": "Judgement",
+    "monsters": [
+      "Ultra Aeacus"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 2942,
+    "map": "fotia",
+    "monsters": [
+      "Fotia Elemental"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 2943,
+    "map": "Fotia",
+    "monsters": [
+      "Fotia Spirit"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 2944,
+    "map": "Fotia",
+    "monsters": [
+      "Fotia Spirit"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 2945,
+    "map": "Fotia",
+    "monsters": [
+      "Femme Cult Worshiper"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 2946,
+    "map": "BattleUnderA",
+    "monsters": [
+      "Skeletal Fire Mage"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 2947,
+    "map": "BattleUnderA",
+    "monsters": [
+      "Skeletal Ice Mage"
+    ]
+  },
+  {
+    "kind": "plan",
+    "questId": 2948,
+    "actions": [
+      {
+        "kind": "hunt",
+        "map": "evilwarnul",
+        "cell": "r2",
+        "pad": "Down",
+        "monster": "*",
+        "item": "Archfiend's Favor",
+        "quantity": 50,
+        "isTemp": false
+      }
+    ]
+  },
+  {
+    "kind": "plan",
+    "questId": 2949,
+    "actions": []
+  },
+  {
+    "kind": "mapItem",
+    "questId": 2949,
+    "map": "Fotia",
+    "ids": [
+      1838
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 3010,
+    "map": "UnderRealm",
+    "monsters": [
+      "Underworld Soul"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 3011,
+    "map": "UnderRealm",
+    "monsters": [
+      "Grief"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 3012,
+    "map": "UnderRealm",
+    "monsters": [
+      "Anxiety"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 3013,
+    "map": "UnderRealm",
+    "monsters": [
+      "Disease"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 3014,
+    "map": "UnderRealm",
+    "monsters": [
+      "Old Age"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 3015,
+    "map": "UnderRealm",
+    "monsters": [
+      "Fear"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 3016,
+    "map": "UnderRealm",
+    "monsters": [
+      "Hunger"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 3017,
+    "map": "UnderRealm",
+    "monsters": [
+      "Death"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 3018,
+    "map": "UnderRealm",
+    "monsters": [
+      "Agony"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 3019,
+    "map": "UnderRealm",
+    "monsters": [
+      "Sleep"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 3022,
+    "map": "Styx",
+    "monsters": [
+      "Sullen Soul"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 3023,
+    "map": "Styx",
+    "monsters": [
+      "Wrathful Soul"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 3024,
+    "map": "Styx",
+    "monsters": [
+      "Styx Hydra"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 3025,
+    "map": "Styx",
+    "monsters": [
+      "Cerberus"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 3034,
+    "map": "Judgement",
+    "monsters": [
+      "Underworld Imp"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 3035,
+    "map": "Judgement",
+    "monsters": [
+      "Raven"
+    ]
+  },
+  {
+    "kind": "plan",
+    "questId": 3036,
+    "actions": [
+      {
+        "kind": "join",
+        "map": "judgement"
+      },
+      {
+        "kind": "jump",
+        "cell": "r5",
+        "pad": "Left"
+      }
+    ]
+  },
+  {
+    "kind": "mapItem",
+    "questId": 3038,
+    "map": "Judgement",
+    "ids": [
+      1914
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 3039,
+    "map": "Judgement",
+    "monsters": [
+      "Rhadamanthys"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 3040,
+    "map": "Judgement",
+    "monsters": [
+      "Minos"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 3041,
+    "map": "Judgement",
+    "monsters": [
+      "Aeacus"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 3042,
+    "map": "Judgement",
+    "monsters": [
+      "Ultra Aeacus"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 4249,
+    "map": "DageFortress",
+    "monsters": [
+      "Sullied Master"
+    ]
+  },
+  {
+    "kind": "mapItem",
+    "questId": 4250,
+    "map": "DageFortress",
+    "ids": [
+      3406
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 4250,
+    "map": "DageFortress",
+    "monsters": [
+      "Tainted Seneschal"
+    ]
+  },
+  {
+    "kind": "plan",
+    "questId": 4255,
+    "actions": []
+  },
+  {
+    "kind": "mapItem",
+    "questId": 4256,
+    "map": "DageFortress",
+    "ids": [
+      3404
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 4258,
+    "map": "DageFortress",
+    "monsters": [
+      "Grrrberus"
+    ]
+  }
+];
+
+export const definition = defineGeneratedStory(
+  {
+    id: "story.isle-of-fotia.core-isle-of-fotia",
+    category: "Story",
+    map: "fotia",
+    meta
+  },
+  steps
+);
+
+export const main = definition.run;
+
+export default definition;

@@ -1,0 +1,246 @@
+import { defineGeneratedStory, type StoryStep } from "./runner.js";
+
+export const meta = {
+  "name": "Titan Attack Story",
+  "description": "This will finish the Titan Attack Story.",
+  "tags": [
+    "story",
+    "quest",
+    "titan-attack",
+    "titan",
+    "attack"
+  ],
+  "version": "0.1.0"
+};
+
+const steps: StoryStep[] = [
+  {
+    "kind": "mapItem",
+    "questId": 8759,
+    "map": "titanattack",
+    "ids": [
+      10345,
+      10346,
+      10347,
+      10348,
+      10349
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 8760,
+    "map": "titanattack",
+    "monsters": [
+      "Corrosive Crawler",
+      "Chaorrupted Bandit"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 8761,
+    "map": "titanattack",
+    "monsters": [
+      "Supply Caravan"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 8762,
+    "map": "titanattack",
+    "monsters": [
+      "Chaos Wyvern",
+      "Corrosive Crawler"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 8763,
+    "map": "titanattack",
+    "monsters": [
+      "Chaorrupted Bandit",
+      "AntiTitan Corps"
+    ]
+  },
+  {
+    "kind": "mapItem",
+    "questId": 8764,
+    "map": "titanattack",
+    "ids": [
+      10350
+    ],
+    "quantity": 3
+  },
+  {
+    "kind": "chain",
+    "questId": 8764
+  },
+  {
+    "kind": "kill",
+    "questId": 8765,
+    "map": "titanattack",
+    "monsters": [
+      "AntiTitan Corps"
+    ]
+  },
+  {
+    "kind": "mapItem",
+    "questId": 8766,
+    "map": "titanattack",
+    "ids": [
+      10351
+    ],
+    "quantity": 8
+  },
+  {
+    "kind": "kill",
+    "questId": 8766,
+    "map": "titanattack",
+    "monsters": [
+      "Corrosive Crawler",
+      "Supply Caravan"
+    ]
+  },
+  {
+    "kind": "plan",
+    "questId": 8767,
+    "actions": [
+      {
+        "kind": "hunt",
+        "map": "titanattack",
+        "monster": "Supply Caravan",
+        "item": "Shine Powder",
+        "quantity": 5
+      },
+      {
+        "kind": "hunt",
+        "map": "titanattack",
+        "monster": "Supply Caravan",
+        "item": "Explosive Casing",
+        "quantity": 10
+      },
+      {
+        "kind": "hunt",
+        "map": "titanattack",
+        "monster": "Chaotic Beholder",
+        "item": "Smoke Sac",
+        "quantity": 5
+      }
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 8768,
+    "map": "titanattack",
+    "monsters": [
+      "Corrosive Crawler"
+    ]
+  },
+  {
+    "kind": "plan",
+    "questId": 8769,
+    "actions": [
+      {
+        "kind": "hunt",
+        "map": "titanattack",
+        "monster": "Supply Caravan",
+        "item": "Food Crate",
+        "quantity": 5
+      },
+      {
+        "kind": "hunt",
+        "map": "titanattack",
+        "monster": "Supply Caravan",
+        "item": "Medicine Vial",
+        "quantity": 15
+      },
+      {
+        "kind": "hunt",
+        "map": "titanattack",
+        "monster": "Chaorrupted Bandit",
+        "item": "Bandit Blade",
+        "quantity": 15
+      }
+    ]
+  },
+  {
+    "kind": "mapItem",
+    "questId": 8770,
+    "map": "titanattack",
+    "ids": [
+      10352
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 8771,
+    "map": "titanattack",
+    "monsters": [
+      "Titanic Vindicator"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 8772,
+    "map": "titanattack",
+    "monsters": [
+      "Titanic Paladin",
+      "Titanic DoomKnight"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 8773,
+    "map": "titanstrike",
+    "monsters": [
+      "Titanic Paladin"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 8774,
+    "map": "titanstrike",
+    "monsters": [
+      "Titanic DoomKnight"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 8775,
+    "map": "titanstrike",
+    "monsters": [
+      "Titanic Destroyer"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 8776,
+    "map": "titanstrike",
+    "monsters": [
+      "Titanic Paladin",
+      "Titanic DoomKnight",
+      "Titanic Destroyer"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 8777,
+    "map": "titandrakath",
+    "monsters": [
+      "Titan Drakath"
+    ]
+  }
+];
+
+export const definition = defineGeneratedStory(
+  {
+    id: "story.titan-attack",
+    category: "Story",
+    map: "titanattack",
+    meta
+  },
+  steps
+);
+
+export const main = definition.run;
+
+export default definition;

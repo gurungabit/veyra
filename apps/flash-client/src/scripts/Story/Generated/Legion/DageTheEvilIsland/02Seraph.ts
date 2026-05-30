@@ -1,0 +1,102 @@
+import { defineGeneratedStory, type StoryStep } from "../../runner.js";
+
+export const meta = {
+  "name": "Seraph",
+  "description": "This will finish the Seraph quest.",
+  "tags": [
+    "story",
+    "quest",
+    "legion",
+    "dage-the-evil-island",
+    "seraph",
+    "dage",
+    "the",
+    "evil",
+    "island",
+    "02seraph"
+  ],
+  "version": "0.1.0"
+};
+
+const steps: StoryStep[] = [
+  {
+    "kind": "mapItem",
+    "questId": 4181,
+    "map": "Seraph",
+    "ids": [
+      3280
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 4182,
+    "map": "Seraph",
+    "monsters": [
+      "Seraphic Recruit"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 4183,
+    "map": "Seraph",
+    "monsters": [
+      "Legion Infiltrator",
+      "Seraphic Recruit",
+      "Legion Augur"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 4184,
+    "map": "Seraph",
+    "monsters": [
+      "Legion Augur"
+    ]
+  },
+  {
+    "kind": "plan",
+    "questId": 4185,
+    "actions": [
+      {
+        "kind": "hunt",
+        "map": "Seraph",
+        "cell": "r6",
+        "pad": "Left",
+        "monster": "Legion Infiltrator",
+        "item": "Legion Infiltrators Defeated",
+        "quantity": 10,
+        "isTemp": false
+      }
+    ]
+  },
+  {
+    "kind": "plan",
+    "questId": 4185,
+    "actions": [
+      {
+        "kind": "hunt",
+        "map": "Seraph",
+        "cell": "r6",
+        "pad": "Left",
+        "monster": "Legion Infiltrator",
+        "item": "Legion Infiltrators Defeated",
+        "quantity": 10,
+        "isTemp": false
+      }
+    ]
+  }
+];
+
+export const definition = defineGeneratedStory(
+  {
+    id: "story.legion.dage-the-evil-island.02seraph",
+    category: "Story",
+    map: "Seraph",
+    meta
+  },
+  steps
+);
+
+export const main = definition.run;
+
+export default definition;

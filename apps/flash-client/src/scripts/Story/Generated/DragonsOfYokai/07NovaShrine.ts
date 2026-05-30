@@ -1,0 +1,96 @@
+import { defineGeneratedStory, type StoryStep } from "../runner.js";
+
+export const meta = {
+  "name": "Nova Shrine",
+  "description": "This script will complete \"Nova Shrine\" storyline.",
+  "tags": [
+    "story",
+    "quest",
+    "saga",
+    "dragons",
+    "dragon",
+    "nova",
+    "shrine",
+    "yokairealm",
+    "complete",
+    "all",
+    "of",
+    "yokai",
+    "07nova"
+  ],
+  "version": "0.1.0"
+};
+
+const steps: StoryStep[] = [
+  {
+    "kind": "kill",
+    "questId": 9798,
+    "map": "lavarun",
+    "monsters": [
+      "Firestorm Tiger"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 9799,
+    "map": "dreampalace",
+    "monsters": [
+      "Flaming Harpy"
+    ]
+  },
+  {
+    "kind": "plan",
+    "questId": 9800,
+    "actions": [
+      {
+        "kind": "hunt",
+        "map": "yokaitreasure",
+        "cell": "r3",
+        "pad": "Left",
+        "monster": "Quicksilver",
+        "item": "Silver Scales",
+        "quantity": 15
+      },
+      {
+        "kind": "hunt",
+        "map": "hakuvillage",
+        "cell": "r4",
+        "pad": "Left",
+        "monster": "Nagami",
+        "item": "Nagami Scales",
+        "quantity": 15
+      }
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 9801,
+    "map": "hakuwar",
+    "monsters": [
+      "Zakhvatchik",
+      "Zmey Warrior"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 9802,
+    "map": "novashrine",
+    "monsters": [
+      "Nova Empyrean"
+    ]
+  }
+];
+
+export const definition = defineGeneratedStory(
+  {
+    id: "story.dragons-of-yokai.07nova-shrine",
+    category: "Story",
+    map: "lavarun",
+    meta
+  },
+  steps
+);
+
+export const main = definition.run;
+
+export default definition;

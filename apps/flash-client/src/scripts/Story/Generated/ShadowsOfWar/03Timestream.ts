@@ -1,0 +1,149 @@
+import { defineGeneratedStory, type StoryStep } from "../runner.js";
+
+export const meta = {
+  "name": "Timestream",
+  "description": "This is the third part of the Shadow War story arc. It will take you to the Timestream area and start the quest.",
+  "tags": [
+    "story",
+    "quest",
+    "shadow-war",
+    "timestream",
+    "shadows",
+    "of",
+    "war",
+    "03timestream"
+  ],
+  "version": "0.1.0"
+};
+
+const steps: StoryStep[] = [
+  {
+    "kind": "mapItem",
+    "questId": 6856,
+    "map": "shadowlordkeep",
+    "ids": [
+      6390
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 6856,
+    "map": "shadowlordkeep",
+    "monsters": [
+      "Shadow Gunner"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 6857,
+    "map": "shadowlordkeep",
+    "monsters": [
+      "Shadow Gunner"
+    ]
+  },
+  {
+    "kind": "plan",
+    "questId": 6858,
+    "actions": [
+      {
+        "kind": "hunt",
+        "map": "shadowlordkeep",
+        "monster": "Shadow Mage"
+      }
+    ]
+  },
+  {
+    "kind": "mapItem",
+    "questId": 6859,
+    "map": "shadowlordkeep",
+    "ids": [
+      6391
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 6860,
+    "map": "shadowlordkeep",
+    "monsters": [
+      "Shadow Imp"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 6861,
+    "map": "shadowlordkeep",
+    "monsters": [
+      "Shadow Mage"
+    ]
+  },
+  {
+    "kind": "mapItem",
+    "questId": 6862,
+    "map": "shadowlordkeep",
+    "ids": [
+      6392
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 6862,
+    "map": "shadowlordkeep",
+    "monsters": [
+      "Stray Energy"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 6863,
+    "map": "shadowlordkeep",
+    "monsters": [
+      "Portal Guard"
+    ]
+  },
+  {
+    "kind": "mapItem",
+    "questId": 6864,
+    "map": "timestream",
+    "ids": [
+      6393
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 6865,
+    "map": "timestream",
+    "monsters": [
+      "Spacetime Energy"
+    ]
+  },
+  {
+    "kind": "mapItem",
+    "questId": 6866,
+    "map": "timestream",
+    "ids": [
+      6394
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 6867,
+    "map": "timestream",
+    "monsters": [
+      "ShadowKnight Gar"
+    ]
+  }
+];
+
+export const definition = defineGeneratedStory(
+  {
+    id: "story.shadows-of-war.03timestream",
+    category: "Story",
+    map: "shadowlordkeep",
+    meta
+  },
+  steps
+);
+
+export const main = definition.run;
+
+export default definition;

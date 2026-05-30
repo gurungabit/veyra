@@ -1,0 +1,198 @@
+import { defineGeneratedStory, type StoryStep } from "./runner.js";
+
+export const meta = {
+  "name": "Bright Crystal Story",
+  "description": "This will complete the Bright Crystal story.",
+  "tags": [
+    "story",
+    "quest",
+    "bright-crystal",
+    "bright",
+    "crystal"
+  ],
+  "version": "0.1.0"
+};
+
+const steps: StoryStep[] = [
+  {
+    "kind": "mapItem",
+    "questId": 4953,
+    "map": "dreamforest",
+    "ids": [
+      4326
+    ],
+    "quantity": 5
+  },
+  {
+    "kind": "kill",
+    "questId": 4954,
+    "map": "dreamforest",
+    "monsters": [
+      "Green Rat",
+      "Crow"
+    ]
+  },
+  {
+    "kind": "mapItem",
+    "questId": 4955,
+    "map": "dreamforest",
+    "ids": [
+      4327
+    ],
+    "quantity": 4
+  },
+  {
+    "kind": "mapItem",
+    "questId": 4955,
+    "map": "dreamforest",
+    "ids": [
+      4328
+    ],
+    "quantity": 3
+  },
+  {
+    "kind": "mapItem",
+    "questId": 4955,
+    "map": "dreamforest",
+    "ids": [
+      4329
+    ]
+  },
+  {
+    "kind": "mapItem",
+    "questId": 4956,
+    "map": "northpointe",
+    "ids": [
+      4330
+    ]
+  },
+  {
+    "kind": "mapItem",
+    "questId": 4957,
+    "map": "dreamforest",
+    "ids": [
+      4331
+    ],
+    "quantity": 5
+  },
+  {
+    "kind": "kill",
+    "questId": 4958,
+    "map": "dreamforest",
+    "monsters": [
+      "Crow"
+    ]
+  },
+  {
+    "kind": "mapItem",
+    "questId": 4959,
+    "map": "dreamforest",
+    "ids": [
+      4332
+    ]
+  },
+  {
+    "kind": "mapItem",
+    "questId": 4960,
+    "map": "dreamforest",
+    "ids": [
+      4333
+    ],
+    "quantity": 6
+  },
+  {
+    "kind": "mapItem",
+    "questId": 4960,
+    "map": "dreamforest",
+    "ids": [
+      4334
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 4961,
+    "map": "dreamforest",
+    "monsters": [
+      "Acrobat",
+      "Acrobat"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 4962,
+    "map": "dreamforest",
+    "monsters": [
+      "Acrobat",
+      "Fire Dancer",
+      "Elephant Trainer"
+    ]
+  },
+  {
+    "kind": "plan",
+    "questId": 4963,
+    "actions": [
+      {
+        "kind": "hunt",
+        "map": "dreamforest",
+        "monster": 19,
+        "item": "Prize Ticket",
+        "quantity": 10
+      }
+    ]
+  },
+  {
+    "kind": "plan",
+    "questId": 4964,
+    "actions": [
+      {
+        "kind": "hunt",
+        "map": "dreamforest",
+        "monster": "Living Shadow",
+        "item": "Shadows",
+        "quantity": 4
+      },
+      {
+        "kind": "hunt",
+        "map": "dreamforest",
+        "monster": 9,
+        "item": "Darkness",
+        "quantity": 4
+      }
+    ]
+  },
+  {
+    "kind": "mapItem",
+    "questId": 4965,
+    "map": "dreamforest",
+    "ids": [
+      4335
+    ],
+    "quantity": 10
+  },
+  {
+    "kind": "plan",
+    "questId": 4967,
+    "actions": [
+      {
+        "kind": "hunt",
+        "map": "dreamforest",
+        "monster": 23,
+        "item": "Geist Defeated"
+      }
+    ]
+  }
+];
+
+export const definition = defineGeneratedStory(
+  {
+    id: "story.bright-crystal-story",
+    category: "Story",
+    map: "dreamforest",
+    meta
+  },
+  steps
+);
+
+export const main = definition.run;
+
+export default definition;

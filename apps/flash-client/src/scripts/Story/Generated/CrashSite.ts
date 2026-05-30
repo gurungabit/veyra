@@ -1,0 +1,187 @@
+import { defineGeneratedStory, type StoryStep } from "./runner.js";
+
+export const meta = {
+  "name": "Crash Site story",
+  "description": "This will finish the Crash Site story.",
+  "tags": [
+    "story",
+    "quest",
+    "crash-site",
+    "crash",
+    "site"
+  ],
+  "version": "0.1.0"
+};
+
+const steps: StoryStep[] = [
+  {
+    "kind": "plan",
+    "questId": 4787,
+    "actions": [
+      {
+        "kind": "hunt",
+        "map": "crashsite",
+        "monster": "Dwakel Warrior",
+        "item": "Pneumatic Relay"
+      },
+      {
+        "kind": "hunt",
+        "map": "crashsite",
+        "monster": "Flamethrower Dwakel",
+        "item": "Sonic Transducer"
+      },
+      {
+        "kind": "hunt",
+        "map": "crashsite",
+        "monster": "Dwakel Blaster",
+        "item": "Solenoid Helix"
+      }
+    ]
+  },
+  {
+    "kind": "plan",
+    "questId": 4788,
+    "actions": [
+      {
+        "kind": "hunt",
+        "map": "crashsite",
+        "monster": "Mithril Man",
+        "item": "Cosmic Dongle"
+      }
+    ]
+  },
+  {
+    "kind": "plan",
+    "questId": 4789,
+    "actions": [
+      {
+        "kind": "mapItem",
+        "map": "crashsite",
+        "id": 4192,
+        "quantity": 10
+      }
+    ]
+  },
+  {
+    "kind": "plan",
+    "questId": 4790,
+    "actions": [
+      {
+        "kind": "hunt",
+        "map": "crashruins",
+        "monster": "Spacetime Anomaly",
+        "item": "Anomalies Destroyed",
+        "quantity": 12
+      }
+    ]
+  },
+  {
+    "kind": "plan",
+    "questId": 4791,
+    "actions": [
+      {
+        "kind": "hunt",
+        "map": "crashruins",
+        "monster": "Unlucky Explorer",
+        "item": "Rusty Key",
+        "quantity": 7
+      }
+    ]
+  },
+  {
+    "kind": "plan",
+    "questId": 4792,
+    "actions": [
+      {
+        "kind": "hunt",
+        "map": "crashruins",
+        "monster": "Spacetime Anomaly",
+        "item": "Space-time Energy",
+        "quantity": 10
+      }
+    ]
+  },
+  {
+    "kind": "plan",
+    "questId": 4793,
+    "actions": [
+      {
+        "kind": "mapItem",
+        "map": "crashruins",
+        "id": 4191,
+        "quantity": 5
+      },
+      {
+        "kind": "hunt",
+        "map": "crashruins",
+        "monster": "Unlucky Explorer",
+        "item": "Pyrotechnic Flares",
+        "quantity": 3
+      },
+      {
+        "kind": "hunt",
+        "map": "crashruins",
+        "monster": "Unlucky Explorer",
+        "item": "Matchbook"
+      },
+      {
+        "kind": "hunt",
+        "map": "crashruins",
+        "monster": "Dwakel Soldier",
+        "item": "Metal Shrapnel",
+        "quantity": 10
+      }
+    ]
+  },
+  {
+    "kind": "plan",
+    "questId": 4794,
+    "actions": [
+      {
+        "kind": "hunt",
+        "map": "crashruins",
+        "monster": "Chest",
+        "item": "Useless Junk",
+        "quantity": 12
+      }
+    ]
+  },
+  {
+    "kind": "plan",
+    "questId": 4795,
+    "actions": [
+      {
+        "kind": "mapItem",
+        "map": "crashruins",
+        "id": 4190,
+        "quantity": 6
+      }
+    ]
+  },
+  {
+    "kind": "plan",
+    "questId": 4796,
+    "actions": [
+      {
+        "kind": "hunt",
+        "map": "crashruins",
+        "monster": "Cluckmoo Idol",
+        "item": "Cluckmoo Idol Defeated"
+      }
+    ]
+  }
+];
+
+export const definition = defineGeneratedStory(
+  {
+    id: "story.crash-site",
+    category: "Story",
+    map: "crashsite",
+    meta
+  },
+  steps
+);
+
+export const main = definition.run;
+
+export default definition;

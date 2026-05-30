@@ -1,0 +1,175 @@
+import { defineGeneratedStory, type StoryStep } from "./runner.js";
+
+export const meta = {
+  "name": "Bludrut Story",
+  "description": "This will complete the Bludrut story.",
+  "tags": [
+    "story",
+    "quest",
+    "bludrut"
+  ],
+  "version": "0.1.0"
+};
+
+const steps: StoryStep[] = [
+  {
+    "kind": "kill",
+    "questId": 100,
+    "map": "bludrut",
+    "monsters": [
+      "Rattlebones"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 101,
+    "map": "bludrut",
+    "monsters": [
+      "Rock Elemental"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 102,
+    "map": "bludrut2",
+    "monsters": [
+      "Shadow Creeper"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 103,
+    "map": "bludrut2",
+    "monsters": [
+      "Fire Elemental"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 104,
+    "map": "bludrut3",
+    "monsters": [
+      "Siren"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 105,
+    "map": "bludrut3",
+    "monsters": [
+      "Ice Elemental"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 106,
+    "map": "bludrut4",
+    "monsters": [
+      "Shadow Serpent"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 107,
+    "map": "bludrut4",
+    "monsters": [
+      "Evil Elemental"
+    ]
+  },
+  {
+    "kind": "mapItem",
+    "questId": 1685,
+    "map": "bludrut",
+    "ids": [
+      891
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 1686,
+    "map": "bludrut",
+    "monsters": [
+      "Rattlebones"
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 1687,
+    "map": "bludrut2",
+    "monsters": [
+      "Shadow Creeper"
+    ]
+  },
+  {
+    "kind": "mapItem",
+    "questId": 1688,
+    "map": "bludrut2",
+    "ids": [
+      892
+    ]
+  },
+  {
+    "kind": "plan",
+    "questId": 1689,
+    "actions": [
+      {
+        "kind": "hunt",
+        "map": "bludrut2",
+        "monster": "Shadow Creeper",
+        "item": "Shadow Creeper Tallow",
+        "quantity": 5
+      },
+      {
+        "kind": "hunt",
+        "map": "bludrut",
+        "monster": "Rattlebones",
+        "item": "Rattlebones' Bones",
+        "quantity": 5
+      },
+      {
+        "kind": "hunt",
+        "map": "bludrut",
+        "monster": "Rock Elemental",
+        "item": "Rock Elemental Spark"
+      }
+    ]
+  },
+  {
+    "kind": "mapItem",
+    "questId": 1690,
+    "map": "bludrut3",
+    "ids": [
+      894
+    ]
+  },
+  {
+    "kind": "kill",
+    "questId": 1691,
+    "map": "bludrut3",
+    "monsters": [
+      "IT"
+    ]
+  },
+  {
+    "kind": "mapItem",
+    "questId": 1692,
+    "map": "bludrut2",
+    "ids": [
+      893
+    ]
+  }
+];
+
+export const definition = defineGeneratedStory(
+  {
+    id: "story.bludrut",
+    category: "Story",
+    map: "bludrut",
+    meta
+  },
+  steps
+);
+
+export const main = definition.run;
+
+export default definition;

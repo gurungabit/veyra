@@ -18,7 +18,6 @@
       "@veyra/protocol": ["packages/protocol/src/index.ts"],
       "@veyra/core": ["packages/core/src/index.ts"],
       "@veyra/runtime": ["packages/runtime/src/index.ts"],
-      "@veyra/scripts": ["packages/scripts/src/index.ts"],
       "@veyra/script-tools": ["packages/script-tools/src/index.ts"]
     }
   }
