@@ -58,13 +58,13 @@ public class Shop {
     private static function itemIDOf(item:*):int {
         var id:int = positiveInt(item.ItemID);
         if (id > 0) return id;
+        id = positiveInt(item.ID);
+        if (id > 0) return id;
         id = positiveInt(item.iID);
         if (id > 0) return id;
         id = positiveInt(item.itemId);
         if (id > 0) return id;
-        id = positiveInt(item.id);
-        if (id > 0) return id;
-        return positiveInt(item.ID);
+        return positiveInt(item.id);
     }
 
     private static function shopItemIDOf(item:*):int {

@@ -386,6 +386,20 @@ export class FarmJoeRuntime {
     return classRankFromPoints(itemQuantity(record)) >= rank;
   }
 
+  private async hasDragonslayerGeneral(): Promise<boolean> {
+    return (
+      (await this.contains("Dragonslayer General")) ||
+      (await this.contains(35996)) ||
+      (await this.contains(35963))
+    );
+  }
+
+  private async rankDragonslayerGeneral(): Promise<boolean> {
+    if (await this.contains(35996)) return this.rankClass("Dragonslayer General", 35996);
+    if (await this.contains(35963)) return this.rankClass("Dragonslayer General", 35963);
+    return this.rankClass("Dragonslayer General");
+  }
+
   private async waitForEquippedClass(className: string): Promise<boolean> {
     const deadline = Date.now() + 4500;
     while (!this.signal?.aborted && Date.now() < deadline) {
@@ -1251,8 +1265,8 @@ export class FarmJoeRuntime {
   }
 
   private async dragonslayerGeneral(): Promise<void> {
-    if (await this.hasClassItem("Dragonslayer General", 35996)) {
-      await this.rankClass("Dragonslayer General", 35996);
+    if (await this.hasDragonslayerGeneral()) {
+      await this.rankDragonslayerGeneral();
       return;
     }
     await this.dragonslayer();
@@ -1281,11 +1295,11 @@ export class FarmJoeRuntime {
     await this.killMonster("dragontown", "r4", "Right", "Tempest Dracolich", "Dragon Claw", 100, false);
     await this.ensureInventoryQuantity("Enchanted Scale", 75);
     await this.ensureInventoryQuantity("Dragon Claw", 100);
-    await this.buyItem("dragontown", 1286, "Dragonslayer General", 1, 4644);
-    if (!(await this.hasClassItem("Dragonslayer General", 35996))) {
+    await this.buyItem("dragontown", 1286, 35996, 1);
+    if (!(await this.hasDragonslayerGeneral())) {
       throw new Error("Dragonslayer General was not bought from shop 1286 after materials were prepared.");
     }
-    await this.rankClass("Dragonslayer General", 35996);
+    await this.rankDragonslayerGeneral();
   }
 
   private async burningBlade(): Promise<void> {
@@ -6116,7 +6130,7 @@ export function itemQuantity(item: ItemRecord): number {
 }
 
 export function primaryItemId(item: ItemRecord): number {
-  return toNumber(item.id ?? item.itemId ?? item.ItemID ?? item.iID ?? item.ID);
+  return firstPositiveNumberFrom(toItemRecord(item), ["ItemID", "ID", "iID", "itemId", "id"]);
 }
 
 export function itemCharId(item: ItemRecord): number {
@@ -6124,7 +6138,19 @@ export function itemCharId(item: ItemRecord): number {
 }
 
 export function itemIds(item: ItemRecord): number[] {
-  return [primaryItemId(item), itemCharId(item)].filter((id) => id > 0);
+  return Array.from(
+    new Set(
+      [
+        primaryItemId(item),
+        itemCharId(item),
+        toNumber(item.ItemID),
+        toNumber(item.ID),
+        toNumber(item.iID),
+        toNumber(item.itemId),
+        toNumber(item.id)
+      ].filter((id) => id > 0)
+    )
+  );
 }
 
 export function isClassItem(item: ItemRecord): boolean {
@@ -6264,18 +6290,23 @@ function findShopItem(
 ): Record<string, unknown> | undefined {
   const needle = typeof item === "string" ? item.trim().toLowerCase() : "";
   const idNeedle = typeof item === "number" ? item : Number(item);
-  return shopItemsFrom(shopInfo).find((record) => {
+  const matches = shopItemsFrom(shopInfo).filter((record) => {
     const itemId = shopItemItemId(record);
-    const candidateShopItemId = shopItemShopItemId(record);
-    if (shopItemId > 0 && candidateShopItemId !== shopItemId) return false;
     if (Number.isFinite(idNeedle) && itemId === idNeedle) return true;
     const name = stringFrom(firstFrom(record, ["sName", "Name", "name", "strName"])).trim().toLowerCase();
     return !!needle && name === needle;
   });
+
+  if (shopItemId > 0) {
+    const exact = matches.find((record) => shopItemShopItemId(record) === shopItemId);
+    if (exact) return exact;
+  }
+
+  return matches[0];
 }
 
 function shopItemItemId(record: Record<string, unknown>): number {
-  return firstPositiveNumberFrom(record, ["ItemID", "iID", "itemId", "id", "ID"]);
+  return firstPositiveNumberFrom(record, ["ItemID", "ID", "iID", "itemId", "id"]);
 }
 
 function shopItemShopItemId(record: Record<string, unknown>): number {
