@@ -323,6 +323,18 @@ export class FarmJoeRuntime {
       .reduce((total, record) => total + itemQuantity(record), 0);
   }
 
+  private async itemQuantityOf(item: string | number, includeBank = true): Promise<number> {
+    const items = await this.inventory(includeBank);
+    if (typeof item === "number") {
+      return items
+        .filter((record) => itemIds(record).includes(item))
+        .reduce((total, record) => total + itemQuantity(record), 0);
+    }
+    return items
+      .filter((record) => sameName(itemName(record), item))
+      .reduce((total, record) => total + itemQuantity(record), 0);
+  }
+
   async item(name: string, includeBank = true): Promise<ItemRecord | undefined> {
     const items = await this.inventory(includeBank);
     return items.find((record) => sameName(itemName(record), name));
@@ -438,6 +450,22 @@ export class FarmJoeRuntime {
     return this.waitForInventoryItem(itemId ?? name, 1, 5500, false);
   }
 
+  private async ensureInventoryQuantity(name: string, quantity: number): Promise<void> {
+    let inventoryQuantity = await this.quantity(name, false);
+    if (inventoryQuantity >= quantity) return;
+
+    const totalQuantity = await this.quantity(name, true);
+    if (totalQuantity >= quantity) {
+      await this.ensureInInventory(name);
+      inventoryQuantity = await this.quantity(name, false);
+      if (inventoryQuantity >= quantity) return;
+    }
+
+    throw new Error(
+      `${name} x${quantity} is required in inventory; inventory has ${inventoryQuantity}, total including bank is ${totalQuantity}.`
+    );
+  }
+
   async equipFirst(names: string[]): Promise<string | undefined> {
     for (const name of names) {
       if (await this.contains(name)) {
@@ -477,11 +505,23 @@ export class FarmJoeRuntime {
     }
   }
 
-  async loadShop(shopId: number): Promise<void> {
+  async loadShop(shopId: number): Promise<Record<string, unknown>> {
     await this.throttleServerAction();
     this.log(`Loading shop ${shopId}.`);
     await this.bot.callGameFunction("world.sendLoadShopRequest", shopId).catch(() => undefined);
-    await this.bot.delay(800, this.signal);
+    const deadline = Date.now() + 10000;
+    let lastShop: Record<string, unknown> = {};
+
+    while (!this.signal?.aborted && Date.now() < deadline) {
+      const shop = asRecord(await this.bot.getGameObject<unknown>("world.shopinfo").catch(() => ({})));
+      if (Object.keys(shop).length > 0) lastShop = shop;
+      const loadedId = numberFrom(shop, ["ShopID", "shopId", "iShopID", "id", "ID"]);
+      if (loadedId === shopId && shopItemsFrom(shop).length > 0) return shop;
+      await this.bot.delay(300, this.signal);
+    }
+
+    const loadedId = numberFrom(lastShop, ["ShopID", "shopId", "iShopID", "id", "ID"]);
+    throw new Error(`Timed out loading shop ${shopId}${loadedId > 0 ? `; last loaded shop was ${loadedId}` : ""}.`);
   }
 
   async buyItem(
@@ -493,21 +533,42 @@ export class FarmJoeRuntime {
   ): Promise<void> {
     this.throwIfAborted();
     if (map) await this.join(map);
-    await this.loadShop(shopId);
-    await this.throttleServerAction();
-    if (typeof item === "number") {
-      this.log(`Buying item id ${item} from shop ${shopId}.`);
-      await this.bot
-        .call("buyItemByID", item, shopItemId, quantity)
-        .catch((error) => this.log(`Buy failed for item ${item}: ${describeError(error)}`));
-    } else {
-      this.log(`Buying ${item} from shop ${shopId}.`);
-      await this.bot
-        .call("buyItemByName", item, quantity)
-        .catch((error) => this.log(`Buy failed for ${item}: ${describeError(error)}`));
+    if (quantity <= 1 && (await this.contains(item, 1, false, true))) {
+      this.log(`${displayItem(item)} is already owned; skipping shop ${shopId}.`);
+      return;
     }
-    await this.bot.delay(1100, this.signal);
-    await this.waitForInventoryItem(item, quantity > 0 ? quantity : 1, 4500).catch(() => undefined);
+
+    let lastOwned = await this.itemQuantityOf(item, false);
+    for (let attempt = 1; attempt <= 3; attempt += 1) {
+      const shopInfo = await this.loadShop(shopId);
+      const shopItem = findShopItem(shopInfo, item, shopItemId);
+      if (!shopItem) {
+        const names = shopItemsFrom(shopInfo)
+          .map((record) => itemName(toItemRecord(record)))
+          .filter(Boolean)
+          .slice(0, 8)
+          .join(", ");
+        throw new Error(`Could not find ${displayItem(item)} in shop ${shopId}${names ? `. Found: ${names}` : "."}`);
+      }
+
+      const itemId = numberFrom(shopItem, ["ItemID", "iID", "itemId", "id", "ID"]);
+      const resolvedShopItemId = numberFrom(shopItem, ["ShopItemID", "iShopItemID", "shopItemId", "iSel"]);
+      if (itemId <= 0) throw new Error(`Shop ${shopId} item ${displayItem(item)} has no usable ItemID.`);
+
+      const buyQuantity = quantity > 0 ? quantity : -1;
+      const expectedOwned = Math.max(1, lastOwned + (quantity > 0 ? quantity : 1));
+      const label = itemName(toItemRecord(shopItem)) || displayItem(item);
+      this.log(`Buying ${label} from shop ${shopId}${attempt > 1 ? ` (retry ${attempt})` : ""}.`);
+      await this.throttleServerAction();
+      await this.bot.call("buyItemByID", itemId, resolvedShopItemId > 0 ? resolvedShopItemId : -1, buyQuantity);
+      await this.bot.delay(1300, this.signal);
+
+      const checkItem: string | number = typeof item === "number" ? itemId : item;
+      if (await this.waitForInventoryItem(checkItem, expectedOwned, 5500, false)) return;
+      lastOwned = await this.itemQuantityOf(checkItem, false);
+    }
+
+    throw new Error(`${displayItem(item)} was not added to inventory after buying from shop ${shopId}.`);
   }
 
   async acceptQuest(questId: number): Promise<void> {
@@ -1218,7 +1279,12 @@ export class FarmJoeRuntime {
       alsoAccept: ["Dragon Claw"]
     });
     await this.killMonster("dragontown", "r4", "Right", "Tempest Dracolich", "Dragon Claw", 100, false);
+    await this.ensureInventoryQuantity("Enchanted Scale", 75);
+    await this.ensureInventoryQuantity("Dragon Claw", 100);
     await this.buyItem("dragontown", 1286, 35996, 1, 4644);
+    if (!(await this.contains("Dragonslayer General"))) {
+      throw new Error("Dragonslayer General was not bought from shop 1286 after materials were prepared.");
+    }
     await this.rankClass("Dragonslayer General");
   }
 
@@ -6118,10 +6184,6 @@ function parseMaybeJson<T>(value: unknown): T | undefined {
   }
 }
 
-function describeError(error: unknown): string {
-  return error instanceof Error ? error.message : stringFrom(error);
-}
-
 function friendlyTaskName(name: string, detail?: string): string {
   const base = name
     .replace(/^Core/, "")
@@ -6185,6 +6247,31 @@ function recordsFrom(value: unknown): Record<string, unknown>[] {
       .filter((record) => Object.keys(record).length > 0);
   }
   return [];
+}
+
+function displayItem(item: string | number): string {
+  return typeof item === "number" ? `item id ${item}` : item;
+}
+
+function shopItemsFrom(shopInfo: Record<string, unknown>): Record<string, unknown>[] {
+  return recordsFrom(firstFrom(shopInfo, ["items", "Items", "shopItems", "ShopItems"]));
+}
+
+function findShopItem(
+  shopInfo: Record<string, unknown>,
+  item: string | number,
+  shopItemId = -1
+): Record<string, unknown> | undefined {
+  const needle = typeof item === "string" ? item.trim().toLowerCase() : "";
+  const idNeedle = typeof item === "number" ? item : Number(item);
+  return shopItemsFrom(shopInfo).find((record) => {
+    const itemId = numberFrom(record, ["ItemID", "iID", "itemId", "id", "ID"]);
+    const candidateShopItemId = numberFrom(record, ["ShopItemID", "iShopItemID", "shopItemId", "iSel"]);
+    if (shopItemId > 0 && candidateShopItemId !== shopItemId) return false;
+    if (Number.isFinite(idNeedle) && itemId === idNeedle) return true;
+    const name = stringFrom(firstFrom(record, ["sName", "Name", "name", "strName"])).trim().toLowerCase();
+    return !!needle && name === needle;
+  });
 }
 
 function uniqueDropNames(names: string[]): string[] {

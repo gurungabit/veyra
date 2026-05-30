@@ -11,31 +11,29 @@ public class Shop {
     public static function buyItemByName(name:String, quantity:int = -1):void {
         var item:* = getShopItem(name);
         if (item != null) {
-            if (quantity == -1)
-                Main.instance.game.world.sendBuyItemRequest(item);
-            else {
-                var buyItem:* = {};
-                buyItem.iSel = item;
-                buyItem.iQty = quantity;
-                buyItem.accept = 1;
-                Main.instance.game.world.sendBuyItemRequestWithQuantity(buyItem);
-            }
+            buyShopItem(item, quantity);
         }
     }
 
     public static function buyItemByID(id:int, shopItemID:int, quantity:int = -1):void {
         var item:* = getShopItemByID(id, shopItemID);
         if (item != null) {
-            if (quantity == -1)
-                Main.instance.game.world.sendBuyItemRequest(item);
-            else {
-                var buyItem:* = {};
-                buyItem.iSel = item;
-                buyItem.iQty = quantity;
-                buyItem.accept = 1;
-                Main.instance.game.world.sendBuyItemRequestWithQuantity(buyItem);
-            }
+            buyShopItem(item, quantity);
         }
+    }
+
+    private static function buyShopItem(item:*, quantity:int):void {
+        if (quantity == -1) {
+            Main.instance.game.world.sendBuyItemRequest(item);
+            return;
+        }
+
+        var buyItem:* = item;
+        buyItem.iSel = item;
+        buyItem.iQty = quantity;
+        buyItem.iSel.iQty = quantity;
+        buyItem.accept = 1;
+        Main.instance.game.world.sendBuyItemRequestWithQuantity(buyItem);
     }
 
     public static function getShopItem(name:String):* {
