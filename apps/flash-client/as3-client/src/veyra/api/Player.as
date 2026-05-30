@@ -108,8 +108,7 @@ public class Player {
     }
 
     public static function rejectExcept(whitelist:String, acceptAC:Boolean = false):String {
-        rejectExceptVisibleDrops(whitelist, acceptAC);
-        return handleDrops("reject-except", whitelist, acceptAC);
+        return handleDrops("reject-except", whitelist, acceptAC, rejectExceptVisibleDrops(whitelist, acceptAC));
     }
 
     public static function acceptAllDrops():String {
@@ -121,7 +120,7 @@ public class Player {
     }
 
     public static function rejectAllDrops(acceptAC:Boolean = false):String {
-        return handleDrops("reject-all", "", acceptAC);
+        return handleDrops("reject-all", "", acceptAC, rejectExceptVisibleDrops("", acceptAC));
     }
 
     public static function acceptACDrops():String {
@@ -140,6 +139,7 @@ public class Player {
     private static function rejectExceptVisibleDrops(whitelist:String, acceptAC:Boolean = false):int {
         var pickup:Array = normalizeWhitelist(whitelist);
         var acted:int = 0;
+        var seen:Array = [];
         if (Main.instance == null || Main.instance.game == null) {
             return acted;
         }
@@ -147,22 +147,27 @@ public class Player {
         var game:* = Main.instance.game;
         if (game.cDropsUI) {
             var source:* = game.cDropsUI.mcDraggable ? game.cDropsUI.mcDraggable.menu : game.cDropsUI;
-            acted += rejectExceptSkuaSource(source, pickup, acceptAC);
-            acted += rejectExceptSkuaSource(game.cDropsUI, pickup, acceptAC);
+            acted += rejectExceptDropSource(source, pickup, acceptAC, seen);
+            acted += rejectExceptDropSource(game.cDropsUI, pickup, acceptAC, seen);
         }
 
-        if (game.ui && game.ui.dropStack) {
-            acted += rejectExceptSkuaSource(game.ui.dropStack, pickup, acceptAC);
+        if (game.ui) {
+            acted += rejectExceptDropSource(game.ui.dropStack, pickup, acceptAC, seen);
+            acted += rejectExceptDropSource(game.ui.mcDropStack, pickup, acceptAC, seen);
+            acted += rejectExceptDropSource(game.ui.ModalStack, pickup, acceptAC, seen);
+            acted += rejectExceptDropSource(game.ui.mcPopup, pickup, acceptAC, seen);
         }
 
+        acted += rejectExceptDropSource(game.mcPopup, pickup, acceptAC, seen);
         return acted;
     }
 
-    private static function rejectExceptSkuaSource(source:*, pickup:Array, acceptAC:Boolean):int {
+    private static function rejectExceptDropSource(source:*, pickup:Array, acceptAC:Boolean, seen:Array, depth:int = 0):int {
         var acted:int = 0;
-        if (source == null) {
+        if (source == null || depth > 6 || seen.indexOf(source) >= 0) {
             return acted;
         }
+        seen.push(source);
 
         var count:int = safeChildCount(source);
         for (var i:int = count - 1; i >= 0; i--) {
@@ -171,6 +176,7 @@ public class Player {
                 continue;
             }
 
+            var rejected:Boolean = false;
             var item:* = dropItem(child);
             var label:String = "";
             if (item != null && item.sName != null) {
@@ -192,17 +198,22 @@ public class Player {
                     display: child
                 })) {
                     acted++;
+                    rejected = true;
                 }
+            }
+
+            if (!rejected) {
+                acted += rejectExceptDropSource(child, pickup, acceptAC, seen, depth + 1);
             }
         }
 
         return acted;
     }
 
-    private static function handleDrops(mode:String, whitelist:String = "", acceptAC:Boolean = false):String {
+    private static function handleDrops(mode:String, whitelist:String = "", acceptAC:Boolean = false, initialActed:int = 0):String {
         var targets:Array = scanDropTargets();
         var pickup:Array = normalizeWhitelist(whitelist);
-        var acted:int = 0;
+        var acted:int = initialActed;
 
         for each (var target:* in targets) {
             var shouldAccept:Boolean = false;
