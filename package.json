@@ -8,6 +8,7 @@
     "dev": "pnpm --filter @veyra/flash-client start",
     "app": "pnpm --filter @veyra/flash-client start",
     "flash:bundle": "pnpm --filter @veyra/flash-client bundle:flash",
+    "stories:generate": "pnpm --filter @veyra/flash-client generate:stories",
     "flash:build-swf": "pnpm --filter @veyra/flash-client build:swf",
     "app:pack:mac": "pnpm --filter @veyra/flash-client pack:mac",
     "app:pack:win": "pnpm --filter @veyra/flash-client pack:win",

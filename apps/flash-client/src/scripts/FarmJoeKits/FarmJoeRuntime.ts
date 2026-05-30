@@ -1,6 +1,7 @@
 import type { Bot, PlayerSnapshot } from "../../bot.js";
 import { chaosStoryPlan, type ChaosPlanStep } from "./FarmJoeChaosPlan.js";
-import { allStoriesPlan, type StoryPlanStep } from "./FarmJoeStoryPlan.js";
+import { allStoriesPlan } from "../Story/AllStoriesPlan.js";
+import { runStorySteps } from "../Story/StoryRuntime.js";
 import { runEmberseaRep } from "../Reputation/Embersea.js";
 
 export type PetChoice = "none" | "hotMama" | "akriloth";
@@ -4629,25 +4630,10 @@ export class FarmJoeRuntime {
   }
 
   private async completeAllStories(): Promise<void> {
-    this.log(`Running broad story route (${allStoriesPlan.length} story steps).`);
-    for (const step of allStoriesPlan) await this.runStoryPlanStep(step);
+    await runStorySteps(this, allStoriesPlan, "broad story route");
     await this.complete13LordsOfChaos(true);
     await this.cruxShipStory();
     await this.greatFireWar();
-  }
-
-  private async runStoryPlanStep(step: StoryPlanStep): Promise<void> {
-    switch (step.kind) {
-      case "chain":
-        await this.chainQuest(step.questId);
-        return;
-      case "kill":
-        await this.storyKillQuest(step.questId, step.map, step.monsters);
-        return;
-      case "mapItem":
-        await this.storyMapItemQuest(step.questId, step.map, step.ids, step.quantity ?? 1);
-        return;
-    }
   }
 
   private async necroticSwordOfDoom(): Promise<void> {
@@ -5924,7 +5910,7 @@ export class FarmJoeRuntime {
     return step.questId >= 3812 && step.questId <= 3824;
   }
 
-  private async chainQuest(questId: number, rewardId = -1): Promise<void> {
+  async chainQuest(questId: number, rewardId = -1): Promise<void> {
     if (await this.isStoryQuestComplete(questId)) return;
     await this.acceptQuest(questId);
     await this.completeQuest(questId, rewardId);

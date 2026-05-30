@@ -9,6 +9,7 @@
   "main": "main.cjs",
   "scripts": {
     "bundle:flash": "node scripts/bundle-pepper-flash.cjs",
+    "generate:stories": "node scripts/generate-story-scripts.cjs",
     "build:swf": "node scripts/build-client-swf.cjs",
     "verify:package:mac": "node scripts/verify-package-assets.cjs --platform=darwin",
     "verify:package:win": "node scripts/verify-package-assets.cjs --platform=win32",
