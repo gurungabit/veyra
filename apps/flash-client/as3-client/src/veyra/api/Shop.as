@@ -28,7 +28,7 @@ public class Shop {
             return;
         }
 
-        var buyItem:* = item;
+        var buyItem:* = {};
         buyItem.iSel = item;
         buyItem.iQty = quantity;
         buyItem.iSel.iQty = quantity;
@@ -40,7 +40,7 @@ public class Shop {
         var lowerName:String = name.toLowerCase();
         for each (var item:* in Main.instance.game.world.shopinfo.items) {
             if (item && item.sName.toLowerCase() == lowerName) {
-                return getShopItemByID(item.ItemID, item.ShopItemID);
+                return item;
             }
         }
         return null;
@@ -48,11 +48,38 @@ public class Shop {
 
     public static function getShopItemByID(itemID:int, shopItemID:int):* {
         for each (var item:* in Main.instance.game.world.shopinfo.items) {
-            if (item && item.ItemID == itemID && (shopItemID == -1 || item.ShopItemID == shopItemID)) {
+            if (item && itemIDOf(item) == itemID && (shopItemID == -1 || shopItemIDOf(item) == shopItemID)) {
                 return item;
             }
         }
         return null;
+    }
+
+    private static function itemIDOf(item:*):int {
+        var id:int = positiveInt(item.ItemID);
+        if (id > 0) return id;
+        id = positiveInt(item.iID);
+        if (id > 0) return id;
+        id = positiveInt(item.itemId);
+        if (id > 0) return id;
+        id = positiveInt(item.id);
+        if (id > 0) return id;
+        return positiveInt(item.ID);
+    }
+
+    private static function shopItemIDOf(item:*):int {
+        var id:int = positiveInt(item.ShopItemID);
+        if (id > 0) return id;
+        id = positiveInt(item.iShopItemID);
+        if (id > 0) return id;
+        id = positiveInt(item.shopItemId);
+        if (id > 0) return id;
+        return positiveInt(item.iSel);
+    }
+
+    private static function positiveInt(value:*):int {
+        var id:int = int(value);
+        return id > 0 ? id : 0;
     }
 }
 }

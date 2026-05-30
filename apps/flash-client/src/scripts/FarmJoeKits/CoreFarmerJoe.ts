@@ -265,10 +265,9 @@ export class CoreFarmerJoe {
       !(await this.runtime.anyRank10(["Scarlet Sorceress"]))
     )
       await this.runtime.runTask("ScarletSorceress.GetSSorc");
-    if (
-      !(await this.runtime.contains("Dragonslayer General")) ||
-      !(await this.runtime.anyRank10(["Dragonslayer General"]))
-    )
+    const hasDragonslayerGeneral =
+      (await this.runtime.contains("Dragonslayer General")) || (await this.runtime.contains(35996));
+    if (!hasDragonslayerGeneral || !(await this.runtime.anyRank10(["Dragonslayer General", 35996])))
       await this.runtime.runTask("DragonslayerGeneral.GetDSGeneral");
     await this.runtime.runTask("BurningBlade.GetBurningBlade");
   }

@@ -359,12 +359,12 @@ export class FarmJoeRuntime {
     return false;
   }
 
-  async anyRank10(names: string[]): Promise<boolean> {
+  async anyRank10(classes: Array<string | number>): Promise<boolean> {
     const items = await this.inventory();
-    return names.some((name) =>
+    return classes.some((classRef) =>
       items.some(
         (record) =>
-          sameName(itemName(record), name) &&
+          (typeof classRef === "number" ? itemIds(record).includes(classRef) : sameName(itemName(record), classRef)) &&
           isClassItem(record) &&
           itemQuantity(record) >= RANK_10_CLASS_POINTS
       )
@@ -551,8 +551,8 @@ export class FarmJoeRuntime {
         throw new Error(`Could not find ${displayItem(item)} in shop ${shopId}${names ? `. Found: ${names}` : "."}`);
       }
 
-      const itemId = numberFrom(shopItem, ["ItemID", "iID", "itemId", "id", "ID"]);
-      const resolvedShopItemId = numberFrom(shopItem, ["ShopItemID", "iShopItemID", "shopItemId", "iSel"]);
+      const itemId = shopItemItemId(shopItem);
+      const resolvedShopItemId = shopItemShopItemId(shopItem);
       if (itemId <= 0) throw new Error(`Shop ${shopId} item ${displayItem(item)} has no usable ItemID.`);
 
       const buyQuantity = quantity > 0 ? quantity : -1;
@@ -1251,8 +1251,8 @@ export class FarmJoeRuntime {
   }
 
   private async dragonslayerGeneral(): Promise<void> {
-    if (await this.contains("Dragonslayer General")) {
-      await this.rankClass("Dragonslayer General");
+    if (await this.hasClassItem("Dragonslayer General", 35996)) {
+      await this.rankClass("Dragonslayer General", 35996);
       return;
     }
     await this.dragonslayer();
@@ -1281,11 +1281,11 @@ export class FarmJoeRuntime {
     await this.killMonster("dragontown", "r4", "Right", "Tempest Dracolich", "Dragon Claw", 100, false);
     await this.ensureInventoryQuantity("Enchanted Scale", 75);
     await this.ensureInventoryQuantity("Dragon Claw", 100);
-    await this.buyItem("dragontown", 1286, 35996, 1, 4644);
-    if (!(await this.contains("Dragonslayer General"))) {
+    await this.buyItem("dragontown", 1286, "Dragonslayer General", 1, 4644);
+    if (!(await this.hasClassItem("Dragonslayer General", 35996))) {
       throw new Error("Dragonslayer General was not bought from shop 1286 after materials were prepared.");
     }
-    await this.rankClass("Dragonslayer General");
+    await this.rankClass("Dragonslayer General", 35996);
   }
 
   private async burningBlade(): Promise<void> {
@@ -6265,13 +6265,29 @@ function findShopItem(
   const needle = typeof item === "string" ? item.trim().toLowerCase() : "";
   const idNeedle = typeof item === "number" ? item : Number(item);
   return shopItemsFrom(shopInfo).find((record) => {
-    const itemId = numberFrom(record, ["ItemID", "iID", "itemId", "id", "ID"]);
-    const candidateShopItemId = numberFrom(record, ["ShopItemID", "iShopItemID", "shopItemId", "iSel"]);
+    const itemId = shopItemItemId(record);
+    const candidateShopItemId = shopItemShopItemId(record);
     if (shopItemId > 0 && candidateShopItemId !== shopItemId) return false;
     if (Number.isFinite(idNeedle) && itemId === idNeedle) return true;
     const name = stringFrom(firstFrom(record, ["sName", "Name", "name", "strName"])).trim().toLowerCase();
     return !!needle && name === needle;
   });
+}
+
+function shopItemItemId(record: Record<string, unknown>): number {
+  return firstPositiveNumberFrom(record, ["ItemID", "iID", "itemId", "id", "ID"]);
+}
+
+function shopItemShopItemId(record: Record<string, unknown>): number {
+  return firstPositiveNumberFrom(record, ["ShopItemID", "iShopItemID", "shopItemId", "iSel"]);
+}
+
+function firstPositiveNumberFrom(record: Record<string, unknown>, keys: string[]): number {
+  for (const key of keys) {
+    const value = optionalNumberFrom(record, [key]);
+    if (value && value > 0) return value;
+  }
+  return numberFrom(record, keys);
 }
 
 function uniqueDropNames(names: string[]): string[] {
