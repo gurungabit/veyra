@@ -1,5 +1,7 @@
 import type { FarmJoeRuntime, MonsterTarget, VeyraQuestAction } from "../FarmJoeKits/FarmJoeRuntime.js";
 
+const storyStepDelayMs = 1400;
+
 export type StoryPlanTarget = MonsterTarget;
 
 export type StoryStep =
@@ -22,7 +24,10 @@ export async function runStorySteps(
   label = "story route"
 ): Promise<void> {
   runtime.log(`Running ${label} (${steps.length} story steps).`);
-  for (const step of steps) await runStoryStep(runtime, step);
+  for (const step of steps) {
+    await runStoryStep(runtime, step);
+    await runtime.bot.delay(storyStepDelayMs, runtime.signal);
+  }
 }
 
 export async function runStoryStep(runtime: FarmJoeRuntime, step: StoryStep): Promise<void> {

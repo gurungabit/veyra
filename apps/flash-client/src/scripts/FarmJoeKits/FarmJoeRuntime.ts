@@ -6215,10 +6215,11 @@ export class FarmJoeRuntime {
     const existing = await this.findQuestInTree(questId);
     if (existing) return existing;
     const startedAt = Date.now();
-    while (!this.signal?.aborted && Date.now() - startedAt < 5000) {
+    while (!this.signal?.aborted && Date.now() - startedAt < 8000) {
+      await this.throttleServerAction();
       await this.bot.callGameFunction("world.showQuests", String(questId), "q").catch(() => undefined);
       await this.sendGetQuestPacket(questId).catch(() => undefined);
-      await this.bot.delay(300, this.signal);
+      await this.bot.delay(500, this.signal);
       const quest = await this.findQuestInTree(questId);
       if (quest) return quest;
     }
@@ -6266,6 +6267,7 @@ export class FarmJoeRuntime {
   private async sendGetQuestPacket(questId: number): Promise<void> {
     if (questId <= 0) return;
     const room = (await this.snapshot()).room || 1;
+    await this.throttleServerAction();
     await this.bot.sendPacket(`%xt%zm%getQuest%${room}%${questId}%`);
   }
 
