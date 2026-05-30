@@ -15,7 +15,7 @@ import { main as runFireIslandPyrewatchStory, meta as fireIslandPyrewatchStoryMe
 import { main as runClassXP, meta as classXpMeta } from "./scripts/ClassXP.js";
 import { main as runFarmJoeDoAll, meta as farmJoeDoAllMeta } from "./scripts/FarmJoeKits/FarmerJoeKit0DoAll.js";
 import { main as runHighLevelXP, meta as highLevelXpMeta } from "./scripts/HighLevelXP.js";
-import { generatedStoryDefinitions } from "./scripts/Story/Generated/index.js";
+import { generatedStoryDefinitions } from "./scripts/Story/index.js";
 
 type FlashEmbed = HTMLObjectElement & Record<string, (...args: unknown[]) => unknown>;
 type LogKind = "script" | "debug" | "packet" | "event";
