@@ -1465,7 +1465,7 @@ export class FarmJoeRuntime {
     await this.rankClass("Blaze Binder");
   }
 
-  private async emberseaRep(targetRank = 10): Promise<void> {
+  async emberseaRep(targetRank = 10): Promise<void> {
     const currentRank = await this.factionRank(EMBERSEA_FACTION_ID);
     if (currentRank >= targetRank) {
       this.log(`Embersea reputation is already Rank ${currentRank}; skipping reputation farm.`);

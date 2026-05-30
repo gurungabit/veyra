@@ -8,6 +8,7 @@ import {
   type GameOptionsState
 } from "./gameOptions.js";
 import { normalizeBuilderScript, normalizeBuilderScripts, runBuilderScript, type BuilderScript } from "./builderScripts.js";
+import { main as runEmberseaRep, meta as emberseaRepMeta } from "./scripts/EmberseaRep.js";
 import { main as runClassXP, meta as classXpMeta } from "./scripts/ClassXP.js";
 import { main as runFarmJoeDoAll, meta as farmJoeDoAllMeta } from "./scripts/FarmJoeKits/FarmerJoeKit0DoAll.js";
 import { main as runHighLevelXP, meta as highLevelXpMeta } from "./scripts/HighLevelXP.js";
@@ -80,6 +81,13 @@ const builtInScripts: ScriptDefinition[] = [
     map: "icestormunder",
     meta: classXpMeta,
     run: (bot, options) => runClassXP(bot, withSignal({ targetRank: 10 }, options.signal))
+  },
+  {
+    id: "reputation.embersea",
+    category: "Reputation",
+    map: "fireforge / pyrewatch",
+    meta: emberseaRepMeta,
+    run: (bot, options) => runEmberseaRep(bot, withSignal({ targetRank: 10 }, options.signal))
   },
   {
     id: "farmjoe.do-all",
