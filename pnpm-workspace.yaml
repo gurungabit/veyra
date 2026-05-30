@@ -6,4 +6,7 @@ onlyBuiltDependencies:
   - esbuild
 allowBuilds:
   electron: true
+  electron-winstaller: true
   esbuild: true
+patchedDependencies:
+  electron@8.1.0: patches/electron@8.1.0.patch

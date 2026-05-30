@@ -4,8 +4,8 @@ import type { FarmJoeRuntimeOptions } from "./FarmJoeRuntime.js";
 
 export const meta = {
   name: "FarmerJoeKit0DoAll",
-  description: "Veyra conversion of 0FarmerJoeDoAll.cs. Runs the full FarmerJoe progression kit.",
-  tags: ["farmjoe", "do all", "progression", "converted"],
+  description: "Runs the full Veyra FarmerJoe progression kit.",
+  tags: ["farmjoe", "do all", "progression"],
   version: "0.1.0"
 };
 

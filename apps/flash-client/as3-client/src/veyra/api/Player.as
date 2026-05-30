@@ -1,5 +1,6 @@
 package veyra.api {
 import flash.events.MouseEvent;
+import flash.text.TextField;
 import flash.utils.getQualifiedClassName;
 
 import veyra.Main;
@@ -107,6 +108,7 @@ public class Player {
     }
 
     public static function rejectExcept(whitelist:String, acceptAC:Boolean = false):String {
+        rejectExceptVisibleDrops(whitelist, acceptAC);
         return handleDrops("reject-except", whitelist, acceptAC);
     }
 
@@ -135,19 +137,74 @@ public class Player {
         return JSON.stringify(drops);
     }
 
+    private static function rejectExceptVisibleDrops(whitelist:String, acceptAC:Boolean = false):int {
+        var pickup:Array = normalizeWhitelist(whitelist);
+        var acted:int = 0;
+        if (Main.instance == null || Main.instance.game == null) {
+            return acted;
+        }
+
+        var game:* = Main.instance.game;
+        if (game.cDropsUI) {
+            var source:* = game.cDropsUI.mcDraggable ? game.cDropsUI.mcDraggable.menu : game.cDropsUI;
+            acted += rejectExceptSkuaSource(source, pickup, acceptAC);
+            acted += rejectExceptSkuaSource(game.cDropsUI, pickup, acceptAC);
+        }
+
+        if (game.ui && game.ui.dropStack) {
+            acted += rejectExceptSkuaSource(game.ui.dropStack, pickup, acceptAC);
+        }
+
+        return acted;
+    }
+
+    private static function rejectExceptSkuaSource(source:*, pickup:Array, acceptAC:Boolean):int {
+        var acted:int = 0;
+        if (source == null) {
+            return acted;
+        }
+
+        var count:int = safeChildCount(source);
+        for (var i:int = count - 1; i >= 0; i--) {
+            var child:* = safeChildAt(source, i);
+            if (child == null) {
+                continue;
+            }
+
+            var item:* = dropItem(child);
+            var label:String = "";
+            if (item != null && item.sName != null) {
+                label = cleanDropLabel(item.sName);
+            }
+            if (label.length == 0) {
+                label = dropLabel(child);
+            }
+            if (label.length == 0) {
+                continue;
+            }
+
+            var drop:* = parseDrop(label);
+            var id:int = dropId(item);
+            var whitelisted:Boolean = pickup.indexOf(drop.name) >= 0 || pickup.indexOf(String(id)) >= 0;
+            if (!whitelisted && !(acceptAC && isAcDrop(item))) {
+                if (rejectDropTarget({
+                    noButton: findNestedButton(child, ["btNo", "btnNo", "noBtn", "nbtn", "no", "reject"]),
+                    display: child
+                })) {
+                    acted++;
+                }
+            }
+        }
+
+        return acted;
+    }
+
     private static function handleDrops(mode:String, whitelist:String = "", acceptAC:Boolean = false):String {
         var targets:Array = scanDropTargets();
         var pickup:Array = normalizeWhitelist(whitelist);
         var acted:int = 0;
-        var seen:Array = [];
 
         for each (var target:* in targets) {
-            var key:String = String(target.id) + "|" + String(target.name) + "|" + String(target.displayName);
-            if (seen.indexOf(key) >= 0) {
-                continue;
-            }
-            seen.push(key);
-
             var shouldAccept:Boolean = false;
             var shouldReject:Boolean = false;
 
@@ -181,6 +238,7 @@ public class Player {
 
     private static function scanDropTargets():Array {
         var results:Array = [];
+        var seen:Array = [];
         if (Main.instance == null || Main.instance.game == null) {
             return results;
         }
@@ -188,73 +246,115 @@ public class Player {
         var game:* = Main.instance.game;
         if (game.cDropsUI) {
             var source:* = game.cDropsUI.mcDraggable ? game.cDropsUI.mcDraggable.menu : game.cDropsUI;
-            scanCustomDropSource(source, results);
+            scanDropSource(source, results, seen);
+            scanDropSource(game.cDropsUI, results, seen);
         }
 
-        if (game.ui && game.ui.dropStack) {
-            scanDefaultDropSource(game.ui.dropStack, results);
+        if (game.ui) {
+            scanDropSource(game.ui.dropStack, results, seen);
+            scanDropSource(game.ui.mcDropStack, results, seen);
+            scanDropSource(game.ui.ModalStack, results, seen);
+            scanDropSource(game.ui.mcPopup, results, seen);
         }
 
+        scanDropSource(game.mcPopup, results, seen);
         return results;
     }
 
-    private static function scanCustomDropSource(source:*, results:Array):void {
-        if (source == null) {
+    private static function scanDropSource(source:*, results:Array, seen:Array, depth:int = 0):void {
+        if (source == null || depth > 6) {
             return;
         }
-        var count:int = safeChildCount(source);
-        for (var i:int = count - 1; i >= 0; i--) {
-            var child:* = safeChildAt(source, i);
-            if (!child || !child.itemObj) {
-                continue;
-            }
-            var item:* = child.itemObj;
-            results.push({
-                id: dropId(item),
-                name: trimString(String(item.sName || "").toLowerCase()),
-                displayName: String(item.sName || ""),
-                quantity: int(item.iQty || item.iQtyNow || 1),
-                ac: isAcDrop(item),
-                yesButton: findNestedButton(child, ["btYes", "btnYes", "yesBtn", "ybtn", "yes", "accept"]),
-                noButton: findNestedButton(child, ["btNo", "btnNo", "noBtn", "nbtn", "no", "reject"]),
-                display: child
-            });
-        }
-    }
-
-    private static function scanDefaultDropSource(source:*, results:Array):void {
         var count:int = safeChildCount(source);
         for (var i:int = count - 1; i >= 0; i--) {
             var child:* = safeChildAt(source, i);
             if (child == null) {
                 continue;
             }
-            var type:String = getQualifiedClassName(child);
-            var label:String = dropLabel(child);
-            if (type.indexOf("DFrame2MC") == -1 && label.length == 0 && child.itemObj == null) {
-                continue;
-            }
-
-            var item:* = child.itemObj || child.o || child.objData || {};
-            if (label.length == 0 && item.sName != null) {
-                label = String(item.sName);
-            }
-            if (label.length == 0) {
-                continue;
-            }
-
-            var drop:* = parseDrop(label);
-            results.push({
-                id: dropId(item),
-                name: drop.name,
-                displayName: drop.displayName,
-                quantity: drop.count,
-                ac: isAcDrop(item),
-                yesButton: findNestedButton(child, ["ybtn", "btYes", "btnYes", "yesBtn", "yes", "accept"]),
-                noButton: findNestedButton(child, ["nbtn", "btNo", "btnNo", "noBtn", "no", "reject"]),
-                display: child
-            });
+            addDropTarget(child, results, seen);
+            scanDropSource(child, results, seen, depth + 1);
         }
+    }
+
+    private static function addDropTarget(display:*, results:Array, seen:Array):void {
+        if (display == null || seen.indexOf(display) >= 0) {
+            return;
+        }
+
+        var item:* = dropItem(display);
+        var label:String = "";
+        if (item != null && item.sName != null) {
+            label = cleanDropLabel(item.sName);
+        }
+        if (label.length == 0) {
+            label = dropLabel(display);
+        }
+        if (label.length == 0) {
+            return;
+        }
+
+        var type:String = "";
+        try {
+            type = getQualifiedClassName(display);
+        } catch (typeError:Error) {
+        }
+
+        var hasDropControls:Boolean = hasDirectDropButton(display, ["ybtn", "btYes", "btnYes", "yesBtn", "yes", "accept"]) ||
+            hasDirectDropButton(display, ["nbtn", "btNo", "btnNo", "noBtn", "no", "reject"]);
+        if (item == null && !hasDropControls && type.indexOf("DFrame") == -1 && type.indexOf("Drop") == -1) {
+            return;
+        }
+
+        var drop:* = parseDrop(label);
+        if (drop.name.length == 0) {
+            return;
+        }
+
+        seen.push(display);
+        results.push({
+            id: dropId(item),
+            name: drop.name,
+            displayName: drop.displayName,
+            quantity: dropQuantity(item, drop.count),
+            ac: isAcDrop(item),
+            yesButton: findNestedButton(display, ["ybtn", "btYes", "btnYes", "yesBtn", "yes", "accept"]),
+            noButton: findNestedButton(display, ["nbtn", "btNo", "btnNo", "noBtn", "no", "reject"]),
+            display: display
+        });
+    }
+
+    private static function dropItem(source:*):* {
+        if (source == null) {
+            return null;
+        }
+        try {
+            if (source.itemObj != null) return source.itemObj;
+        } catch (itemError:Error) {
+        }
+        try {
+            if (source.o != null) return source.o;
+        } catch (oError:Error) {
+        }
+        try {
+            if (source.objData != null) return source.objData;
+        } catch (objDataError:Error) {
+        }
+        return null;
+    }
+
+    private static function dropQuantity(item:*, fallback:int):int {
+        if (item == null) {
+            return fallback;
+        }
+        try {
+            if (item.iQty != null) return int(item.iQty);
+        } catch (qtyError:Error) {
+        }
+        try {
+            if (item.iQtyNow != null) return int(item.iQtyNow);
+        } catch (qtyNowError:Error) {
+        }
+        return fallback;
     }
 
     private static function serializableDrop(target:*):* {
@@ -284,11 +384,11 @@ public class Player {
             button.dispatchEvent(new MouseEvent(MouseEvent.MOUSE_UP, true, false));
             button.dispatchEvent(new MouseEvent(MouseEvent.CLICK, true, false));
             return true;
-        } catch (firstError:Error) {
+        } catch (firstError:*) {
             try {
                 button.dispatchEvent(new MouseEvent(MouseEvent.CLICK));
                 return true;
-            } catch (secondError:Error) {
+            } catch (secondError:*) {
             }
         }
         return false;
@@ -308,6 +408,37 @@ public class Player {
         return false;
     }
 
+    private static function hasDirectDropButton(source:*, names:Array):Boolean {
+        if (source == null) {
+            return false;
+        }
+
+        for each (var name:String in names) {
+            try {
+                if (source[name] != null) {
+                    return true;
+                }
+            } catch (directError:Error) {
+            }
+        }
+
+        var containers:Array = ["cnt", "btns", "dual", "single", "buttons"];
+        for each (var containerName:String in containers) {
+            try {
+                if (source[containerName] != null && source[containerName] !== source) {
+                    for each (name in names) {
+                        if (source[containerName][name] != null) {
+                            return true;
+                        }
+                    }
+                }
+            } catch (containerError:Error) {
+            }
+        }
+
+        return false;
+    }
+
     private static function findNestedButton(source:*, names:Array, depth:int = 0):* {
         if (source == null || depth > 4) {
             return null;
@@ -319,6 +450,19 @@ public class Player {
                     return source[name];
                 }
             } catch (directError:Error) {
+            }
+        }
+
+        var containers:Array = ["cnt", "btns", "dual", "single", "buttons", "mc", "hit"];
+        for each (var containerName:String in containers) {
+            try {
+                if (source[containerName] != null && source[containerName] !== source) {
+                    var nestedButton:* = findNestedButton(source[containerName], names, depth + 1);
+                    if (nestedButton != null) {
+                        return nestedButton;
+                    }
+                }
+            } catch (containerError:Error) {
             }
         }
 
@@ -347,25 +491,99 @@ public class Player {
         if (source == null) {
             return "";
         }
+        var label:String = "";
         try {
             if (source.cnt && source.cnt.strName && source.cnt.strName.text != null) {
-                return trimString(String(source.cnt.strName.text));
+                label = cleanDropLabel(source.cnt.strName.text);
+                if (label.length > 0) return label;
             }
         } catch (cntError:Error) {
         }
         try {
             if (source.strName && source.strName.text != null) {
-                return trimString(String(source.strName.text));
+                label = cleanDropLabel(source.strName.text);
+                if (label.length > 0) return label;
             }
         } catch (nameError:Error) {
         }
         try {
             if (source.txtName && source.txtName.text != null) {
-                return trimString(String(source.txtName.text));
+                label = cleanDropLabel(source.txtName.text);
+                if (label.length > 0) return label;
             }
         } catch (txtError:Error) {
         }
+        return recursiveDropLabel(source);
+    }
+
+    private static function recursiveDropLabel(source:*, depth:int = 0):String {
+        if (source == null || depth > 5) {
+            return "";
+        }
+
+        var direct:String = "";
+        try {
+            if (source is TextField) {
+                direct = cleanDropLabel(TextField(source).text);
+                if (direct.length > 0) {
+                    return direct;
+                }
+            }
+        } catch (textFieldError:Error) {
+        }
+        try {
+            if (source.text != null) {
+                direct = cleanDropLabel(source.text);
+                if (direct.length > 0) {
+                    return direct;
+                }
+            }
+        } catch (textError:Error) {
+        }
+
+        var preferred:Array = ["cnt", "mc", "item", "card", "detail", "info", "holder"];
+        for each (var name:String in preferred) {
+            try {
+                if (source[name] != null && source[name] !== source) {
+                    var nestedLabel:String = recursiveDropLabel(source[name], depth + 1);
+                    if (nestedLabel.length > 0) {
+                        return nestedLabel;
+                    }
+                }
+            } catch (containerError:Error) {
+            }
+        }
+
+        var count:int = safeChildCount(source);
+        for (var i:int = 0; i < count; i++) {
+            var childLabel:String = recursiveDropLabel(safeChildAt(source, i), depth + 1);
+            if (childLabel.length > 0) {
+                return childLabel;
+            }
+        }
+
         return "";
+    }
+
+    private static function cleanDropLabel(value:*):String {
+        var text:String = trimString(String(value == null ? "" : value));
+        if (text.length == 0 || isIgnoredDropText(text)) {
+            return "";
+        }
+        return text;
+    }
+
+    private static function isIgnoredDropText(value:String):Boolean {
+        var text:String = trimString(value.toLowerCase());
+        if (text.length == 0) return true;
+        if (text == "yes" || text == "no") return true;
+        if (text == "resource" || text == "quest item" || text == "class" || text == "helm") return true;
+        if (text == "weapon" || text == "armor" || text == "cape" || text == "pet" || text == "misc") return true;
+        if (text.indexOf("keep this item") >= 0) return true;
+        if (text.indexOf("quest complete") >= 0) return true;
+        if (text.indexOf("rewards") >= 0) return true;
+        if (text.indexOf("current quests") >= 0) return true;
+        return false;
     }
 
     private static function safeChildCount(source:*):int {
@@ -400,7 +618,11 @@ public class Player {
         if (item == null) {
             return false;
         }
-        return item.bCoins == true || item.Coins == true || item.bAC == true || item.sType == "AC";
+        return isTruthy(item.bCoins) || isTruthy(item.Coins) || isTruthy(item.bAC) || String(item.sType).toLowerCase() == "ac";
+    }
+
+    private static function isTruthy(value:*):Boolean {
+        return value == true || value == 1 || String(value).toLowerCase() == "true" || String(value) == "1";
     }
 
     private static function normalizeWhitelist(whitelist:String):Array {

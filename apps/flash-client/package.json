@@ -2,14 +2,74 @@
   "name": "@veyra/flash-client",
   "version": "0.1.0",
   "private": true,
+  "description": "Veyra desktop Flash client",
+  "author": "Veyra",
+  "license": "UNLICENSED",
   "type": "commonjs",
   "main": "main.cjs",
   "scripts": {
+    "bundle:flash": "node scripts/bundle-pepper-flash.cjs",
+    "build:swf": "node scripts/build-client-swf.cjs",
+    "verify:package:mac": "node scripts/verify-package-assets.cjs --platform=darwin",
+    "verify:package:win": "node scripts/verify-package-assets.cjs --platform=win32",
+    "verify:package:all": "node scripts/verify-package-assets.cjs --platform=all",
+    "prepare:package:mac": "pnpm build && pnpm verify:package:mac",
+    "prepare:package:win": "pnpm build && pnpm verify:package:win",
+    "prepare:package:all": "pnpm build && pnpm verify:package:all",
+    "pack:mac": "pnpm prepare:package:mac && electron-builder --mac dir --x64 --publish never",
+    "pack:win": "pnpm prepare:package:win && electron-builder --win dir --x64 --publish never",
+    "dist:mac": "pnpm prepare:package:mac && electron-builder --mac dmg zip --x64 --publish never",
+    "dist:win": "pnpm prepare:package:win && electron-builder --win nsis zip --x64 --publish never",
+    "dist:all": "pnpm prepare:package:all && electron-builder --mac dmg zip --win nsis zip --x64 --publish never",
     "build": "tsc -p tsconfig.json",
+    "lint": "eslint src --ext .ts",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "start": "node scripts/fix-electron-path.cjs && pnpm build && electron ."
   },
+  "build": {
+    "appId": "app.veyra.client",
+    "productName": "Veyra",
+    "asar": false,
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "main.cjs",
+      "preload.cjs",
+      "package.json",
+      "client.swf",
+      "certs/**/*",
+      "src/index.html",
+      "src/tool.html",
+      "src/styles.css",
+      "dist/**/*",
+      "vendor/pepper-flash/**/*"
+    ],
+    "mac": {
+      "category": "public.app-category.games",
+      "target": ["dmg", "zip"]
+    },
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": ["x64"]
+        },
+        {
+          "target": "zip",
+          "arch": ["x64"]
+        }
+      ]
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true
+    }
+  },
   "devDependencies": {
-    "electron": "8.1.0"
+    "electron": "8.1.0",
+    "electron-builder": "^26.8.1"
   }
 }

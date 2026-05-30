@@ -20,6 +20,7 @@ export interface Bot {
   gameOptions(): Promise<GameOptionsState>;
   waitForLogin(signal?: AbortSignal): Promise<PlayerSnapshot>;
   snapshot(): Promise<PlayerSnapshot>;
+  respawn(signal?: AbortSignal): Promise<PlayerSnapshot>;
   cells(): Promise<string[]>;
   pads(): Promise<string[]>;
   waitForMap(map: string, cell?: string, pad?: string, signal?: AbortSignal): Promise<PlayerSnapshot>;
@@ -41,7 +42,7 @@ export class BrowserFlashBot implements Bot {
   constructor(
     private readonly flash: () => FlashObject,
     private readonly logger: (message: string) => void,
-    private readonly readOptions: () => Promise<GameOptionsState> = async () => createDefaultGameOptionsState()
+    private readonly readOptions: () => Promise<GameOptionsState> = () => Promise.resolve(createDefaultGameOptionsState())
   ) {}
 
   log(message: string): void {
@@ -82,14 +83,14 @@ export class BrowserFlashBot implements Bot {
       if (snapshot && typeof snapshot === "object") {
         return {
           loggedIn: toBoolean(snapshot.loggedIn),
-          username: String(snapshot.username ?? ""),
+          username: stringFrom(snapshot.username),
           level: toNumber(snapshot.level),
-          map: String(snapshot.map ?? ""),
-          cell: String(snapshot.cell ?? ""),
-          pad: String(snapshot.pad ?? ""),
+          map: stringFrom(snapshot.map),
+          cell: stringFrom(snapshot.cell),
+          pad: stringFrom(snapshot.pad),
           room: toNumber(snapshot.room),
           alive: toBoolean(snapshot.alive),
-          currentClassName: String(snapshot.currentClassName || "Equipped class"),
+          currentClassName: stringFrom(snapshot.currentClassName, "Equipped class"),
           currentClassPoints: toNumber(snapshot.currentClassPoints),
           currentClassRank: toNumber(snapshot.currentClassRank)
         };
@@ -126,6 +127,34 @@ export class BrowserFlashBot implements Bot {
     };
   }
 
+  async respawn(signal?: AbortSignal): Promise<PlayerSnapshot> {
+    let snapshot = await this.snapshot();
+    if (!snapshot.loggedIn) snapshot = await this.waitForLogin(signal);
+    if (snapshot.alive) return snapshot;
+
+    this.log("Player is dead; requesting respawn.");
+    let nextAttemptAt = 0;
+    const deadline = Date.now() + 30000;
+
+    while (Date.now() < deadline) {
+      if (signal?.aborted) throw signal.reason instanceof Error ? signal.reason : new Error("Cancelled.");
+      snapshot = await this.snapshot();
+      if (!snapshot.loggedIn) snapshot = await this.waitForLogin(signal);
+      if (snapshot.alive) {
+        this.log("Respawned.");
+        return snapshot;
+      }
+
+      if (Date.now() >= nextAttemptAt) {
+        await this.requestRespawn(snapshot.room).catch((error) => this.log(`Respawn request failed: ${describeUnknownError(error)}`));
+        nextAttemptAt = Date.now() + 3000;
+      }
+      await this.delay(750, signal);
+    }
+
+    throw new Error("Timed out waiting for player respawn.");
+  }
+
   async cells(): Promise<string[]> {
     return toStringArray(await this.call<unknown>("getCells").catch(() => []));
   }
@@ -157,7 +186,8 @@ export class BrowserFlashBot implements Bot {
   }
 
   async join(map: string, cell?: string, pad?: string): Promise<void> {
-    const current = await this.snapshot().catch(() => undefined);
+    let current = await this.snapshot().catch(() => undefined);
+    if (current && !current.alive) current = await this.respawn();
     const targetCell = (cell || "").trim();
     const targetPad = (pad || "").trim();
     const options = await this.readOptions().catch(() => createDefaultGameOptionsState());
@@ -177,14 +207,21 @@ export class BrowserFlashBot implements Bot {
       return;
     }
 
+    await this.leaveCombatCell(current);
+
     try {
       await this.joinBaseMap(targetMap);
-    } catch (error) {
-      if (!hasPrivateRoomSuffix(targetMap)) throw error;
-      publicOnlyMaps.add(baseTargetMap);
-      this.log(`Private room join failed for ${targetMap}; retrying ${baseTargetMap}.`);
-      await this.joinBaseMap(baseTargetMap);
-      targetMap = baseTargetMap;
+    } catch {
+      if (!hasPrivateRoomSuffix(targetMap)) {
+        await this.leaveCombatCell(await this.snapshot().catch(() => current), true);
+        await this.joinBaseMap(targetMap);
+      } else {
+        publicOnlyMaps.add(baseTargetMap);
+        this.log(`Private room join failed for ${targetMap}; retrying ${baseTargetMap}.`);
+        await this.leaveCombatCell(await this.snapshot().catch(() => current), true);
+        await this.joinBaseMap(baseTargetMap);
+        targetMap = baseTargetMap;
+      }
     }
     await this.delay(650);
 
@@ -200,6 +237,28 @@ export class BrowserFlashBot implements Bot {
     this.log(`Joining ${targetMap}.`);
     await this.call("joinMap", targetMap, "Enter", "Spawn");
     await this.waitForMap(targetMap, undefined, undefined);
+  }
+
+  private async leaveCombatCell(snapshot?: PlayerSnapshot, force = false): Promise<void> {
+    if (!snapshot?.loggedIn || !snapshot.alive) return;
+
+    const currentCell = (snapshot.cell || "").trim();
+    const normalizedCell = currentCell.toLowerCase();
+    if (!currentCell || normalizedCell === "blank" || (!force && normalizedCell === "enter")) return;
+
+    this.log(`Leaving ${currentCell || "current"} cell before map join.`);
+    await this.call("untargetSelf").catch(() => undefined);
+    await this.call("jumpCorrectRoom", "Blank", "Spawn", false, true).catch(() => undefined);
+    await this.callGameFunction("world.moveToCell", "Blank", "Spawn", true).catch(() => undefined);
+    await this.delay(300);
+  }
+
+  private async requestRespawn(room: number): Promise<void> {
+    const safeRoom = Number.isFinite(room) && room > 0 ? Math.floor(room) : 1;
+    await this.callGameFunction("world.tryRespawn").catch(() => undefined);
+    await this.callGameFunction("world.respawn").catch(() => undefined);
+    await this.callGameFunction("world.myAvatar.respawn").catch(() => undefined);
+    await this.sendPacket(`%xt%zm%resPlayerTimed%${safeRoom}%`).catch(() => undefined);
   }
 
   async sendPacket(packet: string): Promise<void> {
@@ -265,14 +324,14 @@ export class BrowserFlashBot implements Bot {
     return args.length > 0 ? this.call<T>("callGameFunction", path, ...args) : this.call<T>("callGameFunction0", path);
   }
 
-  async call<T>(name: string, ...args: unknown[]): Promise<T> {
+  call<T>(name: string, ...args: unknown[]): Promise<T> {
     const flashObject = this.flash();
     const fn = flashObject[name];
-    if (typeof fn !== "function") throw new Error(`Flash callback is unavailable: ${name}`);
+    if (typeof fn !== "function") return Promise.reject(new Error(`Flash callback is unavailable: ${name}`));
     try {
-      return fn.apply(flashObject, args) as T;
+      return Promise.resolve(fn.apply(flashObject, args) as T);
     } catch (error) {
-      throw new Error(`Flash callback ${name} failed: ${describeUnknownError(error)}`);
+      return Promise.reject(new Error(`Flash callback ${name} failed: ${describeUnknownError(error)}`));
     }
   }
 }
@@ -296,7 +355,7 @@ function toNumber(value: unknown): number {
 function toStringArray(value: unknown): string[] {
   const parsed = parseMaybeJson<unknown>(value);
   if (!Array.isArray(parsed)) return [];
-  return parsed.map((item) => String(item)).filter(Boolean);
+  return parsed.map((item) => stringFrom(item)).filter(Boolean);
 }
 
 function sameMap(left: string, right: string): boolean {
@@ -350,11 +409,20 @@ function unwrapSafeFlashCall<T>(raw: unknown, path: string, args: unknown[]): T 
   const parsed = parseMaybeJson<Record<string, unknown>>(raw);
   if (!parsed || typeof parsed !== "object") return raw as T;
   if (parsed.ok === true) return parsed.value as T;
-  const message = String(parsed.message || "Flash call failed.");
-  const errorName = parsed.errorName ? ` ${String(parsed.errorName)}` : "";
-  const errorId = parsed.errorId ? ` #${String(parsed.errorId)}` : "";
-  const stack = parsed.stack ? `\n${String(parsed.stack)}` : "";
+  const message = stringFrom(parsed.message, "Flash call failed.");
+  const errorNameText = stringFrom(parsed.errorName);
+  const errorIdText = stringFrom(parsed.errorId);
+  const stackText = stringFrom(parsed.stack);
+  const errorName = errorNameText ? ` ${errorNameText}` : "";
+  const errorId = errorIdText ? ` #${errorIdText}` : "";
+  const stack = stackText ? `\n${stackText}` : "";
   throw new Error(`${path}(${args.map((arg) => JSON.stringify(arg)).join(", ")}) failed:${errorName}${errorId} ${message}${stack}`);
+}
+
+function stringFrom(value: unknown, fallback = ""): string {
+  if (typeof value === "string") return value;
+  if (typeof value === "number" || typeof value === "boolean" || typeof value === "bigint") return String(value);
+  return fallback;
 }
 
 function describeUnknownError(error: unknown): string {

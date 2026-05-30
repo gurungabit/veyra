@@ -178,7 +178,7 @@ let builderAddTarget: "main" | "child" | "else" = "main";
 let builderHydrated = false;
 let builderRunPending = false;
 let builderScrollState = { meta: 0, flow: 0, inspector: 0 };
-let builderLiveSectionState: Record<"cells" | "monsters" | "quests", boolean> = { cells: true, monsters: true, quests: true };
+const builderLiveSectionState: Record<"cells" | "monsters" | "quests", boolean> = { cells: true, monsters: true, quests: true };
 let builderContextScrollState: Record<"monsters" | "quests", number> = { monsters: 0, quests: 0 };
 let builderDragPath = "";
 let builderContextRequested = false;
@@ -547,8 +547,8 @@ function builderLiveContextHtml(): string {
 
 function builderContextRowHtml(kind: "monster" | "quest", item: Record<string, unknown>, index: number): string {
   const id = Number(item.id ?? 0);
-  const name = String(item.name ?? (kind === "monster" ? "Monster" : "Quest"));
-  const detail = String(item.detail ?? "");
+  const name = stringFrom(item.name, kind === "monster" ? "Monster" : "Quest");
+  const detail = stringFrom(item.detail);
   if (kind === "monster") {
     return `
       <div class="builder-context-row">
@@ -821,7 +821,7 @@ function bindBuilder(): void {
       const monsters = monsterPlacementRows([...builderContext.cellMonsters, ...builderContext.mapMonsters], 18);
       const monster = monsters[Number(button.dataset.builderContextMonster || 0)];
       const action = newBuilderAction("hunt");
-      action.monster = String(monster?.name ?? "*");
+      action.monster = stringFrom(monster?.name, "*") || "*";
       action.kills = 1;
       const cell = firstNonEmpty(monster, ["cell", "strFrame", "frame"]);
       const pad = firstNonEmpty(monster, ["pad", "strPad"]);
@@ -1106,7 +1106,7 @@ async function openScriptIdInVsCode(scriptId: string): Promise<void> {
   try {
     if (!native?.openScriptInVsCode) throw new Error("VS Code opener is unavailable.");
     const result = await native.openScriptInVsCode(scriptId);
-    const filePath = result && typeof result === "object" && "filePath" in result ? String((result as { filePath?: unknown }).filePath ?? "") : "";
+    const filePath = result && typeof result === "object" && "filePath" in result ? stringFrom((result as { filePath?: unknown }).filePath) : "";
     localNote(`Opened ${selected?.meta.name || scriptId} in VS Code${filePath ? `: ${filePath}` : "."}`);
   } catch (error) {
     localNote(`Could not open VS Code: ${error instanceof Error ? error.message : String(error)}`);
@@ -1708,7 +1708,7 @@ function renderOptions(): void {
         <label class="field"><span>Private room number</span><input class="input" type="number" value="100000" /></label>
         <label class="field"><span>Action delay ms</span><input class="input" type="number" min="100" value="650" /></label>
         <label class="check"><input data-local-option="stop-on-disconnect" type="checkbox" checked /> Stop scripts on disconnect</label>
-        <p class="muted">Core helper scripts read these once the full converted script library is connected.</p>
+        <p class="muted">Core helper scripts read these once the full Veyra script library is connected.</p>
       </section>`;
   } else if (section === "theme-options") {
     const theme = state.theme || activeTheme;
@@ -1934,7 +1934,7 @@ async function readNativeGameOptions(): Promise<GameOptionsState | undefined> {
   if (!native?.readJsonSetting) return undefined;
   const value = await native.readJsonSetting("game-options").catch(() => undefined);
   if (!value) return createDefaultGameOptionsState();
-  return normalizeGameOptionsState(value as Partial<GameOptionsState>);
+  return normalizeGameOptionsState(value);
 }
 
 async function writeNativeGameOptions(settings: GameOptionsState): Promise<void> {
@@ -2121,7 +2121,7 @@ function fastTravelItemHtml(item: FastTravelItem, index: number): string {
 
 function currentDropRowHtml(drop: Record<string, unknown>, index: number): string {
   const id = Number(drop.id ?? 0);
-  const name = String(drop.displayName || drop.name || `Drop ${index + 1}`);
+  const name = stringFrom(drop.displayName || drop.name, `Drop ${index + 1}`);
   const qty = Number(drop.quantity ?? 1);
   return `
     <button class="data-row" data-current-drop-index="${index}" type="button">
@@ -2268,11 +2268,11 @@ function bindCurrentDrops(): void {
     button.addEventListener("click", () => {
       const drop = currentDrops[Number(button.dataset.currentDropIndex || 0)];
       if (!drop) return;
-      command("current-drops-pickup", { id: Number(drop.id ?? 0), name: String(drop.name ?? drop.displayName ?? "") });
+      command("current-drops-pickup", { id: Number(drop.id ?? 0), name: stringFrom(drop.name ?? drop.displayName) });
     });
   });
   root.querySelector<HTMLButtonElement>("[data-current-pick-all]")?.addEventListener("click", () => {
-    currentDrops.forEach((drop) => command("current-drops-pickup", { id: Number(drop.id ?? 0), name: String(drop.name ?? drop.displayName ?? "") }));
+    currentDrops.forEach((drop) => command("current-drops-pickup", { id: Number(drop.id ?? 0), name: stringFrom(drop.name ?? drop.displayName) }));
   });
 }
 
@@ -2401,13 +2401,13 @@ function filteredGrabberItems(): Record<string, unknown>[] {
   const query = grabberSearch.trim().toLowerCase();
   const typed = grabberItems.filter((item) => item.grabType === activeGrabberType);
   if (!query) return typed;
-  return typed.filter((item) => `${item.name ?? ""} ${item.detail ?? ""} ${item.id ?? ""}`.toLowerCase().includes(query));
+  return typed.filter((item) => `${stringFrom(item.name)} ${stringFrom(item.detail)} ${stringFrom(item.id)}`.toLowerCase().includes(query));
 }
 
 function grabberRowHtml(item: Record<string, unknown>, displayIndex: number): string {
   const sourceIndex = Number(item.grabIndex ?? displayIndex);
   const active = sourceIndex === selectedGrabberIndex ? "active" : "";
-  const id = item.id === undefined || item.id === "" || item.id === 0 ? "" : String(item.id);
+  const id = item.id === undefined || item.id === "" || item.id === 0 ? "" : stringFrom(item.id);
   return `
     <button class="data-row grabber-row ${active}" data-grabber-index="${sourceIndex}" type="button">
       <span class="grabber-row-index">${sourceIndex + 1}</span>
@@ -2827,7 +2827,7 @@ function applyTheme(theme: string): void {
 async function hydrateThemeFromFile(): Promise<void> {
   const saved = await readJsonSetting("theme").catch(() => undefined);
   if (!saved) return;
-  const theme = typeof saved === "string" ? saved : String((saved as Record<string, unknown>).theme ?? "");
+  const theme = typeof saved === "string" ? saved : stringFrom((saved as Record<string, unknown>).theme);
   if (theme) applyTheme(theme);
 }
 
@@ -2953,10 +2953,10 @@ function normalizeFastTravelSettings(value: unknown): FastTravelSettings {
     ? source.items
         .map((item) => (item && typeof item === "object" ? (item as Record<string, unknown>) : {}))
         .map((item) => ({
-          descriptionName: String(item.descriptionName ?? ""),
-          mapName: String(item.mapName ?? ""),
-          cell: String(item.cell ?? "Enter"),
-          pad: String(item.pad ?? "Spawn")
+          descriptionName: stringFrom(item.descriptionName),
+          mapName: stringFrom(item.mapName),
+          cell: stringFrom(item.cell, "Enter") || "Enter",
+          pad: stringFrom(item.pad, "Spawn") || "Spawn"
         }))
         .filter((item) => item.descriptionName && item.mapName)
     : defaults.items;
@@ -2988,7 +2988,7 @@ function normalizePacketServerOptions(value: unknown): PacketServerOption[] {
 }
 
 function normalizePacketServerOption(value: Record<string, unknown>): PacketServerOption | undefined {
-  const name = cleanServerName(String(value.name ?? value.sName ?? value.Name ?? ""));
+  const name = cleanServerName(stringFrom(value.name ?? value.sName ?? value.Name));
   if (!name) return undefined;
   const count = numberOrUndefined(value.count ?? value.iCount ?? value.playerCount ?? value.PlayerCount);
   const max = numberOrUndefined(value.max ?? value.iMax ?? value.maxPlayers ?? value.MaxPlayers);
@@ -3059,7 +3059,13 @@ async function writeJsonSetting(name: string, value: unknown): Promise<unknown> 
 }
 
 function toStringArray(value: unknown): string[] {
-  return Array.isArray(value) ? value.map(String).filter(Boolean).sort((left, right) => left.localeCompare(right)) : [];
+  return Array.isArray(value) ? value.map((item) => stringFrom(item)).filter(Boolean).sort((left, right) => left.localeCompare(right)) : [];
+}
+
+function stringFrom(value: unknown, fallback = ""): string {
+  if (typeof value === "string") return value;
+  if (typeof value === "number" || typeof value === "boolean" || typeof value === "bigint") return String(value);
+  return fallback;
 }
 
 function normalizeBuilderContext(value: unknown): BuilderContext {
@@ -3095,7 +3101,7 @@ function uniqueToolStrings(values: unknown[]): string[] {
   const seen = new Set<string>();
   const result: string[] = [];
   for (const value of values) {
-    const text = String(value ?? "").trim();
+    const text = stringFrom(value).trim();
     if (!text || seen.has(text.toLowerCase())) continue;
     seen.add(text.toLowerCase());
     result.push(text);
@@ -3107,7 +3113,7 @@ function uniqueGrabberRows(items: Record<string, unknown>[], limit: number): Rec
   const seen = new Set<string>();
   const result: Record<string, unknown>[] = [];
   for (const item of items) {
-    const key = `${String(item.id ?? "")}:${String(item.name ?? "")}`.toLowerCase();
+    const key = `${stringFrom(item.id)}:${stringFrom(item.name)}`.toLowerCase();
     if (seen.has(key)) continue;
     seen.add(key);
     result.push(item);
@@ -3121,8 +3127,8 @@ function monsterPlacementRows(items: Record<string, unknown>[], limit: number): 
   const result: Record<string, unknown>[] = [];
   for (const item of items) {
     const key = [
-      String(item.id ?? ""),
-      String(item.name ?? "").toLowerCase(),
+      stringFrom(item.id),
+      stringFrom(item.name).toLowerCase(),
       firstNonEmpty(item, ["cell", "strFrame", "frame"]).toLowerCase(),
       firstNonEmpty(item, ["pad", "strPad"]).toLowerCase()
     ].join(":");
@@ -3137,7 +3143,7 @@ function monsterPlacementRows(items: Record<string, unknown>[], limit: number): 
 function firstNonEmpty(item: Record<string, unknown> | undefined, keys: string[]): string {
   if (!item) return "";
   for (const key of keys) {
-    const value = String(item[key] ?? "").trim();
+    const value = stringFrom(item[key]).trim();
     if (value) return value;
   }
   return "";

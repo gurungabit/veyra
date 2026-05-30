@@ -2,7 +2,7 @@ import type { Bot, PlayerSnapshot } from "../bot.js";
 
 export const meta = {
   name: "HighLevelXP",
-  description: "Leveling.cs/CoreFarms.cs high-level XP route for icestormunder.",
+  description: "Veyra TypeScript high-level XP route for icestormunder.",
   tags: ["leveling", "xp", "icestormunder"],
   version: "0.1.0"
 };
@@ -39,8 +39,7 @@ export async function main(bot: Bot, options: HighLevelXPOptions = {}): Promise<
 
 async function ensureIceStormUnder(bot: Bot, snapshot: PlayerSnapshot, signal?: AbortSignal): Promise<void> {
   if (!snapshot.alive) {
-    bot.log("Waiting for respawn.");
-    await bot.delay(1000, signal);
+    await bot.respawn(signal);
     return;
   }
 

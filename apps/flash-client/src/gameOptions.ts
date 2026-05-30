@@ -85,7 +85,7 @@ export function createDefaultGameOptionsState(): GameOptionsState {
 }
 
 export function readGameOptionsState(value?: unknown): GameOptionsState {
-  return normalizeGameOptionsState(value && typeof value === "object" ? (value as Partial<GameOptionsState>) : {});
+  return normalizeGameOptionsState(value && typeof value === "object" ? (value) : {});
 }
 
 export function writeGameOptionsState(state: GameOptionsState): GameOptionsState {
@@ -118,10 +118,16 @@ export function coerceGameOptionValue(option: GameOptionDef, value: unknown): Ga
     const parsed = Number(value);
     return Number.isFinite(parsed) ? Math.floor(parsed) : Number(option.defaultValue ?? 0);
   }
-  return String(value ?? "");
+  return stringFrom(value);
 }
 
 export function clampColumns(value: number): number {
   if (!Number.isFinite(value)) return DEFAULT_GAME_OPTION_COLUMNS;
   return Math.max(1, Math.min(8, Math.floor(value)));
+}
+
+function stringFrom(value: unknown): string {
+  if (typeof value === "string") return value;
+  if (typeof value === "number" || typeof value === "boolean" || typeof value === "bigint") return String(value);
+  return "";
 }

@@ -164,7 +164,7 @@ function popupMenu(sender: Electron.WebContents, kind: PopupMenuKind, point: { x
         sendRendererEvent({
           type: "bridge.process",
           level: "debug",
-          message: `${label} is not implemented yet.`
+          message: `${label} is not wired in the desktop shell.`
         });
       }
     }))

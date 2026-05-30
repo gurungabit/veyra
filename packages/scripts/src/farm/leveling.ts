@@ -4,7 +4,7 @@ import { CoreFarms } from "../core/CoreFarms.js";
 
 export const meta = {
   name: "Leveling [1-100]",
-  description: "Farms XP to max level using the first converted TypeScript leveling route.",
+  description: "Farms XP to max level using the TypeScript leveling route.",
   tags: ["leveling", "level", "xp", "experience", "farm", "exp"],
   version: "1.0.0"
 };

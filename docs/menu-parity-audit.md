@@ -1,24 +1,14 @@
 # Veyra Menu Parity Audit
 
 Source checked:
-- `C:\Users\necro\Documents\aqwbot\Skua\Skua.Core\AppStartup\MainMenu.cs`
-- `C:\Users\necro\Documents\aqwbot\Skua\Skua.WPF\UserControls\MainMenuUserControl.xaml`
-- `C:\Users\necro\Documents\aqwbot\Skua\Skua.WPF\UserControls\AutoUserControl.xaml`
-- `C:\Users\necro\Documents\aqwbot\Skua\Skua.WPF\UserControls\JumpUserControl.xaml`
-- `C:\Users\necro\Documents\aqwbot\Skua\Skua.Core\Scripts\ScriptMap.cs`
-- `C:\Users\necro\Documents\aqwbot\Skua\Skua.Core\AppStartup\Grabber.cs`
-- `C:\Users\necro\Documents\aqwbot\Skua\Skua.Core\Services\GrabberService.cs`
-- `C:\Users\necro\Documents\aqwbot\Skua\Skua.Core\ViewModels\LoaderViewModel.cs`
-- `C:\Users\necro\Documents\aqwbot\Skua\Skua.Core\AppStartup\Options.cs`
-- `C:\Users\necro\Documents\aqwbot\Skua\Skua.Core\Scripts\ScriptOption.cs`
-- `C:\Users\necro\Documents\aqwbot\Skua\Skua.WPF\Views\GameOptionsView.xaml`
+- Legacy desktop menu, option, grabber, loader, and game-option sources.
 
 | Top item | Original contract | Veyra status |
 | --- | --- | --- |
 | Scripts | Opens a detached Load Script window | Implemented as compact detached loader; start/stop/load wired to TS runtime |
-| Options > Game | Opens Game options | Implemented with the Skua-generated option list: 24 toggle chips, 3 text setters, 13 numeric setters, Reload Map, Relogin Server, Columns, Search, Reset, Default, and Save. Save persists to local storage and applies supported bridge-backed options live |
+| Options > Game | Opens Game options | Implemented with the legacy option list: 24 toggle chips, 3 text setters, 13 numeric setters, Reload Map, Relogin Server, Columns, Search, Reset, Default, and Save. Save persists to local storage and applies supported bridge-backed options live |
 | Options > Application | Opens app settings | UI implemented; local settings placeholders documented in-window |
-| Options > CoreBots | Opens shared core script settings | UI implemented; applies once converted core library reads settings |
+| Options > CoreBots | Opens shared core script settings | UI implemented; applies once the Veyra core library reads settings |
 | Options > Application Themes | Opens theme settings | Implemented; Veyra Dark, Classic Slate, High Contrast, and Blue Steel apply immediately to main and tool windows |
 | Options > HotKeys | Opens hotkey settings | Implemented as a local shortcut map window |
 | Helpers > Runtime | Opens runtime helper | Implemented; snapshot/debug actions wired |

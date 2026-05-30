@@ -573,9 +573,9 @@ async function mapItemRequirementProgress(
   const quest = await findQuestInTree(bot, questId);
   if (!quest) return undefined;
 
-  const explicitName = String(action.itemName || action.item || "").trim().toLowerCase();
+  const explicitName = (action.itemName || action.item || "").trim().toLowerCase();
   for (const requirement of questRequirementRecords(quest)) {
-    const name = String(firstFrom(requirement, ["sName", "Name", "name", "strName"]) ?? "").trim();
+    const name = stringFrom(firstFrom(requirement, ["sName", "Name", "name", "strName"])).trim();
     const nameMatches = explicitName.length > 0 && name.toLowerCase() === explicitName;
     const id = optionalNumberFrom(requirement, ["MapItemID", "iMapItemID", "mapItemId", "mapItemID", "ItemID", "iID", "id", "ID"]);
     const idMatches = id === mapItemId;
@@ -627,7 +627,7 @@ async function handleQuestDrops(bot: Bot, questId: number, signal?: AbortSignal)
     const names = Array.from(
       new Set(
         visibleQuestDrops
-          .map((drop) => String(firstFrom(drop, ["displayName", "name", "id", "ID"]) ?? "drop").trim())
+          .map((drop) => stringFrom(firstFrom(drop, ["displayName", "name", "id", "ID"]), "drop").trim())
           .filter(Boolean)
       )
     );
@@ -669,7 +669,7 @@ function dropMatchesWhitelist(drop: Record<string, unknown>, whitelist: string[]
 }
 
 function normalizeDropKey(value: unknown): string {
-  return String(value ?? "")
+  return stringFrom(value)
     .toLowerCase()
     .replace(/\s+x\s*\d+$/, "")
     .trim();
@@ -734,20 +734,20 @@ async function findMonsterPosition(bot: Bot, monster: string | number): Promise<
   const raw = await bot.call<unknown>("getMonsters").catch(() => []);
   const monsters = parseMaybeJson<Record<string, unknown>[]>(raw) ?? [];
   const targetId = typeof monster === "number" ? monster : 0;
-  const targetName = typeof monster === "number" ? "" : String(monster || "*").trim().toLowerCase();
+  const targetName = typeof monster === "number" ? "" : (monster || "*").trim().toLowerCase();
   const candidates = monsters.filter((entry) => {
     if (typeof monster === "number") {
       return optionalNumberFrom(entry, ["MonMapID", "MapID", "monMapId", "MonID", "MonsterID", "id", "ID"]) === targetId;
     }
-    const name = String(firstFrom(entry, ["strMonName", "sName", "Name", "name"]) ?? "").toLowerCase();
+    const name = stringFrom(firstFrom(entry, ["strMonName", "sName", "Name", "name"])).toLowerCase();
     return targetName === "*" || name.includes(targetName);
   });
   if (candidates.length === 0) return undefined;
   candidates.sort((a, b) => (optionalNumberFrom(a, ["intHP", "HP", "hp"]) ?? 0) - (optionalNumberFrom(b, ["intHP", "HP", "hp"]) ?? 0));
-  const best = candidates[0] as Record<string, unknown> | undefined;
+  const best = candidates[0];
   if (!best) return undefined;
-  const cell = String(firstFrom(best, ["strFrame", "frame", "Frame", "cell", "Cell"]) ?? "").trim();
-  const pad = String(firstFrom(best, ["strPad", "pad", "Pad"]) ?? "Auto").trim() || "Auto";
+  const cell = stringFrom(firstFrom(best, ["strFrame", "frame", "Frame", "cell", "Cell"])).trim();
+  const pad = stringFrom(firstFrom(best, ["strPad", "pad", "Pad"]), "Auto").trim() || "Auto";
   return cell ? { cell, pad } : undefined;
 }
 
@@ -756,6 +756,12 @@ async function defeatOneMonster(bot: Bot, monster: string | number, signal?: Abo
   let engaged = false;
   while (Date.now() < deadline) {
     if (signal?.aborted) throw signal.reason instanceof Error ? signal.reason : new Error("Cancelled.");
+    const snapshot = await bot.snapshot().catch(() => undefined);
+    if (snapshot && !snapshot.alive) {
+      await bot.respawn(signal);
+      engaged = false;
+      continue;
+    }
     await bot.attack(monster).catch(() => undefined);
     await bot.useAvailableSkills().catch(() => undefined);
     const target = await bot.call<unknown>("getTargetMonster").catch(() => undefined);
@@ -843,7 +849,7 @@ async function getMapItemForQuest(bot: Bot, questId: number, action: BuilderActi
 
 async function buyItem(bot: Bot, action: BuilderAction, signal?: AbortSignal): Promise<void> {
   const shopId = Math.floor(action.shopId ?? 0);
-  const itemName = String(action.itemName || action.item || "").trim();
+  const itemName = (action.itemName || action.item || "").trim();
   if (shopId <= 0) throw new Error("Buy Item needs a valid shop ID.");
   if (!itemName) throw new Error("Buy Item needs an item name.");
   const targetQuantity = clamp(action.quantity ?? 1, 1, 999);
@@ -861,7 +867,7 @@ async function buyItem(bot: Bot, action: BuilderAction, signal?: AbortSignal): P
     const shopItem = findShopItem(shopInfo, itemName);
     if (!shopItem) {
       const names = shopItemsFrom(shopInfo)
-        .map((item) => String(firstFrom(item, ["sName", "Name", "name", "strName"]) ?? ""))
+        .map((item) => stringFrom(firstFrom(item, ["sName", "Name", "name", "strName"])))
         .filter(Boolean)
         .slice(0, 8)
         .join(", ");
@@ -910,7 +916,7 @@ function findShopItem(shopInfo: Record<string, unknown>, itemNameOrId: string): 
   const needle = itemNameOrId.trim().toLowerCase();
   const idNeedle = Number(itemNameOrId);
   return shopItemsFrom(shopInfo).find((item) => {
-    const name = String(firstFrom(item, ["sName", "Name", "name", "strName"]) ?? "").trim().toLowerCase();
+    const name = stringFrom(firstFrom(item, ["sName", "Name", "name", "strName"])).trim().toLowerCase();
     const itemId = numberFrom(item, ["ItemID", "iID", "itemId", "id", "ID"]);
     return name === needle || (Number.isFinite(idNeedle) && itemId === idNeedle);
   });
@@ -1068,7 +1074,7 @@ async function isQuestInProgress(bot: Bot, questId: number): Promise<boolean> {
   const direct = await bot.callGameFunction<unknown>("world.isQuestInProgress", questId).catch(() => undefined);
   if (direct !== undefined) return toBoolean(direct);
   const quest = await findQuestInTree(bot, questId);
-  const status = String(firstFrom(quest || {}, ["sStatus", "Status", "status"]) ?? "").toLowerCase();
+  const status = stringFrom(firstFrom(quest || {}, ["sStatus", "Status", "status"])).toLowerCase();
   return status === "p" || status === "active" || toBoolean(firstFrom(quest || {}, ["bAccepted", "Active", "active"]));
 }
 
@@ -1100,8 +1106,8 @@ async function questCompletionReadiness(bot: Bot, questId: number, signal?: Abor
   for (const requirement of requirements) {
     const target = optionalNumberFrom(requirement, ["iQty", "Qty", "Quantity", "iReqQty", "ReqQty", "Required", "required", "quantity"]);
     if (target === undefined || target <= 0) continue;
-    const id = String(firstFrom(requirement, ["ItemID", "id", "ID", "iID"]) ?? "");
-    const name = String(firstFrom(requirement, ["sName", "Name", "name", "strName"]) ?? "");
+    const id = stringFrom(firstFrom(requirement, ["ItemID", "id", "ID", "iID"]));
+    const name = stringFrom(firstFrom(requirement, ["sName", "Name", "name", "strName"]));
     let current = optionalNumberFrom(requirement, ["iQtyNow", "QtyNow", "Current", "current", "iHave", "Have", "have", "iGot", "Got", "got"]);
     if (current === undefined && (id || name)) current = await carriedItemQuantity(bot, id || name);
     if (current === undefined) continue;
@@ -1143,8 +1149,8 @@ async function carriedItemQuantity(bot: Bot, item: string): Promise<number> {
   let total = 0;
   for (const source of sources) {
     for (const entry of recordsFrom(source)) {
-      const name = String(firstFrom(entry, ["sName", "Name", "name", "strName"]) ?? "").toLowerCase();
-      const id = String(firstFrom(entry, ["ItemID", "id", "ID", "iID"]) ?? "").toLowerCase();
+      const name = stringFrom(firstFrom(entry, ["sName", "Name", "name", "strName"])).toLowerCase();
+      const id = stringFrom(firstFrom(entry, ["ItemID", "id", "ID", "iID"])).toLowerCase();
       if (name === needle || id === needle) total += optionalNumberFrom(entry, ["iQty", "iQtyNow", "Qty", "Quantity", "quantity"]) ?? 1;
     }
   }
@@ -1172,9 +1178,9 @@ function evaluateSnapshotCondition(snapshot: PlayerSnapshot, condition: BuilderC
     case "loggedIn":
       return snapshot.loggedIn;
     case "mapIs":
-      return snapshot.map.toLowerCase() === String(condition.value || "").toLowerCase();
+      return snapshot.map.toLowerCase() === (condition.value || "").toLowerCase();
     case "cellIs":
-      return snapshot.cell.toLowerCase() === String(condition.value || "").toLowerCase();
+      return snapshot.cell.toLowerCase() === (condition.value || "").toLowerCase();
     case "levelAtLeast":
       return snapshot.level >= (condition.amount ?? 1);
     case "levelBelow":
@@ -1193,7 +1199,7 @@ async function isDropVisible(bot: Bot, item: string): Promise<boolean> {
   const drops = parseMaybeJson<Record<string, unknown>[]>(await bot.call<unknown>("getCurrentDrops").catch(() => [])) ?? [];
   const needle = item.trim().toLowerCase();
   if (!needle) return drops.length > 0;
-  return drops.some((drop) => String(drop.name ?? drop.displayName ?? "").toLowerCase().includes(needle) || String(drop.id ?? "") === needle);
+  return drops.some((drop) => stringFrom(drop.name ?? drop.displayName).toLowerCase().includes(needle) || stringFrom(drop.id) === needle);
 }
 
 async function inventoryQuantity(bot: Bot, item: string): Promise<number> {
@@ -1201,8 +1207,8 @@ async function inventoryQuantity(bot: Bot, item: string): Promise<number> {
   const needle = item.trim().toLowerCase();
   let total = 0;
   for (const entry of items) {
-    const name = String(entry.sName ?? entry.Name ?? entry.name ?? "").toLowerCase();
-    const id = String(entry.ItemID ?? entry.iID ?? entry.id ?? "");
+    const name = stringFrom(entry.sName ?? entry.Name ?? entry.name).toLowerCase();
+    const id = stringFrom(entry.ItemID ?? entry.iID ?? entry.id);
     if (name === needle || id === needle) total += Number(entry.iQty ?? entry.iQtyNow ?? entry.quantity ?? 1);
   }
   return total;
@@ -1264,12 +1270,8 @@ async function questUnlockState(bot: Bot, questId: number, signal?: AbortSignal,
   };
 }
 
-async function isQuestRecordUnlocked(bot: Bot, quest: Record<string, unknown>): Promise<boolean> {
-  return (await questRecordUnlockState(bot, numberFrom(quest, ["QuestID", "ID", "id", "questId"]), quest)).unlocked;
-}
-
 async function questRecordUnlockState(bot: Bot, questId: number, quest: Record<string, unknown>): Promise<QuestUnlockState> {
-  const name = String(firstFrom(quest, ["sName", "Name", "name", "strName"]) ?? "");
+  const name = stringFrom(firstFrom(quest, ["sName", "Name", "name", "strName"]));
   const explicit = booleanFromRecord(quest, ["bUnlocked", "unlocked", "Unlocked", "isUnlocked"]);
   if (explicit !== undefined) {
     return {
@@ -1298,7 +1300,7 @@ async function questRecordUnlockState(bot: Bot, questId: number, quest: Record<s
     loaded: true,
     unlocked: current >= unlockTarget,
     source: "quest-record",
-    reason: "Skua unlock check: world.getQuestValue(slot) >= quest.Value - 1",
+    reason: "Quest unlock check: world.getQuestValue(slot) >= quest.Value - 1",
     name,
     slot,
     value,
@@ -1348,7 +1350,7 @@ async function isDailyQuestComplete(bot: Bot, questId: number): Promise<boolean>
   if (questId <= 0) return false;
   const quest = await ensureQuestLoaded(bot, questId);
   if (!quest) return false;
-  const field = String(firstFrom(quest, ["sField", "Field", "field"]) ?? "");
+  const field = stringFrom(firstFrom(quest, ["sField", "Field", "field"]));
   const index = numberFrom(quest, ["iIndex", "Index", "index"]);
   if (!field || index <= 0) return false;
   const achievement = Number(await bot.callGameFunction<unknown>("world.getAchievement", field, index).catch(() => 0));
@@ -1372,13 +1374,6 @@ async function ensureQuestLoaded(bot: Bot, questId: number, signal?: AbortSignal
     await bot.delay(QUEST_LOAD_RETRY_MS, signal);
   }
   return undefined;
-}
-
-function questUnavailableError(questId: number): Error {
-  return new Error(
-    `Quest ${questId} was not loaded into world.questTree after ${Math.round(QUEST_LOAD_TIMEOUT_MS / 1000)}s. ` +
-      "It is probably locked/not available yet, or the previous quest in the chain must be completed before this one can be accepted."
-  );
 }
 
 async function findQuestInTree(bot: Bot, questId: number): Promise<Record<string, unknown> | undefined> {
@@ -1533,6 +1528,12 @@ function toBoolean(value: unknown): boolean {
   if (typeof value === "number") return value !== 0;
   if (typeof value === "string") return value.toLowerCase() === "true";
   return false;
+}
+
+function stringFrom(value: unknown, fallback = ""): string {
+  if (typeof value === "string") return value;
+  if (typeof value === "number" || typeof value === "boolean" || typeof value === "bigint") return String(value);
+  return fallback;
 }
 
 function parseMaybeJson<T>(value: unknown): T | undefined {

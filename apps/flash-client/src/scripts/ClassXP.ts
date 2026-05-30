@@ -38,8 +38,7 @@ export async function main(bot: Bot, options: ClassXPOptions = {}): Promise<void
 
 async function ensureClassXpRoute(bot: Bot, snapshot: PlayerSnapshot, signal?: AbortSignal): Promise<void> {
   if (!snapshot.alive) {
-    bot.log("Waiting for respawn.");
-    await bot.delay(1000, signal);
+    await bot.respawn(signal);
     return;
   }
 

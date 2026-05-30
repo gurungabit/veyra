@@ -423,25 +423,26 @@ async function handleToolCommand(command: string, payload: unknown): Promise<voi
       await createBot("Skills").call("useSkill", Number(data.skill ?? 1));
       break;
     case "travel": {
-      const map = data.privateRooms === true ? withPrivateRoomSuffix(String(data.map ?? "battleon"), Number(data.privateNumber ?? 100000)) : String(data.map ?? "battleon");
-      await createBot("Travel").join(map, String(data.cell ?? "Enter"), String(data.pad ?? "Spawn"));
+      const requestedMap = stringFrom(data.map, "battleon") || "battleon";
+      const map = data.privateRooms === true ? withPrivateRoomSuffix(requestedMap, Number(data.privateNumber ?? 100000)) : requestedMap;
+      await createBot("Travel").join(map, stringFrom(data.cell, "Enter") || "Enter", stringFrom(data.pad, "Spawn") || "Spawn");
       break;
     }
     case "console-command":
-      await runExternalConsoleCommand(String(data.command ?? ""));
+      await runExternalConsoleCommand(stringFrom(data.command));
       break;
     case "send-packet":
-      await createBot("Packets").sendPacket(String(data.packet ?? ""));
-      log("packet", `Sent ${String(data.packet ?? "")}`);
+      await createBot("Packets").sendPacket(stringFrom(data.packet));
+      log("packet", `Sent ${stringFrom(data.packet)}`);
       break;
     case "packet-spam-start":
-      await startPacketSpam(String(data.packet ?? ""), Number(data.delay ?? 1000));
+      await startPacketSpam(stringFrom(data.packet), Number(data.delay ?? 1000));
       break;
     case "packet-spam-stop":
       stopPacketSpam();
       break;
     case "packet-interceptor-apply":
-      log("packet", `Interceptor rule saved: ${String(data.rule ?? "").trim() || "(empty)"}`);
+      log("packet", `Interceptor rule saved: ${stringFrom(data.rule).trim() || "(empty)"}`);
       if (!packetCaptureStarted) await runAction("capture-packets");
       break;
     case "packet-interceptor-refresh-servers":
@@ -468,7 +469,7 @@ async function handleToolCommand(command: string, payload: unknown): Promise<voi
       await publishCurrentDrops();
       break;
     case "inspect-object": {
-      const path = String(data.path ?? "world.myAvatar.objData");
+      const path = stringFrom(data.path, "world.myAvatar.objData") || "world.myAvatar.objData";
       const value = await createBot("Advanced").getGameObject<unknown>(path);
       log("debug", `${path}: ${JSON.stringify(value).slice(0, 3000)}`);
       break;
@@ -714,7 +715,7 @@ function panelHtml(name: string): string {
           <button data-action="inspect-object" type="button">Inspect Object</button>
           <button data-action="reload-client" type="button">Reload Client</button>
         </section>`;
-    case "script-options":
+    case "script-options": {
       const privateRooms = gameOptionsState.values["private-rooms"] === true;
       const privateNumber = Number(gameOptionsState.values["private-number"] || 100000);
       return `
@@ -725,6 +726,7 @@ function panelHtml(name: string): string {
           <label class="field"><span>Private Number</span><input id="panel-private-number" class="input" type="number" min="1" value="${Number.isFinite(privateNumber) && privateNumber > 0 ? privateNumber : 100000}" /></label>
           <p class="muted">These are saved to the same file as Game Options and are read by script joins.</p>
         </section>`;
+    }
     default:
       return runtimePanelHtml();
   }
@@ -908,7 +910,7 @@ async function publishCurrentDrops(): Promise<void> {
 
 async function pickupCurrentDrop(data: Record<string, unknown>): Promise<void> {
   const id = Number(data.id ?? 0);
-  const name = String(data.name ?? "").trim().toLowerCase();
+  const name = stringFrom(data.name).trim().toLowerCase();
   const bot = createBot("Drops");
   if (id > 0) {
     await bot.sendPacket(`%xt%zm%getDrop%${(await bot.snapshot()).room || 1}%${id}%`);
@@ -922,8 +924,8 @@ async function pickupCurrentDrop(data: Record<string, unknown>): Promise<void> {
 }
 
 async function handleLoaderLoad(data: Record<string, unknown>): Promise<void> {
-  const kind = String(data.kind ?? "quest");
-  const ids = parseIdList(String(data.ids ?? ""));
+  const kind = stringFrom(data.kind, "quest") || "quest";
+  const ids = parseIdList(stringFrom(data.ids));
   if (ids.length === 0) {
     log("event", "Loader needs at least one numeric ID.");
     return;
@@ -997,7 +999,7 @@ async function fetchLivePacketServers(): Promise<GameServerInfo[]> {
     try {
       const response = await fetch(`${endpoint}?_=${Date.now()}`, { cache: "no-store" });
       if (!response.ok) throw new Error(`${response.status} ${response.statusText}`);
-      const raw = await response.json();
+      const raw: unknown = await response.json();
       const servers = normalizeGameServers(raw);
       if (servers.length > 0) return servers;
       lastError = new Error("empty server list");
@@ -1011,7 +1013,7 @@ async function fetchLivePacketServers(): Promise<GameServerInfo[]> {
 }
 
 async function connectPacketInterceptor(data: Record<string, unknown>): Promise<void> {
-  const requestedName = cleanServerName(String(data.server ?? ""));
+  const requestedName = cleanServerName(stringFrom(data.server));
   toolBus.postMessage({ type: "packet-interceptor-connection", connected: false, status: "connecting", message: `Connecting to ${requestedName || "selected server"}...` });
   try {
     let server = asRecord(data.serverData);
@@ -1021,7 +1023,7 @@ async function connectPacketInterceptor(data: Record<string, unknown>): Promise<
       server = packetServerCache.find((entry) => sameServerName(entry.name, requestedName))?.raw ?? {};
     }
 
-    const resolvedName = cleanServerName(String(firstFrom(server, ["sName", "Name", "name"]) ?? requestedName));
+    const resolvedName = cleanServerName(stringFrom(firstFrom(server, ["sName", "Name", "name"]), requestedName));
     const bot = createBot("Packet Interceptor");
 
     const currentServer = cleanServerName(String(await bot.getGameObject<string>("objServerInfo.sName").catch(() => "")));
@@ -1076,14 +1078,14 @@ async function getGrabberItems(type: GrabberType): Promise<Record<string, unknow
 }
 
 async function handleGrabberAction(data: Record<string, unknown>): Promise<void> {
-  const action = String(data.action ?? "");
+  const action = stringFrom(data.action);
   const type = isGrabberType(data.grabType) ? data.grabType : "inventory";
   const item = asRecord(data.item);
   const bot = createBot("Grabber");
   const id = numberFrom(item, ["id", "ItemID", "iID", "ID", "QuestID", "iQuestID", "MonID", "iMonID", "ShopID", "iShopID"]);
   const charItemId = numberFrom(item, ["charItemId", "CharItemID", "iCharItemID", "iCIID"]);
   const shopItemId = numberFrom(item, ["shopItemId", "ShopItemID", "iShopItemID", "iSel"]);
-  const name = String(firstFrom(item, ["name", "sName", "Name", "strMonName", "MonName"]) ?? "");
+  const name = stringFrom(firstFrom(item, ["name", "sName", "Name", "strMonName", "MonName"]));
 
   if (action === "load-shop" && id > 0) {
     await bot.callGameFunction("world.sendLoadShopRequest", id);
@@ -1119,8 +1121,8 @@ async function handleGrabberAction(data: Record<string, unknown>): Promise<void>
     return;
   }
   if (action === "teleport") {
-    const cell = String(firstFrom(item, ["cell", "strFrame", "frame"]) ?? "Enter");
-    const pad = String(firstFrom(item, ["pad", "strPad"]) ?? "Auto");
+    const cell = stringFrom(firstFrom(item, ["cell", "strFrame", "frame"]), "Enter") || "Enter";
+    const pad = stringFrom(firstFrom(item, ["pad", "strPad"]), "Auto") || "Auto";
     await bot.jump(cell, pad);
     log("event", `Jumped to ${cell} / ${pad}.`);
     return;
@@ -1192,7 +1194,7 @@ function summarizeGrabItem(value: unknown, type: GrabberType, index: number): Re
   const shopItemId = numberFrom(record, ["ShopItemID", "iShopItemID", "iSel"]);
   const valueField = numberFrom(record, ["Value", "iValue"]);
   const slot = numberFrom(record, ["Slot", "iSlot", "iIndex"]);
-  const name = String(firstFrom(record, ["sName", "Name", "strName", "strMonName", "MonName", "sDesc"]) ?? `${grabberTypeLabel(type)} ${index + 1}`);
+  const name = stringFrom(firstFrom(record, ["sName", "Name", "strName", "strMonName", "MonName", "sDesc"]), `${grabberTypeLabel(type)} ${index + 1}`);
   const detail = detailForGrabItem(record, type);
   const cell = firstFrom(record, ["strFrame", "cell", "frame"]);
   const pad = firstFrom(record, ["strPad", "pad"]);
@@ -1216,16 +1218,16 @@ function detailForGrabItem(record: Record<string, unknown>, type: GrabberType): 
   if (type.includes("monster")) {
     const hp = firstFrom(record, ["intHP", "hp", "HP"]);
     const cell = firstFrom(record, ["strFrame", "cell"]);
-    return [cell ? `cell ${cell}` : "", hp ? `HP ${hp}` : ""].filter(Boolean).join(" - ");
+    return [cell ? `cell ${stringFrom(cell)}` : "", hp ? `HP ${stringFrom(hp)}` : ""].filter(Boolean).join(" - ");
   }
   if (type === "quests") {
     const level = firstFrom(record, ["iLvl", "Level", "iReqCP"]);
     const value = firstFrom(record, ["iValue", "Value"]);
-    return [level ? `level ${level}` : "", value ? `value ${value}` : ""].filter(Boolean).join(" - ");
+    return [level ? `level ${stringFrom(level)}` : "", value ? `value ${stringFrom(value)}` : ""].filter(Boolean).join(" - ");
   }
   const quantity = firstFrom(record, ["iQty", "Qty", "Quantity", "iQtyNow"]);
   const category = firstFrom(record, ["sType", "sES", "sMeta"]);
-  return [category, quantity ? `x${quantity}` : ""].filter(Boolean).map(String).join(" - ");
+  return [stringFrom(category), quantity ? `x${stringFrom(quantity)}` : ""].filter(Boolean).join(" - ");
 }
 
 function recordsFrom(raw: unknown): unknown[] {
@@ -1270,7 +1272,7 @@ function normalizeGameServers(raw: unknown): GameServerInfo[] {
   const result: GameServerInfo[] = [];
   for (const entry of recordsFrom(raw)) {
     const record = asRecord(entry);
-    const name = cleanServerName(String(firstFrom(record, ["sName", "Name", "name"]) ?? ""));
+    const name = cleanServerName(stringFrom(firstFrom(record, ["sName", "Name", "name"])));
     if (!name) continue;
     const count = numberFrom(record, ["iCount", "count", "PlayerCount", "playerCount"]);
     const max = numberFrom(record, ["iMax", "max", "MaxPlayers", "maxPlayers"]);
@@ -1291,7 +1293,7 @@ function normalizeGameServers(raw: unknown): GameServerInfo[] {
 }
 
 function serverDisplayName(server: Record<string, unknown>, fallback: string): string {
-  const name = cleanServerName(String(firstFrom(server, ["sName", "Name", "name"]) ?? fallback));
+  const name = cleanServerName(stringFrom(firstFrom(server, ["sName", "Name", "name"]), fallback));
   const count = numberFrom(server, ["iCount", "count", "PlayerCount", "playerCount"]);
   const max = numberFrom(server, ["iMax", "max", "MaxPlayers", "maxPlayers"]);
   if (count > 0 || max > 0) return `${name} (${count}${max > 0 ? `/${max}` : ""})`;
@@ -1382,7 +1384,7 @@ function applyTheme(theme: string, announce: boolean): void {
 async function hydrateThemeFromFile(): Promise<void> {
   const saved = await readJsonSetting("theme").catch(() => undefined);
   if (!saved) return;
-  const theme = typeof saved === "string" ? saved : String((saved as Record<string, unknown>).theme ?? "");
+  const theme = typeof saved === "string" ? saved : stringFrom((saved as Record<string, unknown>).theme);
   if (theme) applyTheme(theme, false);
 }
 
@@ -1680,28 +1682,6 @@ async function runDropdownAction(action: string, menu: string): Promise<void> {
   if (menu !== "jump" && menu !== "auto") closeDropdown();
 }
 
-function optionsPanelHtml(action: string): string {
-  const title = action.replace(/-/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
-  return `
-    <section class="tool-card">
-      <h2>${escapeHtml(title)}</h2>
-      <label class="check"><input data-option="hide-players" type="checkbox" /> Hide players</label>
-      <label class="check"><input data-option="disable-fx" type="checkbox" /> Disable FX</label>
-      <label class="check"><input data-option="kill-lag" type="checkbox" /> Kill lag</label>
-      <button data-action="skip-cutscenes" type="button">Skip Cutscenes</button>
-      <button data-action="refresh-runtime" type="button">Refresh Runtime</button>
-    </section>`;
-}
-
-function bindOptionsActions(): void {
-  for (const input of Array.from(toolPanel.querySelectorAll<HTMLInputElement>("[data-option]"))) {
-    input.addEventListener("change", () => void setGameOption(input.dataset.option ?? "", input.checked));
-  }
-  bindPanelActions("options");
-  const skip = toolPanel.querySelector<HTMLButtonElement>("[data-action='skip-cutscenes']");
-  skip?.addEventListener("click", () => void skipCutsceneSafely(createBot("Options")));
-}
-
 async function setGameOption(option: string, value: GameOptionValue): Promise<void> {
   const def = GAME_OPTION_DEFS.find((item) => item.id === option);
   if (!def || def.kind === "action") return;
@@ -1728,7 +1708,7 @@ async function applyGameOptionsState(settings: GameOptionsState): Promise<void> 
 
 async function readPersistedGameOptions(): Promise<GameOptionsState> {
   const value = await readJsonSetting("game-options").catch(() => undefined);
-  gameOptionsState = value ? normalizeGameOptionsState(value as Partial<GameOptionsState>) : readGameOptionsState();
+  gameOptionsState = value ? normalizeGameOptionsState(value) : readGameOptionsState();
   return gameOptionsState;
 }
 
@@ -1784,21 +1764,21 @@ async function applyGameOption(option: string, value: GameOptionValue): Promise<
         await bot.call("disableDeathAd", enabled);
         break;
       case "accept-all-drops":
-        if (enabled) setLiveGameOptionTimer("reject-all-drops", false, 1000, async () => undefined);
+        if (enabled) setLiveGameOptionTimer("reject-all-drops", false, 1000, () => Promise.resolve());
         setLiveGameOptionTimer(option, enabled, 900, async () => {
           reportDropAction("Accepted", await bot.call("acceptAllDrops"));
         });
         break;
       case "reject-all-drops":
-        if (enabled) setLiveGameOptionTimer("accept-all-drops", false, 1000, async () => undefined);
+        if (enabled) setLiveGameOptionTimer("accept-all-drops", false, 1000, () => Promise.resolve());
         setLiveGameOptionTimer(option, enabled, 900, async () => {
           reportDropAction("Rejected", await bot.call("rejectAllDrops", Boolean(gameOptionsState.values["accept-ac-drops"])));
         });
         break;
       case "quest-drops-only":
         if (enabled) {
-          setLiveGameOptionTimer("accept-all-drops", false, 1000, async () => undefined);
-          setLiveGameOptionTimer("reject-all-drops", false, 1000, async () => undefined);
+          setLiveGameOptionTimer("accept-all-drops", false, 1000, () => Promise.resolve());
+          setLiveGameOptionTimer("reject-all-drops", false, 1000, () => Promise.resolve());
         }
         log("event", enabled ? "Quest Drops Only enabled for script quest loops." : "Quest Drops Only disabled.");
         break;
@@ -1853,7 +1833,7 @@ async function applyGameOption(option: string, value: GameOptionValue): Promise<
             await bot.call("infiniteRange", true);
           });
         } else {
-          setLiveGameOptionTimer(option, false, 900, async () => undefined);
+          setLiveGameOptionTimer(option, false, 900, () => Promise.resolve());
           await bot.call("infiniteRange", false);
         }
         break;
@@ -1979,6 +1959,12 @@ function numberValue(value: unknown): number {
   return 0;
 }
 
+function stringFrom(value: unknown, fallback = ""): string {
+  if (typeof value === "string") return value;
+  if (typeof value === "number" || typeof value === "boolean" || typeof value === "bigint") return String(value);
+  return fallback;
+}
+
 function booleanValue(value: unknown, fallback: boolean): boolean {
   if (typeof value === "boolean") return value;
   if (typeof value === "number") return value !== 0;
@@ -1994,65 +1980,6 @@ function withPrivateRoomSuffix(map: string, privateNumber: number): string {
   if (/-\d+$/.test(map)) return map;
   const room = Number.isFinite(privateNumber) && privateNumber > 0 ? Math.floor(privateNumber) : 100000;
   return `${map}-${room}`;
-}
-
-function fastTravelPanelHtml(): string {
-  const maps = [
-    ["battleon", "Enter", "Spawn"],
-    ["icestormunder", "r2", "Top"],
-    ["sevencircleswar", "Enter", "Right"],
-    ["battlegrounde", "r2", "Left"],
-    ["house", "Enter", "Spawn"]
-  ];
-  return `
-    <section class="tool-card">
-      <h2>Fast Travel</h2>
-      <div class="travel-list">
-        ${maps.map(([map, cell, pad]) => `<button data-travel="${map}|${cell}|${pad}" type="button"><strong>${map}</strong><span>${cell} / ${pad}</span></button>`).join("")}
-      </div>
-    </section>`;
-}
-
-function bindFastTravel(): void {
-  for (const button of Array.from(toolPanel.querySelectorAll<HTMLButtonElement>("[data-travel]"))) {
-    button.addEventListener("click", () => {
-      const parts = (button.dataset.travel ?? "battleon|Enter|Spawn").split("|");
-      const map = parts[0] || "battleon";
-      const cell = parts[1] || "Enter";
-      const pad = parts[2] || "Spawn";
-      void createBot("Travel").join(map, cell, pad);
-    });
-  }
-}
-
-function toolsPanelHtml(tool: string): string {
-  if (tool === "console") {
-    return `
-      <section class="tool-card">
-        <h2>Console</h2>
-        <label class="field"><span>Command</span><input id="console-command" class="input" value="/snapshot" /></label>
-        <button data-console-run type="button">Run</button>
-        <p class="muted">Commands: /snapshot, /join map cell pad, /jump cell pad, /packet raw, or any game object path.</p>
-      </section>`;
-  }
-  if (tool === "loader") {
-    return `<section class="tool-card"><h2>Loader</h2><button data-action="reload-client" type="button">Reload Client</button><button data-action="runtime" type="button">Runtime</button></section>`;
-  }
-  if (tool === "stats") {
-    return `<section class="tool-card"><h2>Stats</h2><button data-action="refresh-runtime" type="button">Refresh Stats</button><div id="stats-output"></div></section>`;
-  }
-  return `<section class="tool-card"><h2>Grabber</h2><label class="field"><span>Object path</span><input id="object-path" class="input" value="world.myAvatar.objData" /></label><button data-action="inspect-object" type="button">Grab</button></section>`;
-}
-
-function bindToolSubpanel(tool: string): void {
-  bindPanelActions(tool);
-  const consoleRun = toolPanel.querySelector<HTMLButtonElement>("[data-console-run]");
-  consoleRun?.addEventListener("click", () => void runConsoleCommand());
-}
-
-async function runConsoleCommand(): Promise<void> {
-  const command = byId<HTMLInputElement>("console-command").value.trim();
-  await runExternalConsoleCommand(command);
 }
 
 async function runExternalConsoleCommand(command: string): Promise<void> {
@@ -2117,12 +2044,6 @@ function closeDropdown(): void {
   document.documentElement.style.setProperty("--ribbon-height", "0px");
 }
 
-function openScriptsFolder(): void {
-  const native = nativeApi();
-  void native?.openScriptsFolder?.();
-  log("event", "Opening local scripts folder.");
-}
-
 async function readJsonSetting(name: string): Promise<unknown> {
   return nativeApi()?.readJsonSetting?.(name);
 }
@@ -2164,7 +2085,7 @@ async function openCurrentScriptInVsCode(): Promise<void> {
       if (!native?.openScriptInVsCode) throw new Error("VS Code opener is unavailable.");
       result = await native.openScriptInVsCode(script.id);
     }
-    const filePath = result && typeof result === "object" && "filePath" in result ? String((result as { filePath?: unknown }).filePath ?? "") : "";
+    const filePath = result && typeof result === "object" && "filePath" in result ? stringFrom((result as { filePath?: unknown }).filePath) : "";
     log("event", `Opened ${script.meta.name} in VS Code${filePath ? `: ${filePath}` : "."}`);
   } catch (error) {
     log("event", `Could not open VS Code: ${error instanceof Error ? error.message : String(error)}`);
@@ -2212,7 +2133,7 @@ function installFlashCallbacks(): void {
 
   target.debug = (...args: unknown[]) => {
     const [message] = flattenExternalArgs(args);
-    const text = String(message ?? "");
+    const text = stringFrom(message);
     log("debug", `[flash] ${text}`);
     if (text.includes("World load check passed")) {
       markGameBridgeReady();

@@ -1,0 +1,26 @@
+diff --git a/install.js b/install.js
+index 8471c7face75713fc694d3799b96fddeea2cce91..5faa02330025be3891db3cac5dca3699285d047a 100644
+--- a/install.js
++++ b/install.js
+@@ -27,14 +27,19 @@ if (installedVersion === version && fs.existsSync(electronPath)) {
+   process.exit(0)
+ }
+ 
++const downloadPlatform = process.env.npm_config_platform || process.platform
++const downloadArch = process.env.npm_config_arch || process.arch
++// Electron 8 predates Apple Silicon, so use the Intel macOS artifact under Rosetta.
++const electronArch = downloadPlatform === 'darwin' && downloadArch === 'arm64' ? 'x64' : downloadArch
++
+ // downloads if not cached
+ downloadArtifact({
+   version,
+   artifactName: 'electron',
+   force: process.env.force_no_cache === 'true',
+   cacheRoot: process.env.electron_config_cache,
+-  platform: process.env.npm_config_platform || process.platform,
+-  arch: process.env.npm_config_arch || process.arch
++  platform: downloadPlatform,
++  arch: electronArch
+ }).then((zipPath) => extractFile(zipPath)).catch((err) => onerror(err))
+ 
+ // unzips and makes path.txt point at the correct executable

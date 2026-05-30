@@ -16,6 +16,7 @@ const certPath = join(certDir, "game-aq-dev.pfx");
 const certKeyPath = join(certDir, "game-aq-dev.key");
 const certPemPath = join(certDir, "game-aq-dev.pem");
 const certPassphrase = "veyra-dev";
+const bundledPepperFlashDir = join(appDir, "vendor", "pepper-flash");
 const flash = resolvePepperFlash();
 migrateGlobalFlashSharedObjects();
 installFlashTrust();
@@ -736,7 +737,7 @@ function findPepperFlash(base) {
 }
 
 function getPepperFlashSearchRoots() {
-  const roots = [];
+  const roots = [bundledPepperFlashDir];
   if (process.platform === "win32") {
     roots.push(
       process.env.PROGRAMFILES && join(process.env.PROGRAMFILES, "Artix Game Launcher", "resources", "plugins"),
@@ -782,12 +783,44 @@ function missingPepperFlashReason() {
 }
 
 function inferFlashVersion(filePath) {
+  if (process.env.VEYRA_PEPPER_FLASH_VERSION) return process.env.VEYRA_PEPPER_FLASH_VERSION;
+  const metadataVersion = readPepperFlashVersionMetadata(filePath);
+  if (metadataVersion) return metadataVersion;
   if (/artix game launcher/i.test(filePath)) return process.env.VEYRA_PEPPER_FLASH_VERSION || "32.0.0.371";
   const parts = dirname(filePath).split(/[\\/]/).reverse();
   const folderVersion = parts.find((part) => /^\d+\.\d+\.\d+\.\d+$/.test(part));
   if (folderVersion) return folderVersion;
   const fileVersion = filePath.match(/_(\d+)_(\d+)_(\d+)_(\d+)\.dll$/i);
   return fileVersion ? `${fileVersion[1]}.${fileVersion[2]}.${fileVersion[3]}.${fileVersion[4]}` : "34.0.0.330";
+}
+
+function readPepperFlashVersionMetadata(filePath) {
+  const dirs = [];
+  try {
+    if (existsSync(filePath) && statSync(filePath).isDirectory()) dirs.push(filePath);
+  } catch {
+    // Ignore unreadable plugin bundles and fall back to path heuristics.
+  }
+  dirs.push(dirname(filePath), dirname(dirname(filePath)));
+
+  for (const dir of dirs) {
+    const versionFile = join(dir, "version.txt");
+    const manifestFile = join(dir, "manifest.json");
+    try {
+      if (existsSync(versionFile)) {
+        const version = readFileSync(versionFile, "utf8").trim();
+        if (/^\d+\.\d+\.\d+\.\d+$/.test(version)) return version;
+      }
+      if (existsSync(manifestFile)) {
+        const manifest = readFileSync(manifestFile, "utf8");
+        const match = manifest.match(/"version"\s*:\s*"([^"]+)"/);
+        if (match) return match[1];
+      }
+    } catch {
+      // Ignore malformed local metadata and continue searching.
+    }
+  }
+  return "";
 }
 
 function installFlashTrust() {

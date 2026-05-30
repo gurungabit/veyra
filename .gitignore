@@ -13,3 +13,4 @@ bin/
 obj/
 /artifacts/
 /*.png
+apps/flash-client/release/

@@ -7,6 +7,13 @@
   "scripts": {
     "dev": "pnpm --filter @veyra/flash-client start",
     "app": "pnpm --filter @veyra/flash-client start",
+    "flash:bundle": "pnpm --filter @veyra/flash-client bundle:flash",
+    "flash:build-swf": "pnpm --filter @veyra/flash-client build:swf",
+    "app:pack:mac": "pnpm --filter @veyra/flash-client pack:mac",
+    "app:pack:win": "pnpm --filter @veyra/flash-client pack:win",
+    "app:dist:mac": "pnpm --filter @veyra/flash-client dist:mac",
+    "app:dist:win": "pnpm --filter @veyra/flash-client dist:win",
+    "app:dist:all": "pnpm --filter @veyra/flash-client dist:all",
     "desktop:dev": "pnpm --filter @veyra/desktop dev",
     "desktop:start": "pnpm --filter @veyra/desktop start",
     "dev:renderer": "pnpm --filter @veyra/desktop dev:renderer",

@@ -3,8 +3,9 @@ import { FarmJoeRuntime, type FarmJoeRuntimeOptions, type PlayerNumber } from ".
 
 export const meta = {
   name: "JoePrepsForUltras",
-  description: "Veyra conversion of JoePrepsForUltras.cs. Prepares role-specific ultra boss classes, stories, potions, scrolls, gear, and enhancements.",
-  tags: ["farmjoe", "ultra", "boss", "preparation", "converted"],
+  description:
+    "Veyra ultra prep for role-specific classes, stories, potions, scrolls, gear, and enhancements.",
+  tags: ["farmjoe", "ultra", "boss", "preparation"],
   version: "0.1.0"
 };
 
@@ -13,10 +14,29 @@ export interface JoePrepsOptions extends FarmJoeRuntimeOptions {
 }
 
 const enhancementsByPlayer: Record<PlayerNumber, string[]> = {
-  Player1: ["ArcanasConcerto", "Ravenous", "Lacerate", "Dauntless", "Vainglory", "Avarice", "Absolution", "Lament", "ForgeHelm"],
+  Player1: [
+    "ArcanasConcerto",
+    "Ravenous",
+    "Lacerate",
+    "Dauntless",
+    "Vainglory",
+    "Avarice",
+    "Absolution",
+    "Lament",
+    "ForgeHelm"
+  ],
   Player2: ["Valiance", "ArcanasConcerto", "Dauntless", "Lament", "Vainglory", "Penitence", "Absolution"],
   Player3: ["Health Vamp/AweBlast", "Dauntless", "Penitence", "Avarice", "Absolution", "ForgeHelm"],
-  Player4: ["Ravenous", "Elysium", "ArcanasConcerto", "Dauntless", "Valiance", "Penitence", "Lament", "ForgeHelm"]
+  Player4: [
+    "Ravenous",
+    "Elysium",
+    "ArcanasConcerto",
+    "Dauntless",
+    "Valiance",
+    "Penitence",
+    "Lament",
+    "ForgeHelm"
+  ]
 };
 
 const enhancementQuestIds: Record<string, number> = {
@@ -61,7 +81,9 @@ export class JoePrepsForUltras {
         await this.setupPlayerFour();
         break;
       default:
-        this.runtime.log("Invalid player number selected. Please choose Player1, Player2, Player3, or Player4.");
+        this.runtime.log(
+          "Invalid player number selected. Please choose Player1, Player2, Player3, or Player4."
+        );
         break;
     }
     await this.otherPrep();
@@ -75,18 +97,23 @@ export class JoePrepsForUltras {
     await this.checkAndUnlockEnhancements();
 
     this.runtime.log("Getting potions and scrolls.");
-    await this.runtime.externalStep("PotionBuyer.INeedYourStrongestPotions", "Potent Malevolence Elixir x10");
-    await this.runtime.externalStep("BuyScrolls.BuyScroll", "Scroll of Enrage x1000");
+    await this.runtime.runTask("PotionBuyer.INeedYourStrongestPotions", "Potent Malevolence Elixir x10");
+    await this.runtime.runTask("BuyScrolls.BuyScroll", "Scroll of Enrage x1000");
     const lifeStealQty = await this.runtime.quantity("Scroll of Life Steal");
-    if (lifeStealQty < 99) await this.runtime.buyItem("terminatemple", 2328, "Scroll of Life Steal", 99 - lifeStealQty);
+    if (lifeStealQty < 99)
+      await this.runtime.buyItem("terminatemple", 2328, "Scroll of Life Steal", 99 - lifeStealQty);
 
     this.runtime.log("Completing all storylines.");
-    await this.runtime.externalStep("AllStories.CompleteAll");
+    await this.runtime.runTask("AllStories.CompleteAll");
     if (!(await this.runtime.contains("Necrotic Sword of Doom"))) {
       this.runtime.log("Starting Necrotic Sword of Doom farm.");
-      await this.runtime.externalStep("CoreNSOD.GetNSOD");
-      if (await this.runtime.contains("Necrotic Sword of Doom")) this.runtime.log("Successfully obtained Necrotic Sword of Doom.");
-      else this.runtime.log("NSOD farm checkpoint completed; continue manually or with a dedicated script if still missing.");
+      await this.runtime.runTask("CoreNSOD.GetNSOD");
+      if (await this.runtime.contains("Necrotic Sword of Doom"))
+        this.runtime.log("Successfully obtained Necrotic Sword of Doom.");
+      else
+        this.runtime.log(
+          "NSOD farm step completed; continue manually or with a dedicated script if still missing."
+        );
     } else {
       this.runtime.log("Necrotic Sword of Doom already obtained.");
     }
@@ -94,31 +121,44 @@ export class JoePrepsForUltras {
 
   private async setupPlayerOne(): Promise<void> {
     this.runtime.log("Setting up Player 1 (Tank/Support).");
-    await this.runtime.externalStep("CoreLR.GetLR", "Legion Revenant");
-    await this.runtime.externalStep("ArchPaladin.GetAP");
-    await this.runtime.externalStep("StoneCrusher.GetSC");
-    await this.warnIfMissingManual("Chaos Avenger", "Chaos Avenger must be obtained manually because it requires ultras.");
+    await this.runtime.runTask("CoreLR.GetLR", "Legion Revenant");
+    await this.runtime.runTask("ArchPaladin.GetAP");
+    await this.runtime.runTask("StoneCrusher.GetSC");
+    await this.warnIfMissingManual(
+      "Chaos Avenger",
+      "Chaos Avenger must be obtained manually because it requires ultras."
+    );
   }
 
   private async setupPlayerTwo(): Promise<void> {
     this.runtime.log("Setting up Player 2 (DPS/Chrono).");
-    await this.warnIfMissingManual("Quantum Chronomancer", "Quantum Chronomancer must be bought for 6k ACs in /heromart, or use Arachnomancer instead.");
-    await this.runtime.externalStep("CoreLR.GetLR", "Legion Revenant");
-    await this.warnIfMissingManual("Chaos Avenger", "Chaos Avenger must be obtained manually because it requires ultras.");
-    await this.runtime.externalStep("StoneCrusher.GetSC");
+    await this.warnIfMissingManual(
+      "Quantum Chronomancer",
+      "Quantum Chronomancer must be bought for 6k ACs in /heromart, or use Arachnomancer instead."
+    );
+    await this.runtime.runTask("CoreLR.GetLR", "Legion Revenant");
+    await this.warnIfMissingManual(
+      "Chaos Avenger",
+      "Chaos Avenger must be obtained manually because it requires ultras."
+    );
+    await this.runtime.runTask("StoneCrusher.GetSC");
   }
 
   private async setupPlayerThree(): Promise<void> {
     this.runtime.log("Setting up Player 3 (Support).");
-    await this.runtime.externalStep("LordOfOrder.GetLoO");
-    await this.runtime.externalStep("CoreLR.GetLR", "Legion Revenant");
+    await this.runtime.runTask("LordOfOrder.GetLoO");
+    await this.runtime.runTask("CoreLR.GetLR", "Legion Revenant");
   }
 
   private async setupPlayerFour(): Promise<void> {
     this.runtime.log("Setting up Player 4 (DPS/Support).");
-    await this.runtime.externalStep("ArchPaladin.GetAP");
-    await this.warnIfMissingManual("LightCaster", "LightCaster requires 1000 ACs to purchase; pre-farming materials checkpoint logged.");
-    if (!(await this.runtime.contains("Verus DoomKnight"))) await this.runtime.externalStep("VerusDoomKnightClass.GetClass");
+    await this.runtime.runTask("ArchPaladin.GetAP");
+    await this.warnIfMissingManual(
+      "LightCaster",
+      "LightCaster requires 1000 ACs to purchase; pre-farming materials were recorded."
+    );
+    if (!(await this.runtime.contains("Verus DoomKnight")))
+      await this.runtime.runTask("VerusDoomKnightClass.GetClass");
     else this.runtime.log("Verus DoomKnight found.");
   }
 
@@ -156,7 +196,11 @@ export class JoePrepsForUltras {
   }
 }
 
-export async function runForPlayer(bot: Bot, player: PlayerNumber, options: FarmJoeRuntimeOptions = {}): Promise<void> {
+export async function runForPlayer(
+  bot: Bot,
+  player: PlayerNumber,
+  options: FarmJoeRuntimeOptions = {}
+): Promise<void> {
   await new JoePrepsForUltras(bot, { ...options, player }).playerSetup();
 }
 
