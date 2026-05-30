@@ -361,18 +361,32 @@ export class FarmJoeRuntime {
 
   async anyRank10(classes: Array<string | number>): Promise<boolean> {
     const items = await this.inventory();
-    return classes.some((classRef) =>
-      items.some(
-        (record) =>
-          (typeof classRef === "number" ? itemIds(record).includes(classRef) : sameName(itemName(record), classRef)) &&
-          isClassItem(record) &&
-          itemQuantity(record) >= RANK_10_CLASS_POINTS
+    const snapshot = await this.snapshot().catch(() => undefined);
+    for (const classRef of classes) {
+      if (typeof classRef === "number" && (await this.hasClassRank("", classRef, 10))) return true;
+      if (
+        typeof classRef === "string" &&
+        snapshot &&
+        sameName(snapshot.currentClassName, classRef) &&
+        normalizedClassRank(snapshot) >= 10
       )
-    );
+        return true;
+      if (
+        items.some(
+          (record) =>
+            (typeof classRef === "number" ? itemIds(record).includes(classRef) : sameName(itemName(record), classRef)) &&
+            isClassItem(record) &&
+            itemRank(record) >= 10
+        )
+      )
+        return true;
+    }
+    return false;
   }
 
   private async classRecord(className: string, itemId?: number, includeBank = true): Promise<ItemRecord | undefined> {
-    return itemId ? this.itemById(itemId, includeBank) : this.item(className, includeBank);
+    if (itemId) return this.itemById(itemId, includeBank);
+    return this.item(className, includeBank);
   }
 
   private async hasClassItem(className: string, itemId?: number): Promise<boolean> {
@@ -381,9 +395,61 @@ export class FarmJoeRuntime {
   }
 
   private async hasClassRank(className: string, itemId: number | undefined, rank: number): Promise<boolean> {
+    if (itemId) {
+      const cp = await this.classPointsById(itemId);
+      if (cp > 0) return classRankFromPoints(cp) >= rank;
+    }
+
+    const snapshot = await this.snapshot().catch(() => undefined);
+    if (snapshot && className && sameName(snapshot.currentClassName, className)) {
+      const currentRank = normalizedClassRank(snapshot);
+      if (currentRank > 1 || snapshot.currentClassPoints > 0) return currentRank >= rank;
+    }
+
     const record = await this.classRecord(className, itemId);
     if (!record) return false;
-    return classRankFromPoints(itemQuantity(record)) >= rank;
+    return itemRank(record) >= rank;
+  }
+
+  private async classPointsById(itemId: number): Promise<number> {
+    return toNumber(await this.bot.callGameFunction<unknown>("world.myAvatar.getCPByID", itemId).catch(() => 0));
+  }
+
+  private async classRankById(itemId: number): Promise<number> {
+    return classRankFromPoints(await this.classPointsById(itemId));
+  }
+
+  private async rankBestOwnedClassId(className: string, itemIdsToTry: number[]): Promise<boolean> {
+    let bestId = 0;
+    let bestRank = 0;
+    for (const itemId of itemIdsToTry) {
+      if (!(await this.contains(itemId))) continue;
+      const rank = await this.classRankById(itemId);
+      if (rank > bestRank) {
+        bestRank = rank;
+        bestId = itemId;
+      }
+    }
+    if (bestId > 0) return this.rankClass(className, bestId);
+    return this.rankClass(className);
+  }
+
+  private async debugClassInventory(className: string, itemIdsToTry: number[]): Promise<void> {
+    const items = await this.inventory();
+    const matches = items.filter(
+        (record) =>
+        sameName(itemName(record), className) || itemIds(record).some((id) => itemIdsToTry.includes(id))
+    );
+    const parts = await Promise.all(
+      matches.slice(0, 4).map(async (record) => {
+        const ids = itemIds(record);
+        const cp = await Promise.all(ids.map((id) => this.classPointsById(id)));
+        return `${itemName(record) || "class"} ids=${ids.join("/") || "?"} rank=${itemRank(record)} cp=${cp.join("/") || "?"}${
+          record.bank ? " bank" : ""
+        }`;
+      })
+    );
+    this.log(`${className} inventory check: ${parts.length > 0 ? parts.join("; ") : "not found in inventory/bank"}.`);
   }
 
   private async hasDragonslayerGeneral(): Promise<boolean> {
@@ -395,9 +461,8 @@ export class FarmJoeRuntime {
   }
 
   private async rankDragonslayerGeneral(): Promise<boolean> {
-    if (await this.contains(35996)) return this.rankClass("Dragonslayer General", 35996);
-    if (await this.contains(35963)) return this.rankClass("Dragonslayer General", 35963);
-    return this.rankClass("Dragonslayer General");
+    await this.debugClassInventory("Dragonslayer General", [35996, 35963]);
+    return this.rankBestOwnedClassId("Dragonslayer General", [35996, 35963]);
   }
 
   private async waitForEquippedClass(className: string): Promise<boolean> {
@@ -903,7 +968,10 @@ export class FarmJoeRuntime {
       const snapshot = await this.snapshot();
       if (!sameName(snapshot.currentClassName, className) && loops % 10 === 0) {
         await this.equip(className, itemId);
-        await this.waitForEquippedClass(className);
+        if (!(await this.waitForEquippedClass(className))) {
+          this.log(`${className} equip was not confirmed; stopping rank farm until the class can be equipped.`);
+          return;
+        }
       }
 
       const route = selectRoute(snapshot.level);
@@ -917,16 +985,47 @@ export class FarmJoeRuntime {
   }
 
   async rankClass(className: string, itemId?: number): Promise<boolean> {
+    if (await this.hasClassRank(className, itemId, 10)) return true;
     if (!(await this.hasClassItem(className, itemId))) {
       this.log(`Rank skipped; ${className} is not owned.`);
       return false;
     }
+    await this.ensureClassEnhanced(className, itemId);
     if (!(await this.equip(className, itemId))) return false;
     if (!(await this.waitForEquippedClass(className))) {
-      this.log(`${className} equip was not confirmed; continuing rank pass with inventory CP checks.`);
+      this.log(`${className} equip was not confirmed; skipping rank farm instead of looping equip requests.`);
+      return this.hasClassRank(className, itemId, 10);
     }
     await this.farmClassRank(className, itemId);
     return this.hasClassRank(className, itemId, 10);
+  }
+
+  private async ensureClassEnhanced(className: string, itemId?: number): Promise<void> {
+    if (!(await this.ensureInInventory(className, itemId))) return;
+    let record = itemId ? await this.itemById(itemId, false) : await this.item(className, false);
+    if (!record) return;
+    if (itemEnhancementLevel(record) > 0) return;
+
+    const shopId = (await this.snapshot()).level >= 50 ? 763 : 147;
+    const shopInfo = await this.loadShop(shopId);
+    const enhancement = bestClassEnhancement(shopInfo, (await this.snapshot()).level);
+    if (!enhancement) {
+      this.log(`Enhancement skipped; no usable class enhancement was found in shop ${shopId}.`);
+      return;
+    }
+
+    const classItemId = primaryItemId(record);
+    const enhancementId = shopItemItemId(enhancement);
+    if (classItemId <= 0 || enhancementId <= 0) {
+      this.log(`Enhancement skipped; ${className} or enhancement is missing an item id.`);
+      return;
+    }
+
+    this.log(`Enhancing ${className} before ranking.`);
+    await this.sendRoomPacket("enhanceItemShop", [classItemId, enhancementId, shopId]);
+    await this.bot.delay(1200, this.signal);
+    record = itemId ? await this.itemById(itemId, false) : await this.item(className, false);
+    if (record && itemEnhancementLevel(record) <= 0) this.log(`${className} still appears unenhanced after enhancement request.`);
   }
 
   async farmGold(): Promise<void> {
@@ -6129,6 +6228,24 @@ export function itemQuantity(item: ItemRecord): number {
   return toNumber(item.quantity ?? item.iQty ?? item.Quantity ?? item.intCount ?? 1) || 1;
 }
 
+export function itemRank(item: ItemRecord): number {
+  const record = toItemRecord(item);
+  const explicitRank = firstPositiveNumberFrom(record, ["iRank", "Rank", "rank", "currentClassRank"]);
+  if (explicitRank > 0) return explicitRank;
+  return classRankFromPoints(itemClassPoints(item));
+}
+
+export function itemClassPoints(item: ItemRecord): number {
+  const record = toItemRecord(item);
+  const explicitPoints = firstPositiveNumberFrom(record, ["iCP", "CP", "ClassPoints", "classPoints", "iClassPoints"]);
+  if (explicitPoints > 0) return explicitPoints;
+  return itemQuantity(item);
+}
+
+export function itemEnhancementLevel(item: ItemRecord): number {
+  return firstPositiveNumberFrom(toItemRecord(item), ["EnhLvl", "enhancementLevel", "EnhancementLevel"]);
+}
+
 export function primaryItemId(item: ItemRecord): number {
   return firstPositiveNumberFrom(toItemRecord(item), ["ItemID", "ID", "iID", "itemId", "id"]);
 }
@@ -6319,6 +6436,19 @@ function firstPositiveNumberFrom(record: Record<string, unknown>, keys: string[]
     if (value && value > 0) return value;
   }
   return numberFrom(record, keys);
+}
+
+function bestClassEnhancement(shopInfo: Record<string, unknown>, playerLevel: number): Record<string, unknown> | undefined {
+  return shopItemsFrom(shopInfo)
+    .filter((record) => {
+      const category = stringFrom(firstFrom(record, ["sType", "Category", "category"])).toLowerCase();
+      const name = stringFrom(firstFrom(record, ["sName", "Name", "name", "strName"]))
+        .replace(/\s+/g, "")
+        .toLowerCase();
+      const level = firstPositiveNumberFrom(record, ["iLvl", "Level", "level"]);
+      return category === "enhancement" && name.includes("armor") && level <= playerLevel;
+    })
+    .sort((left, right) => firstPositiveNumberFrom(right, ["iLvl", "Level", "level"]) - firstPositiveNumberFrom(left, ["iLvl", "Level", "level"]))[0];
 }
 
 function uniqueDropNames(names: string[]): string[] {
