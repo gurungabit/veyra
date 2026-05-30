@@ -14,3 +14,4 @@ obj/
 /artifacts/
 /*.png
 apps/flash-client/release/
+apps/flash-client/vendor/pepper-flash/

@@ -28,7 +28,7 @@ To keep a local untracked copy in this repo, install Artix Game Launcher or set 
 pnpm flash:bundle
 ```
 
-This copies the plugin into `apps/flash-client/vendor/pepper-flash/` so packaged releases can ship as one app download.
+This copies the plugin into ignored local storage at `apps/flash-client/vendor/pepper-flash/` so packaged releases can ship as one app download without committing Flash binaries.
 
 For release builds that include everything in one download, bundle the platform plugin before packaging:
 
