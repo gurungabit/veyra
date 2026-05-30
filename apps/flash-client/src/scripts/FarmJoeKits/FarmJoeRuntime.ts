@@ -481,6 +481,7 @@ export class FarmJoeRuntime {
     this.throwIfAborted();
     await this.bot.join(map, cell, pad);
     await this.bot.delay(700, this.signal);
+    await this.skipCutsceneIfActive();
   }
 
   async jump(cell: string, pad = "Spawn"): Promise<void> {
@@ -488,6 +489,27 @@ export class FarmJoeRuntime {
     this.throwIfAborted();
     await this.bot.jump(cell, pad);
     await this.bot.delay(450, this.signal);
+    await this.skipCutsceneIfActive();
+  }
+
+  async skipCutsceneIfActive(): Promise<boolean> {
+    const [children, uiVisible, worldVisible] = await Promise.all([
+      this.bot.getGameObject<unknown>("mcExtSWF.numChildren").catch(() => 0),
+      this.bot.getGameObject<unknown>("ui.visible").catch(() => true),
+      this.bot.getGameObject<unknown>("world.visible").catch(() => true)
+    ]);
+    const childCount = toNumber(children);
+    const interfaceVisible = booleanWithDefault(uiVisible, true) && booleanWithDefault(worldVisible, true);
+    if (childCount <= 0 || interfaceVisible) return false;
+
+    this.log("Skipping active cutscene.");
+    await this.bot.call("skipCutscenes").catch(() => undefined);
+    await this.bot.delay(250, this.signal);
+    await this.bot.call("setGameObject", "ui.visible", true).catch(() => undefined);
+    await this.bot.call("setGameObject", "world.visible", true).catch(() => undefined);
+    await this.bot.call("setGameObject", "mcExtSWF.visible", false).catch(() => undefined);
+    await this.bot.callGameFunction("showInterface").catch(() => undefined);
+    return true;
   }
 
   async equip(name: string, itemId?: number): Promise<boolean> {
@@ -677,6 +699,7 @@ export class FarmJoeRuntime {
       );
     });
     await this.bot.delay(900, this.signal);
+    await this.skipCutsceneIfActive();
   }
 
   async isQuestCompleted(questId: number): Promise<boolean> {
@@ -704,8 +727,9 @@ export class FarmJoeRuntime {
       this.throwIfAborted();
       const room = (await this.snapshot()).room || 1;
       this.log(`Getting map item ${mapItemId} ${index + 1}/${quantity}.`);
+      await this.throttleServerAction();
       await this.bot.sendPacket(`%xt%zm%getMapItem%${room}%${mapItemId}%`);
-      await this.bot.delay(1000, this.signal);
+      await this.bot.delay(1800, this.signal);
     }
   }
 
@@ -6320,6 +6344,12 @@ export function toBoolean(value: unknown): boolean {
   if (typeof value === "number") return value !== 0;
   if (typeof value === "string") return ["true", "1", "yes"].includes(value.toLowerCase());
   return false;
+}
+
+function booleanWithDefault(value: unknown, fallback: boolean): boolean {
+  if (value === undefined || value === null) return fallback;
+  if (typeof value === "string" && ["false", "0", "no"].includes(value.toLowerCase())) return false;
+  return toBoolean(value);
 }
 
 export function toNumber(value: unknown): number {
