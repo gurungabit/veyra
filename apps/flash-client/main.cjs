@@ -946,9 +946,6 @@ function hasSavedAqwLogin(filePath) {
 function getFlashSettingsFiles() {
   const files = [];
   if (process.platform === "win32") {
-    const winRoot = process.env.SystemRoot || "C:\\Windows";
-    files.push(join(winRoot, "System32", "Macromed", "Flash", "mms.cfg"));
-    files.push(join(winRoot, "SysWOW64", "Macromed", "Flash", "mms.cfg"));
     if (process.env.LOCALAPPDATA) {
       files.push(join(process.env.LOCALAPPDATA, "Electron", "User Data", "Default", "Pepper Data", "Shockwave Flash", "System", "mms.cfg"));
       files.push(join(process.env.LOCALAPPDATA, "Veyra", "User Data", "Default", "Pepper Data", "Shockwave Flash", "System", "mms.cfg"));
