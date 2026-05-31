@@ -81,7 +81,17 @@ VEYRA_ALLOW_EXTERNAL_FLASH=1 pnpm app:dist:mac
 
 Installed Veyra builds ping GitHub Releases on launch. If a newer release exists, Veyra shows an update button that opens the latest release download page.
 
-The release workflow stamps packaged builds as `0.1.<run number>`, so each pushed release can be detected as newer than the last installed build. Veyra does not auto-install updates and does not require an Apple Developer ID certificate.
+Veyra does not auto-install updates and does not require an Apple Developer ID certificate.
+
+## Release Versioning
+
+Veyra uses semantic-release on pushes to `main`. Commit messages decide the next version:
+
+- `fix: ...` creates a patch release.
+- `feat: ...` creates a minor release.
+- `feat!: ...` or a `BREAKING CHANGE:` footer creates a major release.
+
+The workflow writes the computed version into the packaged app before building, then publishes a GitHub release tagged as `vX.Y.Z`. Commits that do not require a release skip the packaging jobs.
 
 ## How End Users Run Veyra
 

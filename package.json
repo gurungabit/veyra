@@ -21,16 +21,23 @@
     "test": "pnpm -r test",
     "test:e2e": "pnpm build && playwright test",
     "lint": "pnpm -r lint",
-    "format": "prettier --write ."
+    "format": "prettier --write .",
+    "release": "semantic-release",
+    "release:preview": "node scripts/semantic-release-preview.mjs",
+    "release:set-version": "node scripts/set-release-version.mjs"
   },
   "devDependencies": {
     "@eslint/js": "^9.18.0",
     "@playwright/test": "^1.49.1",
+    "@semantic-release/commit-analyzer": "^13.0.1",
+    "@semantic-release/github": "^12.0.8",
+    "@semantic-release/release-notes-generator": "^14.1.1",
     "@types/node": "^22.10.7",
     "eslint": "^9.18.0",
     "eslint-config-prettier": "^10.0.1",
     "playwright": "^1.49.1",
     "prettier": "^3.4.2",
+    "semantic-release": "^25.0.3",
     "typescript": "^5.7.3",
     "typescript-eslint": "^8.20.0",
     "vitest": "^2.1.8"

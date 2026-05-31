@@ -1,0 +1,20 @@
+{
+  "branches": ["main"],
+  "tagFormat": "v${version}",
+  "plugins": [
+    "@semantic-release/commit-analyzer",
+    "@semantic-release/release-notes-generator",
+    [
+      "@semantic-release/github",
+      {
+        "assets": [
+          { "path": "release-assets/**/*.dmg", "label": "Veyra macOS DMG" },
+          { "path": "release-assets/**/*-mac.zip", "label": "Veyra macOS ZIP" },
+          { "path": "release-assets/**/*.exe", "label": "Veyra Windows Installer" },
+          { "path": "release-assets/**/*-win.zip", "label": "Veyra Windows ZIP" },
+          { "path": "release-assets/**/*.blockmap", "label": "Veyra block map" }
+        ]
+      }
+    ]
+  ]
+}
