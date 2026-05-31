@@ -952,13 +952,15 @@ ipcMain.handle("tool-window-show", (_event, payload) => showToolWindow(payload))
 
 app.whenReady().then(() => startAssetServer().then(createLauncherWindow));
 
+app.on("before-quit", closeAssetServer);
+
 app.on("window-all-closed", () => {
-  if (assetServer) assetServer.close();
-  if (process.platform !== "darwin") app.quit();
+  closeAssetServer();
+  app.quit();
 });
 
 app.on("activate", () => {
-  if (BrowserWindow.getAllWindows().length === 0) createLauncherWindow();
+  if (BrowserWindow.getAllWindows().length === 0) startAssetServer().then(createLauncherWindow);
 });
 
 function resolvePepperFlash() {
@@ -1032,6 +1034,18 @@ function startAssetServer() {
       resolveServer();
     });
   });
+}
+
+function closeAssetServer() {
+  const server = assetServer;
+  assetServer = undefined;
+  assetOrigin = undefined;
+  if (!server) return;
+  try {
+    server.close();
+  } catch {
+    // The app is already closing; a server close failure should not block quit.
+  }
 }
 
 function getHttpsServerOptions() {
