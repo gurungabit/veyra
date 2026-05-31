@@ -26,8 +26,6 @@ interface UpdateButtonOptions {
   log?: (message: string) => void;
 }
 
-const visibleStates = new Set<UpdateState>(["available"]);
-
 export function bindUpdateButton(options: UpdateButtonOptions): void {
   const api = nativeUpdateApi();
   const label = options.label ?? options.button.querySelector<HTMLElement>("[data-update-label]");
@@ -37,9 +35,10 @@ export function bindUpdateButton(options: UpdateButtonOptions): void {
   const render = (next: UpdateStatus) => {
     status = next;
     options.button.dataset.updateState = next.state;
-    options.button.hidden = !visibleStates.has(next.state);
-    options.button.disabled = next.state === "checking";
-    options.button.title = next.message || updateLabel(next);
+    options.button.hidden = !shouldShowUpdateButton(next);
+    options.button.disabled = next.state === "checking" || (!next.canCheck && !next.canOpen);
+    options.button.title = updateTitle(next);
+    options.button.setAttribute("aria-label", updateTitle(next));
     if (label) label.textContent = updateLabel(next);
     if (detail) detail.textContent = updateDetail(next);
   };
@@ -74,22 +73,42 @@ async function handleUpdateClick(api: UpdateNativeApi, status: UpdateStatus | un
   }
 }
 
+function shouldShowUpdateButton(status: UpdateStatus): boolean {
+  if (!status.isPackaged) return false;
+  return status.canCheck || status.canOpen || status.state === "checking";
+}
+
 function updateLabel(status: UpdateStatus): string {
   switch (status.state) {
     case "available":
       return "Update available";
     case "error":
-      return "Update failed";
+      return "Retry updates";
     case "checking":
-      return "Checking updates";
+      return "Checking...";
     default:
-      return "Check for updates";
+      return "Check updates";
   }
 }
 
 function updateDetail(status: UpdateStatus): string {
   if (status.state === "available" && status.version) return `Open Veyra ${status.version}`;
   return status.message || "";
+}
+
+function updateTitle(status: UpdateStatus): string {
+  switch (status.state) {
+    case "available":
+      return status.version ? `Veyra ${status.version} is available. Open release downloads.` : "Update available. Open release downloads.";
+    case "checking":
+      return "Checking GitHub for updates.";
+    case "not-available":
+      return "Veyra is up to date. Click to check again.";
+    case "error":
+      return status.message || "Update check failed. Click to retry.";
+    default:
+      return "Check GitHub for Veyra updates.";
+  }
 }
 
 function nativeUpdateApi(): UpdateNativeApi | undefined {

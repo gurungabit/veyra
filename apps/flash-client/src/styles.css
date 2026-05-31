@@ -313,11 +313,16 @@ button:disabled {
 
 .update-button {
   gap: 6px;
-  min-width: 0;
+  min-width: 116px;
   color: var(--text);
   background: rgba(196, 166, 255, 0.13);
   border-left-color: rgba(196, 166, 255, 0.28);
   border-right-color: rgba(196, 166, 255, 0.28);
+}
+
+.update-button[data-update-state="available"] {
+  color: #101318;
+  background: var(--accent);
 }
 
 .update-button[hidden],
@@ -2644,6 +2649,12 @@ body.builder-dragging .builder-drop-zone {
   display: inline-flex;
   align-items: center;
   gap: 6px;
+  color: var(--launch-text);
+  background: rgba(137, 221, 209, 0.14);
+  border-color: rgba(137, 221, 209, 0.35);
+}
+
+.launcher-update-button[data-update-state="available"] {
   color: #090d0a;
   background: var(--launch-cyan);
   border-color: rgba(137, 221, 209, 0.7);
