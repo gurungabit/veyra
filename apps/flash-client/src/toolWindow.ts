@@ -136,6 +136,12 @@ interface PacketServerOption {
   refreshedAt?: string;
 }
 
+interface ScriptUpdateSettings {
+  autoDownload: boolean;
+  channel: string;
+  manifestUrl: string;
+}
+
 const params = new URLSearchParams(window.location.search);
 const tool = params.get("tool") || "advanced";
 const section = params.get("section") || "";
@@ -167,6 +173,7 @@ let gameOptionsDraft: GameOptionsState | undefined;
 let activeTheme = "veyra-dark";
 let runtimeSettings: RuntimeSettings = defaultRuntimeSettings();
 let fastTravelSettings: FastTravelSettings = defaultFastTravelSettings();
+let scriptUpdateSettings: ScriptUpdateSettings = defaultScriptUpdateSettings();
 let armySettingsDraft: ArmySettings = createDefaultArmySettings();
 let packetInterceptorSettings: PacketInterceptorSettings = defaultPacketInterceptorSettings();
 let packetInterceptorServers: PacketServerOption[] = [];
@@ -211,6 +218,7 @@ void hydrateThemeFromFile();
 void hydrateJunkItemsFromFile();
 void hydrateRuntimeSettingsFromFile();
 void hydrateFastTravelSettingsFromFile();
+void hydrateScriptUpdateSettingsFromFile();
 void hydrateArmySettingsFromFile();
 void hydratePacketInterceptorSettingsFromFile();
 void hydrateBuilderScriptsFromFile();
@@ -1111,6 +1119,10 @@ async function openScriptIdInVsCode(scriptId: string): Promise<void> {
     await openBuilderScriptIdInVsCode(scriptId);
     return;
   }
+  if (selected?.category === "Official") {
+    localNote("Official downloaded script packs are read-only.");
+    return;
+  }
 
   const native = nativeApi();
   try {
@@ -1704,15 +1716,7 @@ function renderOptions(): void {
     renderArmyOptions();
     return;
   } else if (section === "application-options") {
-    root.innerHTML = `
-      <section class="tool-card">
-        <h2>Application Options</h2>
-        <label class="check"><input data-local-option="open-last-script" type="checkbox" checked /> Remember selected script</label>
-        <label class="check"><input data-local-option="attach-logs" type="checkbox" checked /> Share logs with tool windows</label>
-        <label class="field"><span>Log limit</span><input class="input" type="number" min="100" value="600" /></label>
-        <label class="field"><span>Default script folder</span><input class="input" value="apps/flash-client/src/scripts" /></label>
-        <p class="muted">These settings are local UI settings until the shared settings package lands.</p>
-      </section>`;
+    renderApplicationOptions();
   } else if (section === "core-options") {
     root.innerHTML = `
       <section class="tool-card">
@@ -1756,6 +1760,30 @@ function renderOptions(): void {
       </section>`;
   }
   bindToolButtons();
+}
+
+function renderApplicationOptions(): void {
+  root.innerHTML = `
+    <section class="tool-card">
+      <h2>Application Options</h2>
+      <label class="check"><input id="script-updates-auto" type="checkbox"${scriptUpdateSettings.autoDownload ? " checked" : ""} /> Automatically download script updates</label>
+      <label class="field"><span>Script update channel</span><input id="script-updates-channel" class="input" value="${escapeAttr(scriptUpdateSettings.channel)}" /></label>
+      <label class="field"><span>Manifest URL</span><input id="script-updates-manifest" class="input" value="${escapeAttr(scriptUpdateSettings.manifestUrl)}" placeholder="Default Veyra stable manifest" /></label>
+      <p class="muted">Use Veyra -> Check For Script Updates to poll now. Refresh List only rescans installed local scripts.</p>
+    </section>`;
+
+  byId<HTMLInputElement>("script-updates-auto").addEventListener("change", () => {
+    scriptUpdateSettings.autoDownload = byId<HTMLInputElement>("script-updates-auto").checked;
+    void writeScriptUpdateSettings();
+  });
+  byId<HTMLInputElement>("script-updates-channel").addEventListener("change", () => {
+    scriptUpdateSettings.channel = byId<HTMLInputElement>("script-updates-channel").value.trim() || "stable";
+    void writeScriptUpdateSettings();
+  });
+  byId<HTMLInputElement>("script-updates-manifest").addEventListener("change", () => {
+    scriptUpdateSettings.manifestUrl = byId<HTMLInputElement>("script-updates-manifest").value.trim();
+    void writeScriptUpdateSettings();
+  });
 }
 
 function renderArmyOptions(): void {
@@ -3035,6 +3063,24 @@ async function writeFastTravelSettings(): Promise<void> {
   await writeJsonSetting("fast-travel", fastTravelSettings);
 }
 
+async function hydrateScriptUpdateSettingsFromFile(): Promise<void> {
+  const value = await readJsonSetting("script-updates").catch(() => undefined);
+  scriptUpdateSettings = normalizeScriptUpdateSettings(value);
+  if (tool === "options" && section === "application-options") renderOptions();
+}
+
+async function writeScriptUpdateSettings(): Promise<void> {
+  const current = await readJsonSetting("script-updates").catch(() => undefined);
+  const base = current && typeof current === "object" && !Array.isArray(current) ? (current as Record<string, unknown>) : {};
+  await writeJsonSetting("script-updates", {
+    ...base,
+    autoDownload: scriptUpdateSettings.autoDownload,
+    channel: scriptUpdateSettings.channel || "stable",
+    manifestUrl: scriptUpdateSettings.manifestUrl || ""
+  });
+  localNote("Script update settings saved.");
+}
+
 async function hydrateArmySettingsFromFile(): Promise<void> {
   const value = await readJsonSetting("army").catch(() => undefined);
   armySettingsDraft = normalizeArmySettings(value);
@@ -3082,6 +3128,14 @@ function defaultFastTravelSettings(): FastTravelSettings {
   };
 }
 
+function defaultScriptUpdateSettings(): ScriptUpdateSettings {
+  return {
+    autoDownload: false,
+    channel: "stable",
+    manifestUrl: ""
+  };
+}
+
 function defaultPacketInterceptorSettings(): PacketInterceptorSettings {
   return {
     connected: false,
@@ -3090,6 +3144,16 @@ function defaultPacketInterceptorSettings(): PacketInterceptorSettings {
     search: "",
     filterSearch: "",
     filters: {}
+  };
+}
+
+function normalizeScriptUpdateSettings(value: unknown): ScriptUpdateSettings {
+  const defaults = defaultScriptUpdateSettings();
+  const source = value && typeof value === "object" && !Array.isArray(value) ? (value as Record<string, unknown>) : {};
+  return {
+    autoDownload: source.autoDownload === true,
+    channel: stringFrom(source.channel, defaults.channel) || defaults.channel,
+    manifestUrl: stringFrom(source.manifestUrl, defaults.manifestUrl)
   };
 }
 

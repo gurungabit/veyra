@@ -79,9 +79,17 @@ VEYRA_ALLOW_EXTERNAL_FLASH=1 pnpm app:dist:mac
 
 ## Update Checks
 
-Installed Veyra builds ping GitHub Releases on launch. If a newer release exists, Veyra shows an update button that opens the latest release download page.
+Installed Veyra builds ping GitHub Releases on launch. Manual checks are available from `Veyra -> Check For Updates`, which opens the latest release download page when a newer app build exists.
 
 Veyra does not auto-install updates and does not require an Apple Developer ID certificate.
+
+## Script Updates
+
+Veyra can update official automation script packs separately from the app. Use `Veyra -> Check For Script Updates` to poll the script manifest and install newer packs. `Options -> Application` includes an `Automatically download script updates` checkbox for launch-time script pack installs.
+
+The built-in `Refresh List` button only rescans scripts that are already installed locally. It does not download from GitHub.
+
+The default script update manifest lives at `script-updates/stable.json`. Publish script-only updates with a non-release commit, for example `chore(scripts): publish script pack`, so semantic-release skips app packaging.
 
 ## Release Versioning
 

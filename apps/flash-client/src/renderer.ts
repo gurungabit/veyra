@@ -185,6 +185,7 @@ const builtInScripts: ScriptDefinition[] = [
   ...generatedStoryDefinitions
 ];
 let builderScripts: BuilderScript[] = [];
+let scriptPackScripts: BuilderScript[] = [];
 let scripts: ScriptDefinition[] = [...builtInScripts];
 
 const statusEl = byId<HTMLElement>("status");
@@ -281,11 +282,13 @@ function boot(): void {
   flashEl = mountFlashObject(swfUrl);
   hydrateScripts();
   void hydrateLaunchAccount();
+  void hydrateScriptPackScriptsFromFile();
   void hydrateBuilderScriptsFromFile();
   renderScriptList();
   setLoadedScript(selectedScriptId);
   setScriptRunning(false);
   installUiHandlers();
+  installScriptPackUpdateHandler();
   installToolBus();
 
   if (flashMissing) {
@@ -367,6 +370,14 @@ function installUiHandlers(): void {
   });
   byId<HTMLButtonElement>("copy-log").addEventListener("click", () => void navigator.clipboard?.writeText(logs[activeLog].join("\n")));
   byId<HTMLButtonElement>("save-log").addEventListener("click", saveActiveLog);
+}
+
+function installScriptPackUpdateHandler(): void {
+  nativeApi()?.onScriptPacksChanged?.(() => {
+    void hydrateScriptPackScriptsFromFile().then(() => {
+      log("event", "Script packs refreshed.");
+    });
+  });
 }
 
 function installToolBus(): void {
@@ -550,6 +561,7 @@ async function handleToolCommand(command: string, payload: unknown): Promise<voi
       await publishBuilderContext();
       break;
     case "open-repo":
+      await hydrateScriptPackScriptsFromFile();
       await hydrateBuilderScriptsFromFile();
       publishState();
       log("event", "Refreshed local script list.");
@@ -736,6 +748,12 @@ async function hydrateBuilderScriptsFromFile(): Promise<void> {
   syncScriptCatalog();
 }
 
+async function hydrateScriptPackScriptsFromFile(): Promise<void> {
+  const value = await readScriptPackScriptsSetting().catch(() => undefined);
+  scriptPackScripts = normalizeBuilderScripts(value);
+  syncScriptCatalog();
+}
+
 async function upsertBuilderScript(value: unknown): Promise<BuilderScript | undefined> {
   const normalized = normalizeBuilderScript(value);
   if (!normalized.actions.length) return undefined;
@@ -761,12 +779,28 @@ async function deleteBuilderScript(id: string): Promise<void> {
 }
 
 function syncScriptCatalog(): void {
-  scripts = [...builtInScripts, ...builderScripts.map(builderScriptDefinition)];
+  scripts = [...builtInScripts, ...scriptPackScripts.map(scriptPackScriptDefinition), ...builderScripts.map(builderScriptDefinition)];
   if (!scripts.some((script) => script.id === selectedScriptId)) selectedScriptId = scripts[0]?.id ?? "";
   if (!scripts.some((script) => script.id === loadedScriptId)) loadedScriptId = selectedScriptId;
   hydrateScripts();
   renderScriptList();
   publishState();
+}
+
+function scriptPackScriptDefinition(script: BuilderScript): ScriptDefinition {
+  const normalized = normalizeBuilderScript(script);
+  return {
+    id: normalized.id,
+    category: "Official",
+    map: normalized.map,
+    meta: {
+      name: normalized.name,
+      description: normalized.description,
+      tags: Array.from(new Set(["official", ...normalized.tags])),
+      version: normalized.version
+    },
+    run: (bot, options) => runBuilderScript(bot, normalized, options)
+  };
 }
 
 function builderScriptDefinition(script: BuilderScript): ScriptDefinition {
@@ -789,8 +823,13 @@ function isBuilderScriptId(scriptId: string): boolean {
   return scriptId.startsWith("builder.") || builderScripts.some((script) => script.id === scriptId);
 }
 
+function isScriptPackScriptId(scriptId: string): boolean {
+  return scriptPackScripts.some((script) => script.id === scriptId);
+}
+
 async function loadScriptById(scriptId: string): Promise<void> {
   if (isBuilderScriptId(scriptId)) await hydrateBuilderScriptsFromFile();
+  if (isScriptPackScriptId(scriptId)) await hydrateScriptPackScriptsFromFile();
   setLoadedScript(scriptId);
 }
 
@@ -812,6 +851,10 @@ async function startLoadedScript(): Promise<void> {
   if (isBuilderScriptId(loadedScriptId)) {
     await hydrateBuilderScriptsFromFile();
     log("debug", "Builder scripts refreshed from disk before run.");
+  }
+  if (isScriptPackScriptId(loadedScriptId)) {
+    await hydrateScriptPackScriptsFromFile();
+    log("debug", "Official script packs refreshed from disk before run.");
   }
 
   const script = currentScript();
@@ -2807,6 +2850,12 @@ async function readBuilderScriptsSetting(): Promise<unknown> {
   return readJsonSetting("builder-scripts");
 }
 
+async function readScriptPackScriptsSetting(): Promise<unknown> {
+  const native = nativeApi();
+  if (native?.readScriptPackScripts) return native.readScriptPackScripts();
+  return readJsonSetting("script-pack-scripts");
+}
+
 async function writeBuilderScriptSetting(script: BuilderScript): Promise<unknown> {
   const normalized = normalizeBuilderScript(script);
   const native = nativeApi();
@@ -2830,6 +2879,8 @@ async function openCurrentScriptInVsCode(): Promise<void> {
       if (!builderScript) throw new Error(`Builder source is not loaded for ${script.meta.name}.`);
       if (!native?.openBuilderScriptInVsCode) throw new Error("Builder VS Code opener is unavailable.");
       result = await native.openBuilderScriptInVsCode(builderScript);
+    } else if (script.category === "Official") {
+      throw new Error("Official downloaded script packs are read-only.");
     } else {
       if (!native?.openScriptInVsCode) throw new Error("VS Code opener is unavailable.");
       result = await native.openScriptInVsCode(script.id);
@@ -2855,6 +2906,8 @@ function nativeApi(): {
   showLauncher?: () => Promise<unknown>;
   showToolWindow?: (payload: { tool: string; section?: string; instanceId: string }) => Promise<unknown>;
   getLaunchPayload?: (launchId: string) => Promise<unknown>;
+  readScriptPackScripts?: () => Promise<unknown>;
+  onScriptPacksChanged?: (callback: (payload: unknown) => void) => () => void;
 } | undefined {
   return (window as unknown as {
     veyraNative?: {
@@ -2871,6 +2924,8 @@ function nativeApi(): {
       showLauncher?: () => Promise<unknown>;
       showToolWindow?: (payload: { tool: string; section?: string; instanceId: string }) => Promise<unknown>;
       getLaunchPayload?: (launchId: string) => Promise<unknown>;
+      readScriptPackScripts?: () => Promise<unknown>;
+      onScriptPacksChanged?: (callback: (payload: unknown) => void) => () => void;
     };
   }).veyraNative;
 }

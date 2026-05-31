@@ -2,7 +2,7 @@ const { app, BrowserWindow, dialog, ipcMain, Menu, shell } = require("electron")
 const { createServer: createHttpsServer, request: httpsRequest } = require("https");
 const { request: httpRequest } = require("http");
 const { execFileSync, spawn } = require("child_process");
-const { createCipheriv, createDecipheriv, randomBytes } = require("crypto");
+const { createCipheriv, createDecipheriv, createHash, randomBytes } = require("crypto");
 const { appendFileSync, copyFileSync, existsSync, mkdirSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } = require("fs");
 const { dirname, join, resolve } = require("path");
 
@@ -45,9 +45,13 @@ const clientWindows = new Map();
 const launchPayloads = new Map();
 const toolWindows = new Map();
 const updateRepo = { owner: "gurungabit", repo: "veyra" };
+const defaultScriptUpdatesManifestBaseUrl = `https://raw.githubusercontent.com/${updateRepo.owner}/${updateRepo.repo}/main/script-updates`;
 let updateCheckerInitialized = false;
 let updateChecking = false;
 let checkForUpdatesMenuItem;
+let checkForScriptUpdatesMenuItem;
+let autoDownloadScriptUpdatesMenuItem;
+let scriptUpdateChecking = false;
 let latestUpdateRelease;
 let updateStatus = {
   state: "idle",
@@ -661,6 +665,10 @@ function builderScriptsDir() {
   return join(app.getPath("appData"), "Veyra", "BuilderScripts");
 }
 
+function scriptPacksDir() {
+  return join(app.getPath("appData"), "Veyra", "ScriptPacks");
+}
+
 function builderScriptPath(script) {
   const sourceName = String((script && (script.id || script.name)) || "builder-script");
   const safeName = sourceName
@@ -670,6 +678,60 @@ function builderScriptPath(script) {
     .slice(0, 120);
   if (!safeName) throw new Error("Invalid builder script name.");
   return join(builderScriptsDir(), `${safeName}.json`);
+}
+
+function readScriptPackScripts() {
+  const dir = scriptPacksDir();
+  mkdirSync(dir, { recursive: true });
+  const packs = [];
+  const scriptsById = new Map();
+  for (const entry of readdirSync(dir)) {
+    if (!entry.toLowerCase().endsWith(".json")) continue;
+    const filePath = join(dir, entry);
+    try {
+      const pack = JSON.parse(readFileSync(filePath, "utf8"));
+      const normalizedPack = normalizeInstalledScriptPack(pack, statSync(filePath).mtimeMs);
+      if (!normalizedPack) continue;
+      packs.push(normalizedPack.summary);
+      for (const script of normalizedPack.scripts) {
+        const id = String(script.id || "");
+        if (!id) continue;
+        const existing = scriptsById.get(id);
+        if (!existing || compareScriptVersions(normalizedPack.summary.version, existing.packVersion) >= 0) {
+          scriptsById.set(id, { script, packVersion: normalizedPack.summary.version, mtimeMs: normalizedPack.summary.mtimeMs });
+        }
+      }
+    } catch {
+      // One malformed downloaded pack should not hide the rest of the script catalog.
+    }
+  }
+  const scripts = Array.from(scriptsById.values()).map((entry) => entry.script);
+  scripts.sort((left, right) => String(left.name || left.id || "").localeCompare(String(right.name || right.id || "")));
+  packs.sort((left, right) => String(left.id).localeCompare(String(right.id)));
+  return { scripts, packs };
+}
+
+function normalizeInstalledScriptPack(pack, mtimeMs) {
+  if (!pack || typeof pack !== "object") return undefined;
+  const id = cleanId(pack.id || "official");
+  const version = cleanVersion(pack.version);
+  const scripts = normalizeScriptPackScripts(pack.scripts);
+  if (!id || !version || scripts.length === 0) return undefined;
+  return {
+    summary: {
+      id,
+      version,
+      name: String(pack.name || id),
+      installedAt: typeof pack.installedAt === "string" ? pack.installedAt : "",
+      mtimeMs
+    },
+    scripts
+  };
+}
+
+function normalizeScriptPackScripts(scripts) {
+  if (!Array.isArray(scripts)) return [];
+  return scripts.filter((script) => script && typeof script === "object" && Array.isArray(script.actions));
 }
 
 function readBuilderScripts() {
@@ -757,6 +819,59 @@ function deleteBuilderScript(id) {
     }
   }
   return deleted;
+}
+
+function readScriptUpdateSettings() {
+  return normalizeScriptUpdateSettings(readJsonSetting("script-updates"));
+}
+
+function writeScriptUpdateSettings(settings) {
+  const normalized = normalizeScriptUpdateSettings(settings);
+  writeJsonSetting("script-updates", normalized);
+  updateScriptUpdatesMenuItems();
+  return normalized;
+}
+
+function normalizeScriptUpdateSettings(value) {
+  const source = value && typeof value === "object" ? value : {};
+  const installedPackages = source.installedPackages && typeof source.installedPackages === "object" ? source.installedPackages : {};
+  const normalizedInstalled = {};
+  for (const [id, version] of Object.entries(installedPackages)) {
+    const safeId = cleanId(id);
+    const safeVersion = cleanVersion(version);
+    if (safeId && safeVersion) normalizedInstalled[safeId] = safeVersion;
+  }
+  return {
+    autoDownload: booleanValue(source.autoDownload),
+    channel: cleanId(source.channel || "stable") || "stable",
+    manifestUrl: typeof source.manifestUrl === "string" && source.manifestUrl.trim() ? source.manifestUrl.trim() : "",
+    installedPackages: normalizedInstalled,
+    lastCheckedAt: typeof source.lastCheckedAt === "string" ? source.lastCheckedAt : "",
+    lastInstalledAt: typeof source.lastInstalledAt === "string" ? source.lastInstalledAt : ""
+  };
+}
+
+function scriptUpdatesManifestUrl(settings = readScriptUpdateSettings()) {
+  return settings.manifestUrl || process.env.VEYRA_SCRIPT_UPDATES_MANIFEST_URL || `${defaultScriptUpdatesManifestBaseUrl}/${cleanId(settings.channel || "stable") || "stable"}.json`;
+}
+
+function cleanId(value) {
+  return String(value || "")
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9_.-]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 96);
+}
+
+function cleanVersion(value) {
+  return String(value || "").trim().replace(/^v/iu, "").slice(0, 64);
+}
+
+function scriptPackPath(id) {
+  const safeId = cleanId(id);
+  if (!safeId) throw new Error("Invalid script pack id.");
+  return join(scriptPacksDir(), `${safeId}.json`);
 }
 
 async function openBuilderScriptInVsCode(script) {
@@ -949,7 +1064,12 @@ function whereExecutables(command) {
 
 ipcMain.handle("open-scripts-folder", () => shell.openPath(scriptsDir));
 ipcMain.handle("read-json-setting", (_event, name) => readJsonSetting(name));
-ipcMain.handle("write-json-setting", (_event, name, value) => writeJsonSetting(name, value));
+ipcMain.handle("write-json-setting", (_event, name, value) => {
+  const result = writeJsonSetting(name, value);
+  if (String(name || "") === "script-updates") updateScriptUpdatesMenuItems();
+  return result;
+});
+ipcMain.handle("read-script-pack-scripts", () => readScriptPackScripts());
 ipcMain.handle("read-builder-scripts", () => readBuilderScripts());
 ipcMain.handle("write-builder-script", (_event, script) => writeBuilderScript(script));
 ipcMain.handle("write-builder-scripts", (_event, scripts) => writeBuilderScripts(scripts));
@@ -971,6 +1091,7 @@ app.whenReady().then(() =>
     setupApplicationMenu();
     createLauncherWindow();
     setupUpdateChecker();
+    setupScriptUpdates();
   })
 );
 
@@ -992,6 +1113,20 @@ function setupApplicationMenu() {
     label: "Check For Updates",
     click: () => void checkForUpdatesFromMenu()
   };
+  const checkForScriptUpdatesItem = {
+    id: "check-for-script-updates",
+    label: "Check For Script Updates",
+    click: () => void checkForScriptUpdatesFromMenu()
+  };
+  const autoDownloadScriptUpdatesItem = {
+    id: "auto-download-script-updates",
+    label: "Automatically Download Script Updates",
+    type: "checkbox",
+    click: (menuItem) => {
+      const settings = readScriptUpdateSettings();
+      writeScriptUpdateSettings({ ...settings, autoDownload: Boolean(menuItem.checked) });
+    }
+  };
   const template = [
     ...(isMac
       ? [
@@ -1001,6 +1136,8 @@ function setupApplicationMenu() {
               { role: "about" },
               { type: "separator" },
               checkForUpdatesItem,
+              checkForScriptUpdatesItem,
+              autoDownloadScriptUpdatesItem,
               { type: "separator" },
               { role: "services" },
               { type: "separator" },
@@ -1015,7 +1152,7 @@ function setupApplicationMenu() {
       : [
           {
             label: "File",
-            submenu: [checkForUpdatesItem, { type: "separator" }, { role: "quit" }]
+            submenu: [checkForUpdatesItem, checkForScriptUpdatesItem, autoDownloadScriptUpdatesItem, { type: "separator" }, { role: "quit" }]
           }
         ]),
     {
@@ -1047,13 +1184,26 @@ function setupApplicationMenu() {
   const menu = Menu.buildFromTemplate(template);
   Menu.setApplicationMenu(menu);
   checkForUpdatesMenuItem = menu.getMenuItemById("check-for-updates");
+  checkForScriptUpdatesMenuItem = menu.getMenuItemById("check-for-script-updates");
+  autoDownloadScriptUpdatesMenuItem = menu.getMenuItemById("auto-download-script-updates");
   updateCheckForUpdatesMenuItem();
+  updateScriptUpdatesMenuItems();
 }
 
 function updateCheckForUpdatesMenuItem() {
   if (!checkForUpdatesMenuItem) return;
   checkForUpdatesMenuItem.enabled = !updateChecking;
   checkForUpdatesMenuItem.label = updateChecking ? "Checking For Updates..." : "Check For Updates";
+}
+
+function updateScriptUpdatesMenuItems() {
+  if (checkForScriptUpdatesMenuItem) {
+    checkForScriptUpdatesMenuItem.enabled = !scriptUpdateChecking;
+    checkForScriptUpdatesMenuItem.label = scriptUpdateChecking ? "Checking Script Updates..." : "Check For Script Updates";
+  }
+  if (autoDownloadScriptUpdatesMenuItem) {
+    autoDownloadScriptUpdatesMenuItem.checked = readScriptUpdateSettings().autoDownload;
+  }
 }
 
 async function checkForUpdatesFromMenu() {
@@ -1139,6 +1289,203 @@ function activeDialogWindow() {
 function showUpdateDialog(parent, options) {
   if (parent && !parent.isDestroyed()) return dialog.showMessageBox(parent, options);
   return dialog.showMessageBox(options);
+}
+
+function setupScriptUpdates() {
+  updateScriptUpdatesMenuItems();
+  if (!readScriptUpdateSettings().autoDownload) return;
+  setTimeout(() => {
+    void checkScriptUpdates({ install: true, silent: true }).catch(() => undefined);
+  }, 6500);
+}
+
+async function checkForScriptUpdatesFromMenu() {
+  const parent = activeDialogWindow();
+  const status = await checkScriptUpdates({ install: false, silent: false });
+
+  if (status.state === "available") {
+    const detail = status.available.map((entry) => `${entry.name || entry.id} ${entry.currentVersion || "not installed"} -> ${entry.version}`).join("\n");
+    const result = await showUpdateDialog(parent, {
+      type: "info",
+      title: "Script Updates Available",
+      message: `${status.available.length} script update${status.available.length === 1 ? "" : "s"} available.`,
+      detail,
+      buttons: ["Download and Install", "Later"],
+      defaultId: 0,
+      cancelId: 1
+    });
+    if (result.response !== 0) return;
+    const installed = await checkScriptUpdates({ install: true, silent: false });
+    await showScriptUpdateResult(installed, parent);
+    return;
+  }
+
+  await showScriptUpdateResult(status, parent);
+}
+
+async function showScriptUpdateResult(status, parent) {
+  if (status.state === "installed") {
+    await showUpdateDialog(parent, {
+      type: "info",
+      title: "Script Updates Installed",
+      message: `Installed ${status.installed.length} script pack${status.installed.length === 1 ? "" : "s"}.`,
+      detail: status.installed.map((entry) => `${entry.name || entry.id} ${entry.version}`).join("\n"),
+      buttons: ["OK"],
+      defaultId: 0,
+      cancelId: 0
+    });
+    return;
+  }
+
+  if (status.state === "not-available") {
+    await showUpdateDialog(parent, {
+      type: "info",
+      title: "Check For Script Updates",
+      message: "Scripts are up to date.",
+      detail: installedScriptPacksDetail(),
+      buttons: ["OK"],
+      defaultId: 0,
+      cancelId: 0
+    });
+    return;
+  }
+
+  if (status.state === "error") {
+    await showUpdateDialog(parent, {
+      type: "error",
+      title: "Script Update Check Failed",
+      message: "Could not check for script updates.",
+      detail: status.message || "The script manifest could not be downloaded.",
+      buttons: ["OK"],
+      defaultId: 0,
+      cancelId: 0
+    });
+  }
+}
+
+async function checkScriptUpdates(options = {}) {
+  if (scriptUpdateChecking) return { state: "checking", available: [], installed: [], message: "Script update check already running." };
+  scriptUpdateChecking = true;
+  updateScriptUpdatesMenuItems();
+
+  try {
+    const settings = readScriptUpdateSettings();
+    const manifestUrl = scriptUpdatesManifestUrl(settings);
+    const manifest = normalizeScriptUpdatesManifest(await fetchJsonUrl(manifestUrl), manifestUrl);
+    const installedPackages = { ...installedScriptPackageVersions(), ...settings.installedPackages };
+    const available = manifest.packages.filter((entry) => isScriptPackageNewer(entry, installedPackages[entry.id]));
+    const checkedSettings = writeScriptUpdateSettings({ ...settings, lastCheckedAt: new Date().toISOString(), installedPackages });
+
+    if (available.length === 0) return { state: "not-available", available: [], installed: [], manifest };
+    if (!options.install) return { state: "available", available, installed: [], manifest };
+
+    const installed = [];
+    const nextInstalled = { ...checkedSettings.installedPackages };
+    for (const entry of available) {
+      const installedPack = await installScriptPackage(entry, manifest.url);
+      nextInstalled[installedPack.id] = installedPack.version;
+      installed.push(installedPack);
+    }
+    writeScriptUpdateSettings({
+      ...checkedSettings,
+      installedPackages: nextInstalled,
+      lastInstalledAt: installed.length > 0 ? new Date().toISOString() : checkedSettings.lastInstalledAt
+    });
+    if (installed.length > 0) notifyScriptPacksChanged(installed);
+    return { state: installed.length > 0 ? "installed" : "not-available", available, installed, manifest };
+  } catch (error) {
+    return {
+      state: "error",
+      available: [],
+      installed: [],
+      message: error?.message || String(error)
+    };
+  } finally {
+    scriptUpdateChecking = false;
+    updateScriptUpdatesMenuItems();
+  }
+}
+
+function normalizeScriptUpdatesManifest(value, manifestUrl) {
+  const source = value && typeof value === "object" ? value : {};
+  const packages = Array.isArray(source.packages) ? source.packages : [];
+  return {
+    schema: Number(source.schema || 1),
+    channel: cleanId(source.channel || "stable") || "stable",
+    version: cleanVersion(source.version || ""),
+    url: manifestUrl,
+    packages: packages.map((entry) => normalizeScriptPackageEntry(entry, manifestUrl)).filter(Boolean)
+  };
+}
+
+function normalizeScriptPackageEntry(value, manifestUrl) {
+  const source = value && typeof value === "object" ? value : {};
+  const id = cleanId(source.id || "official");
+  const version = cleanVersion(source.version);
+  const type = String(source.type || "builder-scripts");
+  const url = typeof source.url === "string" && source.url.trim() ? new URL(source.url.trim(), manifestUrl).toString() : "";
+  if (!id || !version || !url || type !== "builder-scripts") return undefined;
+  const minAppVersion = cleanVersion(source.minAppVersion || "");
+  if (minAppVersion && compareVersions(app.getVersion(), minAppVersion) < 0) return undefined;
+  return {
+    id,
+    name: String(source.name || id),
+    version,
+    type,
+    url,
+    sha256: typeof source.sha256 === "string" ? source.sha256.trim().toLowerCase() : "",
+    currentVersion: ""
+  };
+}
+
+function isScriptPackageNewer(entry, installedVersion) {
+  entry.currentVersion = installedVersion || "";
+  return compareScriptVersions(entry.version, installedVersion || "0.0.0") > 0;
+}
+
+async function installScriptPackage(entry, manifestUrl) {
+  const packageUrl = new URL(entry.url, manifestUrl).toString();
+  const body = await fetchTextUrl(packageUrl);
+  if (entry.sha256) {
+    const digest = createHash("sha256").update(body, "utf8").digest("hex");
+    if (digest !== entry.sha256) throw new Error(`Script pack ${entry.id} checksum mismatch.`);
+  }
+  const pack = JSON.parse(body);
+  const id = cleanId(pack.id || entry.id);
+  const version = cleanVersion(pack.version || entry.version);
+  const scripts = normalizeScriptPackScripts(pack.scripts);
+  if (!id || !version || scripts.length === 0) throw new Error(`Script pack ${entry.id} did not contain runnable scripts.`);
+  const installedPack = {
+    schema: Number(pack.schema || 1),
+    id,
+    name: String(pack.name || entry.name || id),
+    version,
+    installedAt: new Date().toISOString(),
+    sourceUrl: packageUrl,
+    scripts
+  };
+  const filePath = scriptPackPath(id);
+  mkdirSync(dirname(filePath), { recursive: true });
+  writeFileSync(filePath, `${JSON.stringify(installedPack, null, 2)}\n`, "utf8");
+  return { id, name: installedPack.name, version, count: scripts.length, filePath };
+}
+
+function installedScriptPackageVersions() {
+  const versions = {};
+  for (const pack of readScriptPackScripts().packs) versions[pack.id] = pack.version;
+  return versions;
+}
+
+function installedScriptPacksDetail() {
+  const packs = readScriptPackScripts().packs;
+  if (packs.length === 0) return "No downloaded script packs are installed yet.";
+  return packs.map((pack) => `${pack.name || pack.id} ${pack.version}`).join("\n");
+}
+
+function notifyScriptPacksChanged(installed) {
+  for (const win of BrowserWindow.getAllWindows()) {
+    if (!win.isDestroyed()) win.webContents.send("script-packs-changed", { installed });
+  }
 }
 
 function setupUpdateChecker() {
@@ -1267,6 +1614,53 @@ function fetchLatestGithubRelease() {
   });
 }
 
+async function fetchJsonUrl(url) {
+  return JSON.parse(await fetchTextUrl(url));
+}
+
+function fetchTextUrl(url, redirects = 0) {
+  return new Promise((resolveText, rejectText) => {
+    const target = new URL(url);
+    const requester = target.protocol === "http:" ? httpRequest : httpsRequest;
+    const request = requester(
+      target,
+      {
+        method: "GET",
+        headers: {
+          Accept: "application/json,text/plain,*/*",
+          "User-Agent": `Veyra/${app.getVersion()}`
+        }
+      },
+      (response) => {
+        const location = response.headers.location;
+        if (response.statusCode >= 300 && response.statusCode < 400 && location && redirects < 5) {
+          response.resume();
+          resolveText(fetchTextUrl(new URL(location, target).toString(), redirects + 1));
+          return;
+        }
+
+        let body = "";
+        response.setEncoding("utf8");
+        response.on("data", (chunk) => {
+          body += chunk;
+        });
+        response.on("end", () => {
+          if (response.statusCode < 200 || response.statusCode >= 300) {
+            rejectText(new Error(`${target.hostname} returned HTTP ${response.statusCode}`));
+            return;
+          }
+          resolveText(body);
+        });
+      }
+    );
+    request.setTimeout(12000, () => {
+      request.destroy(new Error(`${target.hostname} request timed out.`));
+    });
+    request.on("error", rejectText);
+    request.end();
+  });
+}
+
 function releaseVersion(release) {
   const values = [release?.tag_name, release?.name].filter(Boolean).map(String);
   for (const value of values) {
@@ -1285,6 +1679,27 @@ function compareVersions(left, right) {
     if (a[index] !== b[index]) return a[index] > b[index] ? 1 : -1;
   }
   return 0;
+}
+
+function compareScriptVersions(left, right) {
+  const a = scriptVersionParts(left);
+  const b = scriptVersionParts(right);
+  const length = Math.max(a.length, b.length, 1);
+  for (let index = 0; index < length; index += 1) {
+    const leftPart = a[index] || 0;
+    const rightPart = b[index] || 0;
+    if (leftPart !== rightPart) return leftPart > rightPart ? 1 : -1;
+  }
+  return 0;
+}
+
+function scriptVersionParts(version) {
+  const parts = String(version || "")
+    .replace(/^v/iu, "")
+    .split(/[.+-]/u)
+    .map((part) => Number(part.replace(/\D.*/u, "")))
+    .filter((part) => Number.isFinite(part));
+  return parts.length > 0 ? parts : [0];
 }
 
 function versionParts(version) {
