@@ -1,4 +1,4 @@
-const { app, BrowserWindow, dialog, ipcMain, shell } = require("electron");
+const { app, BrowserWindow, dialog, ipcMain, Menu, shell } = require("electron");
 const { createServer: createHttpsServer, request: httpsRequest } = require("https");
 const { request: httpRequest } = require("http");
 const { execFileSync, spawn } = require("child_process");
@@ -47,6 +47,7 @@ const toolWindows = new Map();
 const updateRepo = { owner: "gurungabit", repo: "veyra" };
 let updateCheckerInitialized = false;
 let updateChecking = false;
+let checkForUpdatesMenuItem;
 let latestUpdateRelease;
 let updateStatus = {
   state: "idle",
@@ -964,12 +965,10 @@ ipcMain.handle("launcher-empty-client", () => launchEmptyClient());
 ipcMain.handle("launcher-show", () => createLauncherWindow());
 ipcMain.handle("launcher-get-payload", (_event, launchId) => getLaunchPayload(launchId));
 ipcMain.handle("tool-window-show", (_event, payload) => showToolWindow(payload));
-ipcMain.handle("updater-status", () => updateStatus);
-ipcMain.handle("updater-check", () => checkForUpdates());
-ipcMain.handle("updater-open-release", () => openUpdateRelease());
 
 app.whenReady().then(() =>
   startAssetServer().then(() => {
+    setupApplicationMenu();
     createLauncherWindow();
     setupUpdateChecker();
   })
@@ -985,6 +984,162 @@ app.on("window-all-closed", () => {
 app.on("activate", () => {
   if (BrowserWindow.getAllWindows().length === 0) startAssetServer().then(createLauncherWindow);
 });
+
+function setupApplicationMenu() {
+  const isMac = process.platform === "darwin";
+  const checkForUpdatesItem = {
+    id: "check-for-updates",
+    label: "Check For Updates",
+    click: () => void checkForUpdatesFromMenu()
+  };
+  const template = [
+    ...(isMac
+      ? [
+          {
+            label: app.name,
+            submenu: [
+              { role: "about" },
+              { type: "separator" },
+              checkForUpdatesItem,
+              { type: "separator" },
+              { role: "services" },
+              { type: "separator" },
+              { role: "hide" },
+              { role: "hideOthers" },
+              { role: "unhide" },
+              { type: "separator" },
+              { role: "quit" }
+            ]
+          }
+        ]
+      : [
+          {
+            label: "File",
+            submenu: [checkForUpdatesItem, { type: "separator" }, { role: "quit" }]
+          }
+        ]),
+    {
+      label: "Edit",
+      submenu: [
+        { role: "undo" },
+        { role: "redo" },
+        { type: "separator" },
+        { role: "cut" },
+        { role: "copy" },
+        { role: "paste" },
+        ...(isMac ? [{ role: "pasteAndMatchStyle" }, { role: "delete" }, { role: "selectAll" }] : [{ role: "delete" }, { type: "separator" }, { role: "selectAll" }])
+      ]
+    },
+    {
+      label: "Window",
+      submenu: isMac ? [{ role: "minimize" }, { role: "zoom" }, { type: "separator" }, { role: "front" }] : [{ role: "minimize" }, { role: "close" }]
+    },
+    {
+      role: "help",
+      submenu: [
+        {
+          label: "Veyra Releases",
+          click: () => shell.openExternal(githubReleasesUrl())
+        }
+      ]
+    }
+  ];
+  const menu = Menu.buildFromTemplate(template);
+  Menu.setApplicationMenu(menu);
+  checkForUpdatesMenuItem = menu.getMenuItemById("check-for-updates");
+  updateCheckForUpdatesMenuItem();
+}
+
+function updateCheckForUpdatesMenuItem() {
+  if (!checkForUpdatesMenuItem) return;
+  checkForUpdatesMenuItem.enabled = !updateChecking;
+  checkForUpdatesMenuItem.label = updateChecking ? "Checking For Updates..." : "Check For Updates";
+}
+
+async function checkForUpdatesFromMenu() {
+  setupUpdateChecker();
+  const parent = activeDialogWindow();
+
+  if (!updatesEnabled()) {
+    await showUpdateDialog(parent, {
+      type: "info",
+      title: "Check For Updates",
+      message: "Update checks run in packaged builds.",
+      detail: "Launch the installed Veyra app to check GitHub releases from the app menu.",
+      buttons: ["OK"],
+      defaultId: 0,
+      cancelId: 0
+    });
+    return;
+  }
+
+  const status = await checkForUpdates();
+  await showUpdateResult(status, parent);
+}
+
+async function showUpdateResult(status, parent) {
+  if (status.state === "available") {
+    const result = await showUpdateDialog(parent, {
+      type: "info",
+      title: "Update Available",
+      message: `Veyra ${status.version} is available.`,
+      detail: `You are running Veyra ${status.currentVersion}.`,
+      buttons: ["Open Downloads", "Later"],
+      defaultId: 0,
+      cancelId: 1
+    });
+    if (result.response === 0) await openUpdateRelease();
+    return;
+  }
+
+  if (status.state === "not-available") {
+    await showUpdateDialog(parent, {
+      type: "info",
+      title: "Check For Updates",
+      message: "Veyra is up to date.",
+      detail: `Current version: ${status.currentVersion}`,
+      buttons: ["OK"],
+      defaultId: 0,
+      cancelId: 0
+    });
+    return;
+  }
+
+  if (status.state === "error") {
+    const result = await showUpdateDialog(parent, {
+      type: "error",
+      title: "Update Check Failed",
+      message: "Could not check for Veyra updates.",
+      detail: status.message || "GitHub did not return an update result.",
+      buttons: ["Open Releases", "OK"],
+      defaultId: 1,
+      cancelId: 1
+    });
+    if (result.response === 0) await openUpdateRelease();
+    return;
+  }
+
+  await showUpdateDialog(parent, {
+    type: "info",
+    title: "Check For Updates",
+    message: status.message || "Update check finished.",
+    buttons: ["OK"],
+    defaultId: 0,
+    cancelId: 0
+  });
+}
+
+function activeDialogWindow() {
+  const focused = BrowserWindow.getFocusedWindow();
+  if (focused && !focused.isDestroyed()) return focused;
+  if (launcherWindow && !launcherWindow.isDestroyed()) return launcherWindow;
+  return BrowserWindow.getAllWindows().find((win) => !win.isDestroyed());
+}
+
+function showUpdateDialog(parent, options) {
+  if (parent && !parent.isDestroyed()) return dialog.showMessageBox(parent, options);
+  return dialog.showMessageBox(options);
+}
 
 function setupUpdateChecker() {
   if (updateCheckerInitialized) return;
@@ -1061,6 +1216,7 @@ async function checkForUpdates() {
     });
   } finally {
     updateChecking = false;
+    updateCheckForUpdatesMenuItem();
   }
   return updateStatus;
 }
@@ -1152,9 +1308,7 @@ function setUpdateStatus(next) {
     currentVersion: app.getVersion(),
     isPackaged: app.isPackaged
   };
-  for (const win of BrowserWindow.getAllWindows()) {
-    if (!win.isDestroyed()) win.webContents.send("updater-status", updateStatus);
-  }
+  updateCheckForUpdatesMenuItem();
 }
 
 function resolvePepperFlash() {

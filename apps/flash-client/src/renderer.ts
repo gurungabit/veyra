@@ -1,5 +1,4 @@
 import { BrowserFlashBot, type Bot, type PlayerSnapshot } from "./bot.js";
-import { bindUpdateButton, type UpdateStatus } from "./updateUi.js";
 import { createDefaultArmySettings, isArmyRole, normalizeArmySettings, type ArmyRole, type ArmySettings } from "./armySettings.js";
 import {
   GAME_OPTION_DEFS,
@@ -304,11 +303,6 @@ function boot(): void {
 }
 
 function installUiHandlers(): void {
-  bindUpdateButton({
-    button: byId<HTMLButtonElement>("update-button"),
-    log: (message) => log("event", message)
-  });
-
   document.addEventListener("click", (event) => {
     const target = event.target as HTMLElement;
     const menuButton = target.closest<HTMLButtonElement>("[data-menu]");
@@ -2861,10 +2855,6 @@ function nativeApi(): {
   showLauncher?: () => Promise<unknown>;
   showToolWindow?: (payload: { tool: string; section?: string; instanceId: string }) => Promise<unknown>;
   getLaunchPayload?: (launchId: string) => Promise<unknown>;
-  getUpdateStatus?: () => Promise<UpdateStatus>;
-  checkForUpdates?: () => Promise<UpdateStatus>;
-  openUpdateRelease?: () => Promise<UpdateStatus>;
-  onUpdateStatus?: (callback: (status: UpdateStatus) => void) => () => void;
 } | undefined {
   return (window as unknown as {
     veyraNative?: {
@@ -2881,10 +2871,6 @@ function nativeApi(): {
       showLauncher?: () => Promise<unknown>;
       showToolWindow?: (payload: { tool: string; section?: string; instanceId: string }) => Promise<unknown>;
       getLaunchPayload?: (launchId: string) => Promise<unknown>;
-      getUpdateStatus?: () => Promise<UpdateStatus>;
-      checkForUpdates?: () => Promise<UpdateStatus>;
-      openUpdateRelease?: () => Promise<UpdateStatus>;
-      onUpdateStatus?: (callback: (status: UpdateStatus) => void) => () => void;
     };
   }).veyraNative;
 }

@@ -311,33 +311,6 @@ button:disabled {
   min-width: 42px;
 }
 
-.update-button {
-  gap: 6px;
-  min-width: 116px;
-  color: var(--text);
-  background: rgba(196, 166, 255, 0.13);
-  border-left-color: rgba(196, 166, 255, 0.28);
-  border-right-color: rgba(196, 166, 255, 0.28);
-}
-
-.update-button[data-update-state="available"] {
-  color: #101318;
-  background: var(--accent);
-}
-
-.update-button[hidden],
-.launcher-update-button[hidden] {
-  display: none;
-}
-
-.update-button svg,
-.launcher-update-button svg {
-  width: 16px;
-  height: 16px;
-  flex: 0 0 16px;
-  fill: currentColor;
-}
-
 .dropdown-layer {
   display: none;
 }
@@ -2643,21 +2616,6 @@ body.builder-dragging .builder-drop-zone {
   color: #090d0a;
   background: linear-gradient(135deg, var(--launch-gold), #c9d9a4);
   border-color: rgba(245, 240, 232, 0.35);
-}
-
-.launcher-update-button {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  color: var(--launch-text);
-  background: rgba(137, 221, 209, 0.14);
-  border-color: rgba(137, 221, 209, 0.35);
-}
-
-.launcher-update-button[data-update-state="available"] {
-  color: #090d0a;
-  background: var(--launch-cyan);
-  border-color: rgba(137, 221, 209, 0.7);
 }
 
 .launcher-grid {
