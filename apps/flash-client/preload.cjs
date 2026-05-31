@@ -18,5 +18,13 @@ window.veyraNative = {
   openEmptyClient: () => ipcRenderer.invoke("launcher-empty-client"),
   showLauncher: () => ipcRenderer.invoke("launcher-show"),
   getLaunchPayload: (launchId) => ipcRenderer.invoke("launcher-get-payload", launchId),
-  showToolWindow: (payload) => ipcRenderer.invoke("tool-window-show", payload)
+  showToolWindow: (payload) => ipcRenderer.invoke("tool-window-show", payload),
+  getUpdateStatus: () => ipcRenderer.invoke("updater-status"),
+  checkForUpdates: () => ipcRenderer.invoke("updater-check"),
+  openUpdateRelease: () => ipcRenderer.invoke("updater-open-release"),
+  onUpdateStatus: (callback) => {
+    const listener = (_event, status) => callback(status);
+    ipcRenderer.on("updater-status", listener);
+    return () => ipcRenderer.removeListener("updater-status", listener);
+  }
 };

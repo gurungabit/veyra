@@ -60,6 +60,20 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Set release version
+        shell: bash
+        run: |
+          node <<'NODE'
+          const fs = require("fs");
+          const version = `0.1.${process.env.GITHUB_RUN_NUMBER}`;
+          for (const file of ["package.json", "apps/flash-client/package.json"]) {
+            const data = JSON.parse(fs.readFileSync(file, "utf8"));
+            data.version = version;
+            fs.writeFileSync(file, `${JSON.stringify(data, null, 2)}\n`);
+          }
+          console.log(`Veyra release version ${version}`);
+          NODE
+
       - name: Typecheck
         run: pnpm --filter @veyra/flash-client typecheck
 

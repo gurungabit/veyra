@@ -1,3 +1,5 @@
+import { bindUpdateButton, type UpdateStatus } from "./updateUi.js";
+
 interface LauncherAccount {
   id: string;
   username: string;
@@ -30,6 +32,10 @@ interface LauncherNativeApi {
   listServers: () => Promise<LauncherServer[]>;
   startLauncherAccounts: (accountIds: string[], server: string | LauncherServer) => Promise<Array<{ username: string; server?: LauncherServer | null }>>;
   openEmptyClient: () => Promise<void>;
+  getUpdateStatus?: () => Promise<UpdateStatus>;
+  checkForUpdates?: () => Promise<UpdateStatus>;
+  openUpdateRelease?: () => Promise<UpdateStatus>;
+  onUpdateStatus?: (callback: (status: UpdateStatus) => void) => () => void;
 }
 
 declare global {
@@ -100,6 +106,10 @@ async function boot(): Promise<void> {
 }
 
 function bindControls(): void {
+  bindUpdateButton({
+    button: byId<HTMLButtonElement>("launcher-update-button"),
+    log: pushLog
+  });
   themeSelectEl.addEventListener("change", () => void changeTheme(themeSelectEl.value));
   byId<HTMLButtonElement>("refresh-servers").addEventListener("click", () => void refreshServers(true));
   byId<HTMLButtonElement>("open-empty-client").addEventListener("click", () => void openEmptyClient());

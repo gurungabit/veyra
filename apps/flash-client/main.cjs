@@ -44,6 +44,21 @@ let launcherWindow;
 const clientWindows = new Map();
 const launchPayloads = new Map();
 const toolWindows = new Map();
+const updateRepo = { owner: "gurungabit", repo: "veyra" };
+let updateCheckerInitialized = false;
+let updateChecking = false;
+let latestUpdateRelease;
+let updateStatus = {
+  state: "idle",
+  message: "",
+  currentVersion: app.getVersion(),
+  version: "",
+  percent: 0,
+  canCheck: false,
+  canOpen: false,
+  releaseUrl: "",
+  isPackaged: app.isPackaged
+};
 let assetServer;
 let assetOrigin;
 
@@ -949,8 +964,16 @@ ipcMain.handle("launcher-empty-client", () => launchEmptyClient());
 ipcMain.handle("launcher-show", () => createLauncherWindow());
 ipcMain.handle("launcher-get-payload", (_event, launchId) => getLaunchPayload(launchId));
 ipcMain.handle("tool-window-show", (_event, payload) => showToolWindow(payload));
+ipcMain.handle("updater-status", () => updateStatus);
+ipcMain.handle("updater-check", () => checkForUpdates());
+ipcMain.handle("updater-open-release", () => openUpdateRelease());
 
-app.whenReady().then(() => startAssetServer().then(createLauncherWindow));
+app.whenReady().then(() =>
+  startAssetServer().then(() => {
+    createLauncherWindow();
+    setupUpdateChecker();
+  })
+);
 
 app.on("before-quit", closeAssetServer);
 
@@ -962,6 +985,177 @@ app.on("window-all-closed", () => {
 app.on("activate", () => {
   if (BrowserWindow.getAllWindows().length === 0) startAssetServer().then(createLauncherWindow);
 });
+
+function setupUpdateChecker() {
+  if (updateCheckerInitialized) return;
+  updateCheckerInitialized = true;
+
+  if (!updatesEnabled()) {
+    setUpdateStatus({
+      state: "idle",
+      message: "Update checks run in packaged builds.",
+      canCheck: false,
+      canOpen: false,
+      releaseUrl: ""
+    });
+    return;
+  }
+
+  setUpdateStatus({
+    state: "idle",
+    message: "Ready to check for updates.",
+    canCheck: true,
+    canOpen: false,
+    releaseUrl: ""
+  });
+  setTimeout(() => void checkForUpdates(), 3500);
+}
+
+async function checkForUpdates() {
+  setupUpdateChecker();
+  if (!updatesEnabled()) return updateStatus;
+  if (updateChecking) return updateStatus;
+
+  updateChecking = true;
+  setUpdateStatus({
+    state: "checking",
+    message: "Checking GitHub for updates...",
+    canCheck: false,
+    canOpen: false,
+    releaseUrl: "",
+    percent: 0
+  });
+
+  try {
+    const release = await fetchLatestGithubRelease();
+    const version = releaseVersion(release);
+    const releaseUrl = typeof release.html_url === "string" ? release.html_url : githubReleasesUrl();
+    latestUpdateRelease = { version, url: releaseUrl, name: release.name || release.tag_name || version };
+
+    if (compareVersions(version, app.getVersion()) > 0) {
+      setUpdateStatus({
+        state: "available",
+        message: `Veyra ${version} is available.`,
+        version,
+        canCheck: true,
+        canOpen: true,
+        releaseUrl
+      });
+    } else {
+      setUpdateStatus({
+        state: "not-available",
+        message: "Veyra is up to date.",
+        version,
+        canCheck: true,
+        canOpen: false,
+        releaseUrl
+      });
+    }
+  } catch (error) {
+    setUpdateStatus({
+      state: "error",
+      message: `Update check failed: ${error?.message || String(error)}`,
+      canCheck: true,
+      canOpen: true,
+      releaseUrl: githubReleasesUrl()
+    });
+  } finally {
+    updateChecking = false;
+  }
+  return updateStatus;
+}
+
+async function openUpdateRelease() {
+  const url = updateStatus.releaseUrl || latestUpdateRelease?.url || githubReleasesUrl();
+  await shell.openExternal(url);
+  return updateStatus;
+}
+
+function fetchLatestGithubRelease() {
+  const path = `/repos/${updateRepo.owner}/${updateRepo.repo}/releases/latest`;
+  return new Promise((resolveRelease, rejectRelease) => {
+    const request = httpsRequest(
+      {
+        hostname: "api.github.com",
+        path,
+        method: "GET",
+        headers: {
+          Accept: "application/vnd.github+json",
+          "User-Agent": `Veyra/${app.getVersion()}`
+        }
+      },
+      (response) => {
+        let body = "";
+        response.setEncoding("utf8");
+        response.on("data", (chunk) => {
+          body += chunk;
+        });
+        response.on("end", () => {
+          if (response.statusCode < 200 || response.statusCode >= 300) {
+            rejectRelease(new Error(`GitHub returned HTTP ${response.statusCode}`));
+            return;
+          }
+          try {
+            resolveRelease(JSON.parse(body));
+          } catch (error) {
+            rejectRelease(error);
+          }
+        });
+      }
+    );
+    request.setTimeout(10000, () => {
+      request.destroy(new Error("GitHub update check timed out."));
+    });
+    request.on("error", rejectRelease);
+    request.end();
+  });
+}
+
+function releaseVersion(release) {
+  const values = [release?.tag_name, release?.name].filter(Boolean).map(String);
+  for (const value of values) {
+    const semver = value.match(/v?(\d+\.\d+\.\d+(?:[-+][0-9A-Za-z.-]+)?)/);
+    if (semver) return semver[1];
+    const mainTag = value.match(/^main-(\d+)(?:\.\d+)?$/);
+    if (mainTag) return `0.1.${mainTag[1]}`;
+  }
+  return "0.0.0";
+}
+
+function compareVersions(left, right) {
+  const a = versionParts(left);
+  const b = versionParts(right);
+  for (let index = 0; index < 3; index += 1) {
+    if (a[index] !== b[index]) return a[index] > b[index] ? 1 : -1;
+  }
+  return 0;
+}
+
+function versionParts(version) {
+  const match = String(version || "").match(/(\d+)\.(\d+)\.(\d+)/);
+  if (!match) return [0, 0, 0];
+  return [Number(match[1]), Number(match[2]), Number(match[3])];
+}
+
+function githubReleasesUrl() {
+  return `https://github.com/${updateRepo.owner}/${updateRepo.repo}/releases/latest`;
+}
+
+function updatesEnabled() {
+  return app.isPackaged || process.env.VEYRA_ENABLE_UPDATE_CHECK_IN_DEV === "1";
+}
+
+function setUpdateStatus(next) {
+  updateStatus = {
+    ...updateStatus,
+    ...next,
+    currentVersion: app.getVersion(),
+    isPackaged: app.isPackaged
+  };
+  for (const win of BrowserWindow.getAllWindows()) {
+    if (!win.isDestroyed()) win.webContents.send("updater-status", updateStatus);
+  }
+}
 
 function resolvePepperFlash() {
   const explicitPath = process.env.VEYRA_PEPPER_FLASH;
