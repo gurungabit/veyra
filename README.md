@@ -8,7 +8,6 @@ Veyra is a TypeScript-first desktop automation runtime with an Electron Flash cl
 
 - `apps/flash-client`: the main Electron app with the embedded Flash client.
 - `apps/flash-client/as3-client`: ActionScript source for `client.swf`.
-- `apps/desktop`: React desktop shell prototype.
 - `packages/protocol`: shared JSON-RPC contracts.
 - `packages/core`: bot API, settings, app paths, script catalog sync, and logging.
 - `packages/runtime`: script lifecycle, cancellation, loading, and status.
