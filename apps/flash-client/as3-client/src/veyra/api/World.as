@@ -15,14 +15,9 @@ public class World {
         super();
     }
 
-    public static function joinMap(map:String, cell:String = "Enter", pad:String = "Spawn"):void {
+    private static function currentUsername():String {
         var game:* = Main.instance.game;
         var world:* = game.world;
-        var room:int = int(world.curRoom);
-        if (room <= 0) {
-            room = 1;
-        }
-
         var username:String = "";
         try {
             username = String(game.sfc.myUserName);
@@ -40,8 +35,36 @@ public class World {
             } catch (ex3:Error) {
             }
         }
+        return username;
+    }
+
+    public static function joinMap(map:String, cell:String = "Enter", pad:String = "Spawn"):void {
+        var game:* = Main.instance.game;
+        var world:* = game.world;
+        var room:int = int(world.curRoom);
+        if (room <= 0) {
+            room = 1;
+        }
+
+        var username:String = currentUsername();
 
         game.sfc.sendString("%xt%zm%cmd%" + room + "%tfer%" + username + "%" + map + "%" + cell + "%" + pad + "%");
+    }
+
+    public static function joinHouse(username:String = ""):void {
+        var game:* = Main.instance.game;
+        var world:* = game.world;
+        var room:int = int(world.curRoom);
+        if (room <= 0) {
+            room = 1;
+        }
+
+        var target:String = username && username.length > 0 ? username : currentUsername();
+        if (!target || target == "null" || target == "undefined") {
+            return;
+        }
+
+        game.sfc.sendString("%xt%zm%house%" + room + "%" + target + "%");
     }
 
     public static function jumpCorrectRoom(cell:String, pad:String, autoCorrect:Boolean = true, clientOnly:Boolean = false):void {
@@ -156,6 +179,13 @@ public class World {
         var objData:* = avatar ? avatar.objData : null;
         var dataLeaf:* = avatar ? avatar.dataLeaf : null;
         var equipped:* = objData && objData.eqp ? objData.eqp.ar : null;
+        var mapLoading:Boolean = false;
+        var mapLoaded:Boolean = true;
+        try {
+            mapLoading = Boolean(world.mapLoadInProgress);
+            mapLoaded = !mapLoading && (game.mcConnDetail == null || game.mcConnDetail.stage == null);
+        } catch (ex:Error) {
+        }
         return JSON.stringify({
             loggedIn: Player.isLoggedIn() == "true",
             username: objData && objData.strUsername ? objData.strUsername : game.loginInfo.strUsername,
@@ -164,6 +194,10 @@ public class World {
             cell: world.strFrame,
             pad: world.strPad,
             room: world.curRoom,
+            x: avatar && avatar.pMC ? avatar.pMC.x : 0,
+            y: avatar && avatar.pMC ? avatar.pMC.y : 0,
+            mapLoading: mapLoading,
+            mapLoaded: mapLoaded,
             alive: dataLeaf && dataLeaf.intHP > 0,
             currentClassName: objData && objData.strClassName ? objData.strClassName : (equipped ? equipped.sName : ""),
             currentClassPoints: objData && objData.iCP ? objData.iCP : 0,

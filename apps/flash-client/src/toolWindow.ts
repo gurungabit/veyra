@@ -11,6 +11,7 @@ import {
   type GameOptionValue,
   type GameOptionsState
 } from "./gameOptions.js";
+import { createDefaultArmySettings, isArmyRole, normalizeArmySettings, type ArmyRole, type ArmySettings } from "./armySettings.js";
 import {
   builderActionTitle,
   conditionTitle,
@@ -46,6 +47,8 @@ interface ToolState {
   loadedScriptId: string;
   builderScripts?: BuilderScript[];
   running: boolean;
+  armyRole?: ArmyRole;
+  armySettings?: ArmySettings;
   theme?: string;
   gameOptions?: GameOptionsState;
   logs: Record<LogKind, string[]>;
@@ -164,6 +167,7 @@ let gameOptionsDraft: GameOptionsState | undefined;
 let activeTheme = "veyra-dark";
 let runtimeSettings: RuntimeSettings = defaultRuntimeSettings();
 let fastTravelSettings: FastTravelSettings = defaultFastTravelSettings();
+let armySettingsDraft: ArmySettings = createDefaultArmySettings();
 let packetInterceptorSettings: PacketInterceptorSettings = defaultPacketInterceptorSettings();
 let packetInterceptorServers: PacketServerOption[] = [];
 let packetInterceptorServersRequested = false;
@@ -180,6 +184,7 @@ let builderAddTarget: "main" | "child" | "else" = "main";
 let builderHydrated = false;
 let builderRunPending = false;
 let builderScrollState = { meta: 0, flow: 0, inspector: 0 };
+let builderWindow: Window | null = null;
 const builderLiveSectionState: Record<"cells" | "monsters" | "quests", boolean> = { cells: true, monsters: true, quests: true };
 let builderContextScrollState: Record<"monsters" | "quests", number> = { monsters: 0, quests: 0 };
 let builderDragPath = "";
@@ -206,6 +211,7 @@ void hydrateThemeFromFile();
 void hydrateJunkItemsFromFile();
 void hydrateRuntimeSettingsFromFile();
 void hydrateFastTravelSettingsFromFile();
+void hydrateArmySettingsFromFile();
 void hydratePacketInterceptorSettingsFromFile();
 void hydrateBuilderScriptsFromFile();
 title.textContent = titleFor(tool, section);
@@ -236,6 +242,7 @@ bus.onmessage = (event: MessageEvent<unknown>) => {
     if (tool === "builder" && state.running) builderRunPending = false;
     applyTheme(state.theme || activeTheme);
     if (state.gameOptions) gameOptionsDraft = normalizeGameOptionsState(state.gameOptions);
+    if (state.armySettings) armySettingsDraft = normalizeArmySettings(state.armySettings);
     if (Array.isArray(state.builderScripts)) syncBuilderScriptsFromState(state.builderScripts);
     render();
     return;
@@ -1693,6 +1700,9 @@ function renderOptions(): void {
   if (!section || section === "game-options") {
     renderGameOptions();
     return;
+  } else if (section === "army-options") {
+    renderArmyOptions();
+    return;
   } else if (section === "application-options") {
     root.innerHTML = `
       <section class="tool-card">
@@ -1746,6 +1756,156 @@ function renderOptions(): void {
       </section>`;
   }
   bindToolButtons();
+}
+
+function renderArmyOptions(): void {
+  const settings = armySettingsDraft;
+  const role = isArmyRole(state.armyRole) ? state.armyRole : "off";
+  root.innerHTML = `
+    <section class="tool-card army-options-card">
+      <h2>Army Options</h2>
+      <label class="field"><span>Role</span><select id="army-role">
+        <option value="off"${role === "off" ? " selected" : ""}>Off</option>
+        <option value="leader"${role === "leader" ? " selected" : ""}>Leader</option>
+        <option value="follower"${role === "follower" ? " selected" : ""}>Follower</option>
+      </select></label>
+      <div class="button-grid two">
+        <button data-army-command="request" type="button">${role === "leader" ? "Publish Location" : "Find Leader"}</button>
+        <button data-army-command="off" type="button">Stop Army</button>
+      </div>
+      <div class="army-status-grid">
+        <div class="plugin-row"><strong>Mode</strong><span>${escapeHtml(armyRoleLabel(role))}</span></div>
+        <div class="plugin-row"><strong>Room</strong><span>${settings.exactRoom ? "Exact" : "Map only"}</span></div>
+        <div class="plugin-row"><strong>Fallback</strong><span>${escapeHtml(armyRoomsLabel(settings.joinRooms))}</span></div>
+      </div>
+      <div class="army-toggle-grid">
+        ${armyToggleHtml("syncMap", "Sync map")}
+        ${armyToggleHtml("syncCell", "Sync cell")}
+        ${armyToggleHtml("syncPosition", "Sync position")}
+        ${armyToggleHtml("followOnEnable", "Follow on enable")}
+        ${armyToggleHtml("exactRoom", "Exact room")}
+      </div>
+      <div class="army-number-grid">
+        ${armyNumberHtml("publishIntervalMs", "Publish ms", 250, 3000)}
+        ${armyNumberHtml("heartbeatMs", "Heartbeat ms", 1000, 15000)}
+        ${armyNumberHtml("moveThreshold", "Move threshold", 1, 250)}
+        ${armyNumberHtml("walkThreshold", "Walk threshold", 1, 250)}
+        ${armyNumberHtml("leaderLockMs", "Leader lock ms", 1000, 60000)}
+      </div>
+      <label class="field"><span>Fallback rooms</span><input id="army-join-rooms" class="input" data-army-rooms type="text" value="${escapeAttr(armySettingsDraft.joinRooms.join(", "))}" placeholder="9999, 11111" /></label>
+      <div class="option-footer">
+        <button data-army-reset type="button">Reset</button>
+        <button data-army-default type="button">Default</button>
+        <button data-army-save type="button">Save</button>
+      </div>
+    </section>`;
+
+  bindArmyOptions();
+}
+
+function armyToggleHtml(key: keyof ArmySettings, label: string): string {
+  return `
+    <label class="check">
+      <input data-army-toggle="${escapeAttr(key)}" type="checkbox"${armySettingsDraft[key] === true ? " checked" : ""} />
+      ${escapeHtml(label)}
+    </label>`;
+}
+
+function armyNumberHtml(key: keyof ArmySettings, label: string, min: number, max: number): string {
+  return `
+    <label class="field">
+      <span>${escapeHtml(label)}</span>
+      <input class="input" data-army-number="${escapeAttr(key)}" type="number" min="${min}" max="${max}" value="${escapeAttr(armySettingsDraft[key])}" />
+    </label>`;
+}
+
+function bindArmyOptions(): void {
+  byId<HTMLSelectElement>("army-role").addEventListener("change", (event) => {
+    const role = (event.currentTarget as HTMLSelectElement).value;
+    if (!isArmyRole(role)) return;
+    command("army-set-role", { role });
+    state.armyRole = role;
+    localNote(`Army ${armyRoleLabel(role)} selected.`);
+    renderArmyOptions();
+  });
+
+  root.querySelectorAll<HTMLInputElement>("[data-army-toggle]").forEach((input) => {
+    input.addEventListener("change", () => {
+      setArmyDraftValue(input.dataset.armyToggle || "", input.checked);
+    });
+  });
+
+  root.querySelectorAll<HTMLInputElement>("[data-army-number]").forEach((input) => {
+    input.addEventListener("change", () => {
+      setArmyDraftValue(input.dataset.armyNumber || "", Number(input.value));
+      input.value = String(armySettingsDraft[input.dataset.armyNumber as keyof ArmySettings] ?? input.value);
+    });
+  });
+
+  root.querySelector<HTMLInputElement>("[data-army-rooms]")?.addEventListener("change", (event) => {
+    setArmyDraftValue("joinRooms", (event.currentTarget as HTMLInputElement).value);
+    (event.currentTarget as HTMLInputElement).value = armySettingsDraft.joinRooms.join(", ");
+    renderArmyOptions();
+  });
+
+  root.querySelector<HTMLButtonElement>("[data-army-save]")?.addEventListener("click", () => {
+    void saveArmyOptions();
+  });
+
+  root.querySelector<HTMLButtonElement>("[data-army-reset]")?.addEventListener("click", () => {
+    void resetArmyOptionsFromJson();
+  });
+
+  root.querySelector<HTMLButtonElement>("[data-army-default]")?.addEventListener("click", () => {
+    armySettingsDraft = createDefaultArmySettings();
+    void saveArmyOptions();
+  });
+
+  root.querySelectorAll<HTMLButtonElement>("[data-army-command]").forEach((button) => {
+    button.addEventListener("click", () => {
+      const action = button.dataset.armyCommand || "";
+      const role = isArmyRole(state.armyRole) ? state.armyRole : "off";
+      if (action === "off") {
+        command("army-set-role", { role: "off" });
+        state.armyRole = "off";
+        renderArmyOptions();
+      } else if (action === "request") {
+        command("army-request-location");
+        if (role === "leader") localNote("Published army location.");
+        else if (role === "follower") localNote("Asked leader for location.");
+        else localNote("Army is off.");
+      }
+    });
+  });
+}
+
+function setArmyDraftValue(key: string, value: unknown): void {
+  armySettingsDraft = normalizeArmySettings({ ...armySettingsDraft, [key]: value });
+}
+
+async function saveArmyOptions(): Promise<void> {
+  armySettingsDraft = normalizeArmySettings(armySettingsDraft);
+  await writeJsonSetting("army", armySettingsDraft).catch(() => undefined);
+  command("army-save-settings", { settings: armySettingsDraft });
+  localNote("Saved army options.");
+  renderArmyOptions();
+}
+
+async function resetArmyOptionsFromJson(): Promise<void> {
+  const saved = await readJsonSetting("army").catch(() => undefined);
+  armySettingsDraft = normalizeArmySettings(saved);
+  localNote("Reset army options.");
+  renderArmyOptions();
+}
+
+function armyRoleLabel(role: ArmyRole): string {
+  if (role === "leader") return "Leader";
+  if (role === "follower") return "Follower";
+  return "Off";
+}
+
+function armyRoomsLabel(rooms: number[]): string {
+  return rooms.length > 0 ? rooms.join(", ") : "-";
 }
 
 function renderGameOptions(): void {
@@ -2725,7 +2885,12 @@ function openBuilderWindow(scriptId = ""): void {
   url.searchParams.set("tool", "builder");
   const selected = state.scripts.find((script) => script.id === scriptId);
   if (selected?.category === "Builder") url.searchParams.set("script", scriptId);
-  window.open(url.toString(), "veyra-builder", "width=940,height=620");
+  builderWindow = window.open(url.toString(), "veyra-builder", "width=940,height=620") ?? builderWindow;
+  try {
+    builderWindow?.focus();
+  } catch {
+    builderWindow = null;
+  }
   localNote(selected?.category === "Builder" ? `Opened ${selected.meta.name} in Script Builder.` : "Opened Script Builder.");
 }
 
@@ -2868,6 +3033,12 @@ async function hydrateFastTravelSettingsFromFile(): Promise<void> {
 
 async function writeFastTravelSettings(): Promise<void> {
   await writeJsonSetting("fast-travel", fastTravelSettings);
+}
+
+async function hydrateArmySettingsFromFile(): Promise<void> {
+  const value = await readJsonSetting("army").catch(() => undefined);
+  armySettingsDraft = normalizeArmySettings(value);
+  if (tool === "options" && section === "army-options") renderArmyOptions();
 }
 
 async function hydratePacketInterceptorSettingsFromFile(): Promise<void> {
@@ -3194,6 +3365,7 @@ function titleFor(name: string, activeSection = ""): string {
 function sectionLabel(value: string): string {
   const labels: Record<string, string> = {
     "game-options": "Game Options",
+    "army-options": "Army Options",
     "application-options": "Application Options",
     "core-options": "CoreBots Options",
     "theme-options": "Application Themes",
@@ -3228,6 +3400,7 @@ function resizeSelf(): void {
     "tools:console": [560, 420],
     "builder:": [940, 620],
     "options:game-options": [520, 620],
+    "options:army-options": [560, 600],
     "options:application-options": [520, 440],
     "options:core-options": [520, 440],
     "options:theme-options": [460, 360],

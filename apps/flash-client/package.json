@@ -40,6 +40,7 @@
       "package.json",
       "client.swf",
       "certs/**/*",
+      "build/**/*",
       "src/index.html",
       "src/launcher.html",
       "src/tool.html",
@@ -49,9 +50,11 @@
     ],
     "mac": {
       "category": "public.app-category.games",
+      "icon": "build/icon.icns",
       "target": ["dmg", "zip"]
     },
     "win": {
+      "icon": "build/icon.ico",
       "target": [
         {
           "target": "nsis",

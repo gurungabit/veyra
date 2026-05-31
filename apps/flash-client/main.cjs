@@ -7,10 +7,12 @@ const { appendFileSync, copyFileSync, existsSync, mkdirSync, readFileSync, readd
 const { dirname, join, resolve } = require("path");
 
 app.setName("Veyra");
+if (process.env.VEYRA_USER_DATA_DIR) app.setPath("userData", resolve(process.env.VEYRA_USER_DATA_DIR));
 
 const rootDir = resolve(__dirname, "../..");
 const appDir = __dirname;
 const preloadPath = join(appDir, "preload.cjs");
+const iconPath = join(appDir, "build", process.platform === "darwin" ? "icon.icns" : "icon.png");
 const scriptsDir = join(appDir, "src", "scripts");
 const swfPath = resolve(process.env.VEYRA_CLIENT_SWF || join(appDir, "client.swf"));
 const certDir = join(appDir, "certs");
@@ -32,12 +34,16 @@ if (flash.path) {
 app.commandLine.appendSwitch("ignore-gpu-blacklist");
 app.commandLine.appendSwitch("autoplay-policy", "no-user-gesture-required");
 app.commandLine.appendSwitch("disable-site-isolation-trials");
+app.commandLine.appendSwitch("disable-background-timer-throttling");
+app.commandLine.appendSwitch("disable-backgrounding-occluded-windows");
+app.commandLine.appendSwitch("disable-renderer-backgrounding");
 app.commandLine.appendSwitch("ignore-certificate-errors");
 app.commandLine.appendSwitch("host-rules", "MAP game.aq.com 127.0.0.1");
 
 let launcherWindow;
 const clientWindows = new Map();
 const launchPayloads = new Map();
+const toolWindows = new Map();
 let assetServer;
 let assetOrigin;
 
@@ -54,6 +60,7 @@ function createLauncherWindow() {
     minWidth: 760,
     minHeight: 520,
     title: "Veyra Launcher",
+    icon: iconPath,
     show: true,
     backgroundColor: "#101510",
     autoHideMenuBar: true,
@@ -82,12 +89,14 @@ function createClientWindow(options = {}) {
     minWidth: 960,
     minHeight: 620,
     title: `Veyra${accountLabel}`,
+    icon: iconPath,
     show: true,
     backgroundColor: "#050505",
     autoHideMenuBar: true,
     webPreferences: {
       plugins: true,
       nativeWindowOpen: true,
+      backgroundThrottling: false,
       preload: preloadPath,
       nodeIntegration: false,
       contextIsolation: false,
@@ -122,7 +131,7 @@ function createClientWindow(options = {}) {
   const url = new URL(`${assetOrigin}/src/index.html`);
   url.searchParams.set("instanceId", instanceId);
   if (options.launchId) url.searchParams.set("launchId", options.launchId);
-  url.searchParams.set("swf", `${assetOrigin}/swf/client.swf`);
+  url.searchParams.set("swf", `${assetOrigin}/swf/client.swf?v=20260531-army-1`);
   url.searchParams.set("gameBase", `${assetOrigin}/game/`);
   if (flash.path) {
     url.searchParams.set("flashPath", flash.path);
@@ -154,6 +163,81 @@ function createClientWindow(options = {}) {
   }
 
   return clientWindow;
+}
+
+function focusNativeWindow(win) {
+  if (!win || win.isDestroyed()) return;
+  if (win.isMinimized()) win.restore();
+  win.show();
+  win.moveTop();
+  win.focus();
+  app.focus({ steal: true });
+}
+
+function sanitizeToolWindowValue(value, fallback = "") {
+  const safeValue = String(value || "")
+    .replace(/[^a-z0-9_-]/gi, "-")
+    .replace(/^-+|-+$/g, "");
+  return safeValue || fallback;
+}
+
+function toolWindowKey(instanceId, tool) {
+  return `${sanitizeToolWindowValue(instanceId, "default")}:${sanitizeToolWindowValue(tool, "advanced")}`;
+}
+
+function showToolWindow(payload = {}) {
+  const tool = sanitizeToolWindowValue(payload.tool, "advanced");
+  const section = sanitizeToolWindowValue(payload.section, "");
+  const instanceId = sanitizeToolWindowValue(payload.instanceId, "default");
+  const key = toolWindowKey(instanceId, tool);
+  const url = new URL(`${assetOrigin}/src/tool.html`);
+  url.searchParams.set("tool", tool);
+  url.searchParams.set("instanceId", instanceId);
+  if (section) url.searchParams.set("section", section);
+
+  const options = getToolWindowOptions(url.toString()) || { width: 460, height: 520, title: "Veyra Tool" };
+  const existing = toolWindows.get(key);
+
+  if (existing && existing.window && !existing.window.isDestroyed()) {
+    if (existing.section !== section) {
+      existing.window.loadURL(url.toString());
+      toolWindows.set(key, { window: existing.window, section });
+    }
+    focusNativeWindow(existing.window);
+    return { focused: true, tool, section };
+  }
+
+  toolWindows.delete(key);
+  const win = new BrowserWindow({
+    width: options.width,
+    height: options.height,
+    minWidth: Math.min(options.width, 360),
+    minHeight: Math.min(options.height, 320),
+    title: options.title,
+    icon: iconPath,
+    show: true,
+    backgroundColor: "#070b0a",
+    autoHideMenuBar: true,
+    webPreferences: {
+      plugins: true,
+      nativeWindowOpen: true,
+      preload: preloadPath,
+      nodeIntegration: false,
+      contextIsolation: false,
+      webSecurity: false,
+      allowRunningInsecureContent: true
+    }
+  });
+  win.setMenuBarVisibility(false);
+  toolWindows.set(key, { window: win, section });
+  win.loadURL(url.toString());
+  win.once("closed", () => {
+    const current = toolWindows.get(key);
+    if (current && current.window === win) toolWindows.delete(key);
+  });
+  win.once("ready-to-show", () => focusNativeWindow(win));
+  focusNativeWindow(win);
+  return { opened: true, tool, section };
 }
 
 function newInstanceId() {
@@ -205,6 +289,7 @@ function toolWindowSize(tool, section) {
     "tools:console": [560, 420],
     "builder:": [940, 620],
     "options:game-options": [520, 620],
+    "options:army-options": [560, 600],
     "options:application-options": [520, 440],
     "options:core-options": [520, 440],
     "options:theme-options": [460, 360],
@@ -229,6 +314,7 @@ function toolWindowSize(tool, section) {
 function sectionLabel(section) {
   const labels = {
     "game-options": "Game Options",
+    "army-options": "Army Options",
     "application-options": "Application Options",
     "core-options": "CoreBots Options",
     "theme-options": "Application Themes",
@@ -301,7 +387,7 @@ function accountSummary(account) {
     id: String(account.id || ""),
     username: String(account.username || ""),
     label: String(account.label || account.username || ""),
-    group: String(account.group || "Default"),
+    defaultServer: cleanServerName(account.defaultServer || ""),
     createdAt: String(account.createdAt || ""),
     updatedAt: String(account.updatedAt || "")
   };
@@ -346,7 +432,7 @@ function saveLauncherAccount(input) {
     id: String(existing.id || newInstanceId()),
     username,
     label: String(input?.label || username).trim() || username,
-    group: String(input?.group || "Default").trim() || "Default",
+    defaultServer: cleanServerName(input?.defaultServer || ""),
     encryptedPassword: encryptPassword(password),
     createdAt: String(existing.createdAt || now),
     updatedAt: now
@@ -371,19 +457,22 @@ function launcherAccountCredentials(id) {
     username: String(account.username || ""),
     password: decryptPassword(account.encryptedPassword),
     label: String(account.label || account.username || ""),
-    group: String(account.group || "Default")
+    defaultServer: cleanServerName(account.defaultServer || "")
   };
 }
 
-async function launchAccounts(accountIds, serverName) {
+async function launchAccounts(accountIds, serverSelection) {
   const ids = Array.isArray(accountIds) ? accountIds.map((id) => String(id || "")).filter(Boolean) : [];
   if (ids.length === 0) throw new Error("Select at least one account.");
+  const requestedName = requestedServerName(serverSelection);
+  const requestedServer = normalizeSelectedServer(serverSelection);
   const servers = await fetchGameServers().catch(() => []);
-  const server = pickServer(servers, serverName);
+  const rootServer = pickServer(servers, requestedName) || requestedServer || servers[0] || null;
   const launched = [];
 
   for (const id of ids) {
     const account = launcherAccountCredentials(id);
+    const server = launcherServerForAccount(account, servers, rootServer);
     const launchId = newInstanceId();
     launchPayloads.set(launchId, { ...account, server });
     createClientWindow({ launchId, accountLabel: account.label || account.username });
@@ -391,6 +480,12 @@ async function launchAccounts(accountIds, serverName) {
   }
 
   return launched;
+}
+
+function launcherServerForAccount(account, servers, rootServer) {
+  const accountServerName = cleanServerName(account?.defaultServer || "");
+  if (!accountServerName) return rootServer;
+  return pickServer(servers, accountServerName) || normalizeSelectedServer({ name: accountServerName, label: accountServerName }) || rootServer;
 }
 
 function launchEmptyClient() {
@@ -404,7 +499,21 @@ function getLaunchPayload(launchId) {
 function pickServer(servers, serverName) {
   const requested = String(serverName || "").trim().toLowerCase();
   if (!requested) return servers[0] || null;
-  return servers.find((server) => String(server.name || "").toLowerCase() === requested) || servers[0] || null;
+  return servers.find((server) => cleanServerName(server.name).toLowerCase() === cleanServerName(requested).toLowerCase()) || null;
+}
+
+function requestedServerName(serverSelection) {
+  if (serverSelection && typeof serverSelection === "object") {
+    return cleanServerName(serverSelection.name || serverSelection.sName || serverSelection.label || "");
+  }
+  return cleanServerName(serverSelection || "");
+}
+
+function normalizeSelectedServer(serverSelection) {
+  if (!serverSelection || typeof serverSelection !== "object") return null;
+  const raw = serverSelection.raw && typeof serverSelection.raw === "object" ? serverSelection.raw : {};
+  const normalized = normalizeGameServer({ ...raw, ...serverSelection }, new Date().toLocaleTimeString([], { hour12: false }));
+  return normalized.name ? normalized : null;
 }
 
 async function fetchGameServers() {
@@ -839,6 +948,7 @@ ipcMain.handle("launcher-start-accounts", (_event, accountIds, serverName) => la
 ipcMain.handle("launcher-empty-client", () => launchEmptyClient());
 ipcMain.handle("launcher-show", () => createLauncherWindow());
 ipcMain.handle("launcher-get-payload", (_event, launchId) => getLaunchPayload(launchId));
+ipcMain.handle("tool-window-show", (_event, payload) => showToolWindow(payload));
 
 app.whenReady().then(() => startAssetServer().then(createLauncherWindow));
 

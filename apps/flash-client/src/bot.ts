@@ -8,6 +8,10 @@ export interface PlayerSnapshot {
   cell: string;
   pad: string;
   room: number;
+  x: number;
+  y: number;
+  mapLoading: boolean;
+  mapLoaded: boolean;
   alive: boolean;
   currentClassName: string;
   currentClassPoints: number;
@@ -25,7 +29,11 @@ export interface Bot {
   pads(): Promise<string[]>;
   waitForMap(map: string, cell?: string, pad?: string, signal?: AbortSignal): Promise<PlayerSnapshot>;
   join(map: string, cell?: string, pad?: string): Promise<void>;
+  joinExact(map: string, cell?: string, pad?: string): Promise<void>;
+  goHome(username?: string): Promise<void>;
+  goto(username: string): Promise<void>;
   jump(cell: string, pad?: string): Promise<void>;
+  walkTo(x: number, y: number, speed?: number): Promise<void>;
   attack(monster?: string | number): Promise<void>;
   useAvailableSkills(): Promise<void>;
   sendPacket(packet: string): Promise<void>;
@@ -89,6 +97,10 @@ export class BrowserFlashBot implements Bot {
           cell: stringFrom(snapshot.cell),
           pad: stringFrom(snapshot.pad),
           room: toNumber(snapshot.room),
+          x: toNumber(snapshot.x),
+          y: toNumber(snapshot.y),
+          mapLoading: hasOwn(snapshot, "mapLoading") ? toBoolean(snapshot.mapLoading) : false,
+          mapLoaded: hasOwn(snapshot, "mapLoaded") ? toBoolean(snapshot.mapLoaded) : true,
           alive: toBoolean(snapshot.alive),
           currentClassName: stringFrom(snapshot.currentClassName, "Equipped class"),
           currentClassPoints: toNumber(snapshot.currentClassPoints),
@@ -97,7 +109,7 @@ export class BrowserFlashBot implements Bot {
       }
     }
 
-    const [loggedIn, username, fallbackUsername, level, map, cell, pad, hp, rank, className, equippedClassName, classPoints] = await Promise.all([
+    const [loggedIn, username, fallbackUsername, level, map, cell, pad, mapLoadingRaw, connectionStage, x, y, hp, rank, className, equippedClassName, classPoints] = await Promise.all([
       this.call<boolean>("isLoggedIn").catch(() => false),
       this.getGameObject<string>("loginInfo.strUsername").catch(() => ""),
       this.getGameObject<string>("world.myAvatar.objData.strUsername").catch(() => ""),
@@ -105,6 +117,10 @@ export class BrowserFlashBot implements Bot {
       this.getGameObject<string>("world.strMapName").catch(() => ""),
       this.getGameObject<string>("world.strFrame").catch(() => ""),
       this.getGameObject<string>("world.strPad").catch(() => ""),
+      this.getGameObject<unknown>("world.mapLoadInProgress").catch(() => false),
+      this.getGameObject<unknown>("mcConnDetail.stage").catch(() => undefined),
+      this.getGameObject<unknown>("world.myAvatar.pMC.x").catch(() => 0),
+      this.getGameObject<unknown>("world.myAvatar.pMC.y").catch(() => 0),
       this.getGameObject<unknown>("world.myAvatar.dataLeaf.intHP").catch(() => 0),
       this.getGameObject<unknown>("world.myAvatar.objData.iRank").catch(() => 0),
       this.getGameObject<string>("world.myAvatar.objData.strClassName").catch(() => ""),
@@ -112,6 +128,8 @@ export class BrowserFlashBot implements Bot {
       this.getGameObject<unknown>("world.myAvatar.objData.iCP").catch(() => 0)
     ]);
 
+    const mapLoading = toBoolean(mapLoadingRaw);
+    const connectionStageVisible = toBoolean(connectionStage);
     return {
       loggedIn: toBoolean(loggedIn),
       username: username || fallbackUsername,
@@ -120,6 +138,10 @@ export class BrowserFlashBot implements Bot {
       cell,
       pad,
       room: 0,
+      x: toNumber(x),
+      y: toNumber(y),
+      mapLoading,
+      mapLoaded: !mapLoading && !connectionStageVisible,
       alive: toNumber(hp) > 0,
       currentClassName: className || equippedClassName || "Equipped class",
       currentClassPoints: toNumber(classPoints),
@@ -164,7 +186,8 @@ export class BrowserFlashBot implements Bot {
   }
 
   async waitForMap(map: string, cell?: string, pad?: string, signal?: AbortSignal): Promise<PlayerSnapshot> {
-    const baseMap = map.split("-")[0]?.toLowerCase() || map.toLowerCase();
+    const baseMap = baseMapName(map);
+    const targetRoom = privateRoomNumber(map);
     const deadline = Date.now() + 12000;
     let lastSnapshot = await this.snapshot();
 
@@ -172,20 +195,51 @@ export class BrowserFlashBot implements Bot {
       if (signal?.aborted) throw signal.reason instanceof Error ? signal.reason : new Error("Cancelled.");
 
       lastSnapshot = await this.snapshot();
-      const loadedMap = lastSnapshot.map.toLowerCase();
+      const mapMatches = sameMap(lastSnapshot.map, baseMap) || sameMap(lastSnapshot.map, map);
+      const roomMatches = targetRoom === undefined || lastSnapshot.room === targetRoom;
       const cellMatches = !cell || lastSnapshot.cell === cell;
       const padMatches = !pad || lastSnapshot.pad === pad;
-      if ((loadedMap === baseMap || loadedMap === map.toLowerCase()) && cellMatches && padMatches) return lastSnapshot;
-      if ((loadedMap === baseMap || loadedMap === map.toLowerCase()) && cellMatches && !pad) return lastSnapshot;
+      const loaded = lastSnapshot.mapLoaded !== false && lastSnapshot.mapLoading !== true;
+      if (mapMatches && roomMatches && loaded && cellMatches && padMatches) return lastSnapshot;
+      if (mapMatches && roomMatches && loaded && cellMatches && !pad) return lastSnapshot;
       await this.delay(300, signal);
     }
 
     throw new Error(
-      `Timed out joining ${map}${cell ? ` ${cell}` : ""}${pad ? `/${pad}` : ""}. Last location: ${lastSnapshot.map || "unknown"} ${lastSnapshot.cell || "?"}/${lastSnapshot.pad || "?"}.`
+      `Timed out joining ${map}${cell ? ` ${cell}` : ""}${pad ? `/${pad}` : ""}. Last location: ${lastSnapshot.map || "unknown"}-${lastSnapshot.room || "?"} ${lastSnapshot.cell || "?"}/${lastSnapshot.pad || "?"}.`
     );
   }
 
   async join(map: string, cell?: string, pad?: string): Promise<void> {
+    await this.joinInternal(map, cell, pad, true);
+  }
+
+  async joinExact(map: string, cell?: string, pad?: string): Promise<void> {
+    await this.joinInternal(map, cell, pad, false);
+  }
+
+  async goHome(username = ""): Promise<void> {
+    const target = username.trim();
+    this.log(target ? `Joining ${target}'s house.` : "Joining house.");
+    let current = await this.snapshot().catch(() => undefined);
+    if (current && !current.alive) current = await this.respawn();
+    await this.leaveCombatCell(current);
+    await this.call("joinHouse", target);
+    await this.waitForMap("house", undefined, undefined);
+  }
+
+  async goto(username: string): Promise<void> {
+    const target = username.trim();
+    if (!target) return;
+    this.log(`Going to ${target}.`);
+    await this.callGameFunction("world.goto", target);
+  }
+
+  async walkTo(x: number, y: number, speed = 8): Promise<void> {
+    await this.call("walkTo", Math.floor(x), Math.floor(y), Math.floor(speed));
+  }
+
+  private async joinInternal(map: string, cell?: string, pad?: string, usePrivateRoomOption = true): Promise<void> {
     let current = await this.snapshot().catch(() => undefined);
     if (current && !current.alive) current = await this.respawn();
     const targetCell = (cell || "").trim();
@@ -193,7 +247,11 @@ export class BrowserFlashBot implements Bot {
     const options = await this.readOptions().catch(() => createDefaultGameOptionsState());
     let targetMap = map;
     const baseTargetMap = baseMapName(targetMap);
-    if (options.values["private-rooms"] === true && !hasPrivateRoomSuffix(targetMap) && !publicOnlyMaps.has(baseTargetMap)) {
+    if (isHomeMap(targetMap)) {
+      await this.goHome();
+      return;
+    }
+    if (usePrivateRoomOption && options.values["private-rooms"] === true && !hasPrivateRoomSuffix(targetMap) && !publicOnlyMaps.has(baseTargetMap) && !isHomeMap(targetMap)) {
       const privateNumber = Number(options.values["private-number"] ?? 0);
       targetMap = withPrivateRoomSuffix(targetMap, privateNumber);
     }
@@ -366,9 +424,14 @@ function baseMapName(map: string): string {
   return (map || "").split("-")[0]?.toLowerCase() || "";
 }
 
+function isHomeMap(map: string): boolean {
+  const base = baseMapName(map);
+  return base === "house" || base === "home";
+}
+
 function samePrivateRoom(snapshot: PlayerSnapshot, targetMap: string): boolean {
   const targetRoom = privateRoomNumber(targetMap);
-  return targetRoom === undefined || snapshot.room === 0 || snapshot.room === targetRoom;
+  return targetRoom === undefined || snapshot.room === targetRoom;
 }
 
 function sameCellPad(snapshot: PlayerSnapshot, cell: string, pad?: string): boolean {
@@ -403,6 +466,10 @@ function parseMaybeJson<T>(value: unknown): T | undefined {
   } catch {
     return undefined;
   }
+}
+
+function hasOwn(value: Record<string, unknown>, key: string): boolean {
+  return Object.prototype.hasOwnProperty.call(value, key);
 }
 
 function unwrapSafeFlashCall<T>(raw: unknown, path: string, args: unknown[]): T {

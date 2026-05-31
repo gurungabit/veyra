@@ -123,6 +123,10 @@ public class Player {
         return handleDrops("reject-all", "", acceptAC, rejectExceptVisibleDrops("", acceptAC));
     }
 
+    public static function questDropsOnly(acceptAC:Boolean = false):String {
+        return handleDrops("quest-only", "", acceptAC, questDropsOnlyVisibleDrops(acceptAC));
+    }
+
     public static function acceptACDrops():String {
         return handleDrops("accept-ac", "", true);
     }
@@ -154,11 +158,30 @@ public class Player {
         if (game.ui) {
             acted += rejectExceptDropSource(game.ui.dropStack, pickup, acceptAC, seen);
             acted += rejectExceptDropSource(game.ui.mcDropStack, pickup, acceptAC, seen);
-            acted += rejectExceptDropSource(game.ui.ModalStack, pickup, acceptAC, seen);
-            acted += rejectExceptDropSource(game.ui.mcPopup, pickup, acceptAC, seen);
         }
 
-        acted += rejectExceptDropSource(game.mcPopup, pickup, acceptAC, seen);
+        return acted;
+    }
+
+    private static function questDropsOnlyVisibleDrops(acceptAC:Boolean = false):int {
+        var acted:int = 0;
+        var seen:Array = [];
+        if (Main.instance == null || Main.instance.game == null) {
+            return acted;
+        }
+
+        var game:* = Main.instance.game;
+        if (game.cDropsUI) {
+            var source:* = game.cDropsUI.mcDraggable ? game.cDropsUI.mcDraggable.menu : game.cDropsUI;
+            acted += questDropsOnlyDropSource(source, acceptAC, seen);
+            acted += questDropsOnlyDropSource(game.cDropsUI, acceptAC, seen);
+        }
+
+        if (game.ui) {
+            acted += questDropsOnlyDropSource(game.ui.dropStack, acceptAC, seen);
+            acted += questDropsOnlyDropSource(game.ui.mcDropStack, acceptAC, seen);
+        }
+
         return acted;
     }
 
@@ -185,7 +208,8 @@ public class Player {
             if (label.length == 0) {
                 label = dropLabel(child);
             }
-            if (label.length == 0) {
+            if (label.length == 0 || !isDropFrameDisplay(child)) {
+                acted += rejectExceptDropSource(child, pickup, acceptAC, seen, depth + 1);
                 continue;
             }
 
@@ -195,7 +219,8 @@ public class Player {
             if (!whitelisted && !(acceptAC && isAcDrop(item))) {
                 if (rejectDropTarget({
                     noButton: findNestedButton(child, ["btNo", "btnNo", "noBtn", "nbtn", "no", "reject"]),
-                    display: child
+                    display: child,
+                    dropDisplay: true
                 })) {
                     acted++;
                     rejected = true;
@@ -204,6 +229,53 @@ public class Player {
 
             if (!rejected) {
                 acted += rejectExceptDropSource(child, pickup, acceptAC, seen, depth + 1);
+            }
+        }
+
+        return acted;
+    }
+
+    private static function questDropsOnlyDropSource(source:*, acceptAC:Boolean, seen:Array, depth:int = 0):int {
+        var acted:int = 0;
+        if (source == null || depth > 6 || seen.indexOf(source) >= 0) {
+            return acted;
+        }
+        seen.push(source);
+
+        var count:int = safeChildCount(source);
+        for (var i:int = count - 1; i >= 0; i--) {
+            var child:* = safeChildAt(source, i);
+            if (child == null) {
+                continue;
+            }
+
+            var actedOnChild:Boolean = false;
+            var item:* = dropItem(child);
+            var label:String = "";
+            if (item != null && item.sName != null) {
+                label = cleanDropLabel(item.sName);
+            }
+            if (label.length == 0) {
+                label = dropLabel(child);
+            }
+            if (label.length > 0 && isDropFrameDisplay(child)) {
+                if (isQuestDrop(item, child) || (acceptAC && isAcDrop(item))) {
+                    if (clickDropButton(findNestedButton(child, ["ybtn", "btYes", "btnYes", "yesBtn", "yes", "accept"]))) {
+                        acted++;
+                        actedOnChild = true;
+                    }
+                } else if (rejectDropTarget({
+                    noButton: findNestedButton(child, ["btNo", "btnNo", "noBtn", "nbtn", "no", "reject"]),
+                    display: child,
+                    dropDisplay: true
+                })) {
+                    acted++;
+                    actedOnChild = true;
+                }
+            }
+
+            if (!actedOnChild) {
+                acted += questDropsOnlyDropSource(child, acceptAC, seen, depth + 1);
             }
         }
 
@@ -230,6 +302,9 @@ public class Player {
                 shouldReject = !shouldAccept;
             } else if (mode == "reject-except") {
                 shouldAccept = pickup.indexOf(target.name) >= 0 || pickup.indexOf(String(target.id)) >= 0 || (acceptAC && target.ac == true);
+                shouldReject = !shouldAccept;
+            } else if (mode == "quest-only") {
+                shouldAccept = target.quest == true || (acceptAC && target.ac == true);
                 shouldReject = !shouldAccept;
             }
 
@@ -264,11 +339,8 @@ public class Player {
         if (game.ui) {
             scanDropSource(game.ui.dropStack, results, seen);
             scanDropSource(game.ui.mcDropStack, results, seen);
-            scanDropSource(game.ui.ModalStack, results, seen);
-            scanDropSource(game.ui.mcPopup, results, seen);
         }
 
-        scanDropSource(game.mcPopup, results, seen);
         return results;
     }
 
@@ -304,15 +376,9 @@ public class Player {
             return;
         }
 
-        var type:String = "";
-        try {
-            type = getQualifiedClassName(display);
-        } catch (typeError:Error) {
-        }
-
-        var hasDropControls:Boolean = hasDirectDropButton(display, ["ybtn", "btYes", "btnYes", "yesBtn", "yes", "accept"]) ||
-            hasDirectDropButton(display, ["nbtn", "btNo", "btnNo", "noBtn", "no", "reject"]);
-        if (item == null && !hasDropControls && type.indexOf("DFrame") == -1 && type.indexOf("Drop") == -1) {
+        var yesButton:* = findNestedButton(display, ["ybtn", "btYes", "btnYes", "yesBtn", "yes", "accept"]);
+        var noButton:* = findNestedButton(display, ["nbtn", "btNo", "btnNo", "noBtn", "no", "reject"]);
+        if (!isDropFrameDisplay(display)) {
             return;
         }
 
@@ -320,6 +386,7 @@ public class Player {
         if (drop.name.length == 0) {
             return;
         }
+        var category:String = dropCategory(item, display);
 
         seen.push(display);
         results.push({
@@ -328,9 +395,12 @@ public class Player {
             displayName: drop.displayName,
             quantity: dropQuantity(item, drop.count),
             ac: isAcDrop(item),
-            yesButton: findNestedButton(display, ["ybtn", "btYes", "btnYes", "yesBtn", "yes", "accept"]),
-            noButton: findNestedButton(display, ["nbtn", "btNo", "btnNo", "noBtn", "no", "reject"]),
-            display: display
+            quest: isQuestDrop(item, display),
+            type: category,
+            yesButton: yesButton,
+            noButton: noButton,
+            display: display,
+            dropDisplay: true
         });
     }
 
@@ -374,13 +444,15 @@ public class Player {
             name: target.name,
             displayName: target.displayName,
             quantity: target.quantity,
-            ac: target.ac
+            ac: target.ac,
+            quest: target.quest,
+            type: target.type
         };
     }
 
     private static function rejectDropTarget(target:*):Boolean {
         var clicked:Boolean = clickDropButton(target.noButton);
-        if (target.display != null && target.display.parent != null) {
+        if (target.display != null && target.display.parent != null && (target.dropDisplay == true || clicked)) {
             return removeDropDisplay(target.display) || clicked;
         }
         return clicked;
@@ -417,6 +489,24 @@ public class Player {
         } catch (error:Error) {
         }
         return false;
+    }
+
+    private static function isDropFrameDisplay(source:*):Boolean {
+        if (source == null) {
+            return false;
+        }
+
+        if (hasDirectDropButton(source, ["ybtn", "btYes", "btnYes", "yesBtn", "yes", "accept"]) ||
+            hasDirectDropButton(source, ["nbtn", "btNo", "btnNo", "noBtn", "no", "reject"])) {
+            return true;
+        }
+
+        var type:String = "";
+        try {
+            type = getQualifiedClassName(source);
+        } catch (typeError:Error) {
+        }
+        return type.indexOf("DFrame") >= 0;
     }
 
     private static function hasDirectDropButton(source:*, names:Array):Boolean {
@@ -597,6 +687,98 @@ public class Player {
         return false;
     }
 
+    private static function dropCategory(item:*, display:*):String {
+        var value:String = itemCategory(item);
+        if (value.length > 0) {
+            return value;
+        }
+        return displayCategory(display);
+    }
+
+    private static function itemCategory(item:*):String {
+        if (item == null) {
+            return "";
+        }
+
+        var value:String = "";
+        try {
+            if (item.sType != null) {
+                value = trimString(String(item.sType));
+                if (value.length > 0) return value;
+            }
+        } catch (typeError:Error) {
+        }
+        try {
+            if (item.Type != null) {
+                value = trimString(String(item.Type));
+                if (value.length > 0) return value;
+            }
+        } catch (capTypeError:Error) {
+        }
+        try {
+            if (item.sItemType != null) {
+                value = trimString(String(item.sItemType));
+                if (value.length > 0) return value;
+            }
+        } catch (itemTypeError:Error) {
+        }
+        try {
+            if (item.sMeta != null) {
+                value = trimString(String(item.sMeta));
+                if (value.length > 0) return value;
+            }
+        } catch (metaError:Error) {
+        }
+        return "";
+    }
+
+    private static function displayCategory(source:*, depth:int = 0):String {
+        if (source == null || depth > 5) {
+            return "";
+        }
+
+        var text:String = "";
+        try {
+            if (source is TextField) {
+                text = categoryFromText(TextField(source).text);
+                if (text.length > 0) return text;
+            }
+        } catch (textFieldError:Error) {
+        }
+        try {
+            if (source.text != null) {
+                text = categoryFromText(source.text);
+                if (text.length > 0) return text;
+            }
+        } catch (textError:Error) {
+        }
+
+        var count:int = safeChildCount(source);
+        for (var i:int = 0; i < count; i++) {
+            text = displayCategory(safeChildAt(source, i), depth + 1);
+            if (text.length > 0) {
+                return text;
+            }
+        }
+
+        return "";
+    }
+
+    private static function categoryFromText(value:*):String {
+        var text:String = trimString(String(value == null ? "" : value));
+        var normalized:String = text.toLowerCase();
+        if (normalized == "quest item") return "Quest Item";
+        if (normalized == "resource") return "Resource";
+        if (normalized == "class") return "Class";
+        if (normalized == "helm") return "Helm";
+        if (normalized == "weapon") return "Weapon";
+        if (normalized == "armor") return "Armor";
+        if (normalized == "cape") return "Cape";
+        if (normalized == "pet") return "Pet";
+        if (normalized == "misc") return "Misc";
+        return "";
+    }
+
     private static function safeChildCount(source:*):int {
         try {
             if (source != null && source.numChildren != null) {
@@ -630,6 +812,11 @@ public class Player {
             return false;
         }
         return isTruthy(item.bCoins) || isTruthy(item.Coins) || isTruthy(item.bAC) || String(item.sType).toLowerCase() == "ac";
+    }
+
+    private static function isQuestDrop(item:*, display:* = null):Boolean {
+        var category:String = dropCategory(item, display).toLowerCase();
+        return category == "quest item" || category == "quest" || category.indexOf("quest item") >= 0;
     }
 
     private static function isTruthy(value:*):Boolean {

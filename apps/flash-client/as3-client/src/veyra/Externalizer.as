@@ -59,12 +59,14 @@ public class Externalizer {
         this.addCallback("acceptAllDrops", Player.acceptAllDrops);
         this.addCallback("acceptDrops", Player.acceptDrops);
         this.addCallback("rejectAllDrops", Player.rejectAllDrops);
+        this.addCallback("questDropsOnly", Player.questDropsOnly);
         this.addCallback("acceptACDrops", Player.acceptACDrops);
         this.addCallback("getCurrentDrops", Player.getCurrentDrops);
 
 
         // World
         this.addCallback("joinMap", World.joinMap);
+        this.addCallback("joinHouse", World.joinHouse);
         this.addCallback("jumpCorrectRoom", World.jumpCorrectRoom);
         this.addCallback("getWorldSnapshot", World.getWorldSnapshot);
         this.addCallback("getCells", World.getCells);

@@ -6,9 +6,14 @@ const platform = platformArg();
 const platforms = platform === "all" ? ["darwin", "win32"] : [platform];
 const requiredFiles = [
   join(appDir, "client.swf"),
+  join(appDir, "build", "icon.icns"),
+  join(appDir, "build", "icon.ico"),
+  join(appDir, "build", "icon.png"),
   join(appDir, "dist", "renderer.js"),
+  join(appDir, "dist", "launcher.js"),
   join(appDir, "dist", "toolWindow.js"),
   join(appDir, "src", "index.html"),
+  join(appDir, "src", "launcher.html"),
   join(appDir, "src", "tool.html"),
   join(appDir, "src", "styles.css"),
   join(appDir, "main.cjs"),

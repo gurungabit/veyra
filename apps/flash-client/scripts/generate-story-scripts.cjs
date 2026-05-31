@@ -391,6 +391,18 @@ function assignUniqueModulePaths(entries) {
 }
 
 function storyStepOverride(id) {
+  if (id === "story.tutorial") {
+    return [
+      {
+        kind: "achievements",
+        map: "oaklore",
+        ids: [22, 23, 24, 25, 26, 27, 28, 29, 30, 31],
+        labels: ["Combat", "Interact", "Quest", "Skill", "Shop", "Enhance", "Rest", "World", "Emotes", "Travel"],
+        stopIfHas: 31
+      }
+    ];
+  }
+
   if (id === "story.tower-of-doom") {
     return Array.from({ length: 10 }, (_, index) => {
       const floor = index + 1;
@@ -806,6 +818,7 @@ function normalizeSteps(steps) {
 function inferMap(steps) {
   for (const step of steps) {
     if ((step.kind === "kill" || step.kind === "mapItem") && step.map) return step.map;
+    if (step.kind === "achievements" && step.map) return step.map;
     if (step.kind === "plan") {
       const action = step.actions.find((entry) => "map" in entry && entry.map);
       if (action?.map) return action.map;

@@ -1,4 +1,5 @@
 import { BrowserFlashBot, type Bot, type PlayerSnapshot } from "./bot.js";
+import { createDefaultArmySettings, isArmyRole, normalizeArmySettings, type ArmyRole, type ArmySettings } from "./armySettings.js";
 import {
   GAME_OPTION_DEFS,
   normalizeGameOptionsState,
@@ -19,6 +20,7 @@ import { generatedStoryDefinitions } from "./scripts/Story/index.js";
 
 type FlashEmbed = HTMLObjectElement & Record<string, (...args: unknown[]) => unknown>;
 type LogKind = "script" | "debug" | "packet" | "event";
+type AutoKind = "attack" | "hunt";
 type ScriptRunner = (bot: Bot, options: { signal?: AbortSignal }) => Promise<void>;
 
 interface ScriptDefinition {
@@ -77,8 +79,47 @@ interface LaunchAccountPayload {
   username: string;
   password: string;
   label?: string;
-  group?: string;
   server?: GameServerInfo | null;
+}
+
+interface ToolWindowRecord {
+  child: Window;
+  section: string;
+}
+
+interface AutoOrigin {
+  map: string;
+  room: number;
+  targetMap: string;
+  cell: string;
+  pad: string;
+}
+
+interface AutoRunState {
+  timer: number;
+  origin: AutoOrigin;
+  busy: boolean;
+}
+
+interface ArmyLocationMessage {
+  type: "veyra-army-location";
+  from: string;
+  seq: number;
+  username: string;
+  map: string;
+  room: number;
+  targetMap: string;
+  cell: string;
+  pad: string;
+  x: number;
+  y: number;
+  sentAt: number;
+}
+
+interface ArmyRequestMessage {
+  type: "veyra-army-request";
+  from: string;
+  sentAt: number;
 }
 
 const params = new URLSearchParams(window.location.search);
@@ -89,6 +130,7 @@ const gameBase = params.get("gameBase") ?? `${window.location.origin}/game/`;
 const flashPath = params.get("flashPath") ?? "";
 const flashVersion = params.get("flashVersion") ?? "";
 const flashMissing = params.get("flashMissing") ?? "";
+const toolWindows = new Map<string, ToolWindowRecord>();
 
 const builtInScripts: ScriptDefinition[] = [
   {
@@ -175,11 +217,25 @@ let clientLoadRequested = false;
 let packetCaptureStarted = false;
 let packetSpamTimer: number | undefined;
 let runtimeDropTimer: number | undefined;
-let autoAttackTimer: number | undefined;
-let autoHuntTimer: number | undefined;
+const autoRuns: Partial<Record<AutoKind, AutoRunState>> = {};
+let armyRole: ArmyRole = "off";
+let armySettings: ArmySettings = createDefaultArmySettings();
+let armyLeaderTimer: number | undefined;
+let armyLeaderSeq = 0;
+let armyLeaderLastLocation: ArmyLocationMessage | undefined;
+let armyLeaderLastSentAt = 0;
+let armyFollowerBusy = false;
+let armyFollowerRequestTimer: number | undefined;
+let armyPendingLocation: ArmyLocationMessage | undefined;
+let armyFollowerLeader = "";
+let armyFollowerLastMessageAt = 0;
+let armyFollowerLastSeq = 0;
+let armyLastGotoKey = "";
+let armyLastAppliedKey = "";
 const gameOptionTimers = new Map<string, number>();
 let packetServerCache: GameServerInfo[] = [];
 let gameBridgeReady = false;
+let launchLoginReady = false;
 let queuedGameOptionsApply = false;
 let flashEl: FlashEmbed;
 let jumpPadManual = false;
@@ -188,7 +244,10 @@ let activeTheme = "veyra-dark";
 let gameOptionsState: GameOptionsState = readGameOptionsState();
 let launchAccount: LaunchAccountPayload | undefined;
 let launchLoginStarted = false;
+let launchLoginTimer: number | undefined;
 const toolBus = new BroadcastChannel(`veyra-tools-${instanceId}`);
+const themeBus = new BroadcastChannel("veyra-theme");
+const armyBus = new BroadcastChannel("veyra-army");
 const pickerState: Record<PickerId, PickerState> = {
   "auto-class": { value: "Equipped", options: ["Equipped", "Farm", "Solo"], open: false },
   "auto-mode": { value: "Safe", options: ["Safe", "Fast", "Skills only"], open: false },
@@ -199,8 +258,18 @@ const pickerState: Record<PickerId, PickerState> = {
 applyTheme(activeTheme, false);
 void hydrateThemeFromFile();
 void hydrateGameOptionsFromFile();
+void hydrateArmySettingsFromFile();
 installFlashCallbacks();
 boot();
+
+themeBus.onmessage = (event: MessageEvent<unknown>) => {
+  const message = event.data as { type?: unknown; theme?: unknown };
+  if (message?.type === "theme" && typeof message.theme === "string") applyTheme(message.theme, false);
+};
+
+armyBus.onmessage = (event: MessageEvent<unknown>) => {
+  handleArmyMessage(event.data);
+};
 
 function boot(): void {
   if (!swfUrl) {
@@ -310,14 +379,52 @@ function installToolBus(): void {
 }
 
 function openToolWindow(name: string, extraParams: Record<string, string> = {}): void {
+  const section = extraParams.section ?? "";
+  const nativeToolWindow = nativeApi()?.showToolWindow;
+  if (nativeToolWindow) {
+    void nativeToolWindow({ tool: name, section, instanceId })
+      .then(() => log("event", `Focused ${toolWindowLabel(name, section)} window.`))
+      .catch((error) => {
+        log("debug", `Native tool window failed; using browser fallback: ${error instanceof Error ? error.message : String(error)}`);
+        openBrowserToolWindow(name, extraParams, section);
+      });
+    return;
+  }
+
+  openBrowserToolWindow(name, extraParams, section);
+}
+
+function openBrowserToolWindow(name: string, extraParams: Record<string, string>, section: string): void {
   const url = new URL(`${window.location.origin}/src/tool.html`);
   url.searchParams.set("tool", name);
   url.searchParams.set("instanceId", instanceId);
-  for (const [key, value] of Object.entries(extraParams)) url.searchParams.set(key, value);
-  const [width, height] = toolWindowSize(name, extraParams.section ?? "");
-  const child = window.open(url.toString(), `veyra-${instanceId}-${name}`, `width=${width},height=${height}`);
-  window.setTimeout(() => resizeToolWindow(child, name, extraParams.section ?? ""), 80);
-  log("event", `Opened ${name} window.`);
+  for (const [paramName, value] of Object.entries(extraParams)) url.searchParams.set(paramName, value);
+
+  const target = `veyra-${instanceId}-${sanitizeWindowTarget(name)}`;
+  const [width, height] = toolWindowSize(name, section);
+  const features = `width=${width},height=${height}`;
+  const existing = toolWindows.get(target);
+
+  if (existing?.child && !existing.child.closed) {
+    const child = existing.section === section ? existing.child : window.open(url.toString(), target, features) ?? existing.child;
+    toolWindows.set(target, { child, section });
+    focusToolWindow(child);
+    window.setTimeout(() => {
+      resizeToolWindow(child, name, section);
+      focusToolWindow(child);
+    }, 80);
+    log("event", `Focused ${toolWindowLabel(name, section)} window.`);
+    return;
+  }
+
+  toolWindows.delete(target);
+  const child = window.open(url.toString(), target, features);
+  if (child) {
+    toolWindows.set(target, { child, section });
+    focusToolWindow(child);
+  }
+  window.setTimeout(() => resizeToolWindow(child, name, section), 80);
+  log("event", `Opened ${toolWindowLabel(name, section)} window.`);
 }
 
 function resizeToolWindow(child: Window | null, name: string, section = ""): void {
@@ -327,6 +434,22 @@ function resizeToolWindow(child: Window | null, name: string, section = ""): voi
   } catch {
     // Existing named Electron windows may keep their native bounds; tool windows also self-size on load.
   }
+}
+
+function focusToolWindow(child: Window | null): void {
+  try {
+    child?.focus();
+  } catch {
+    // A detached window can disappear between click and focus; the next click will recreate it.
+  }
+}
+
+function sanitizeWindowTarget(value: string): string {
+  return value.replace(/[^a-z0-9_-]/gi, "-");
+}
+
+function toolWindowLabel(name: string, section: string): string {
+  return section ? `${name}/${section}` : name;
 }
 
 function toolWindowSize(tool: string, section: string): [number, number] {
@@ -344,6 +467,7 @@ function toolWindowSize(tool: string, section: string): [number, number] {
     "tools:console": [560, 420],
     "builder:": [940, 620],
     "options:game-options": [520, 620],
+    "options:army-options": [560, 600],
     "options:application-options": [520, 440],
     "options:core-options": [520, 440],
     "options:theme-options": [460, 360],
@@ -461,6 +585,21 @@ async function handleToolCommand(command: string, payload: unknown): Promise<voi
         log("event", "Game options saved and applied.");
       }
       break;
+    case "army-set-role":
+      if (isArmyRole(data.role)) setArmyRole(data.role);
+      break;
+    case "army-save-settings": {
+      armySettings = normalizeArmySettings(data.settings);
+      await writeJsonSetting("army", armySettings).catch(() => undefined);
+      if (armyRole === "leader") startArmyLeader();
+      publishState();
+      log("event", "Army settings saved.");
+      break;
+    }
+    case "army-request-location":
+      if (armyRole === "leader") await publishArmyLocation(true);
+      else requestArmyLocation();
+      break;
     case "set-theme":
       if (typeof data.theme === "string") applyTheme(data.theme, true);
       break;
@@ -481,8 +620,13 @@ async function handleToolCommand(command: string, payload: unknown): Promise<voi
       break;
     case "travel": {
       const requestedMap = stringFrom(data.map, "battleon") || "battleon";
-      const map = data.privateRooms === true ? withPrivateRoomSuffix(requestedMap, Number(data.privateNumber ?? 100000)) : requestedMap;
-      await createBot("Travel").join(map, stringFrom(data.cell, "Enter") || "Enter", stringFrom(data.pad, "Spawn") || "Spawn");
+      const bot = createBot("Travel");
+      if (isHomeTravelMap(requestedMap)) {
+        await bot.goHome();
+      } else {
+        const map = data.privateRooms === true ? withPrivateRoomSuffix(requestedMap, Number(data.privateNumber ?? 100000)) : requestedMap;
+        await bot.join(map, stringFrom(data.cell, "Enter") || "Enter", stringFrom(data.pad, "Spawn") || "Spawn");
+      }
       break;
     }
     case "console-command":
@@ -853,7 +997,7 @@ async function runAction(action: string): Promise<void> {
   const bot = createBot("Tool");
   switch (action) {
     case "start-auto-attack":
-      startAuto("attack");
+      await startAuto("attack");
       break;
     case "stop-auto":
       stopAuto("attack");
@@ -1445,6 +1589,7 @@ function applyTheme(theme: string, announce: boolean): void {
   toolBus.postMessage({ type: "theme", theme: activeTheme });
   if (announce) {
     void writeJsonSetting("theme", { theme: activeTheme });
+    themeBus.postMessage({ type: "theme", theme: activeTheme });
     log("event", `Theme changed to ${themeLabel(activeTheme)}.`);
   }
 }
@@ -1458,6 +1603,12 @@ async function hydrateThemeFromFile(): Promise<void> {
 
 async function hydrateGameOptionsFromFile(): Promise<void> {
   gameOptionsState = await readPersistedGameOptions();
+  publishState();
+}
+
+async function hydrateArmySettingsFromFile(): Promise<void> {
+  const saved = await readJsonSetting("army").catch(() => undefined);
+  armySettings = normalizeArmySettings(saved);
   publishState();
 }
 
@@ -1508,7 +1659,7 @@ function positionDropdown(name: string, anchor: HTMLElement): void {
 function dropdownWidth(name: string): number {
   if (name === "auto") return 390;
   if (name === "jump") return 292;
-  if (name === "options") return 182;
+  if (name === "options") return 210;
   if (name === "helpers") return 158;
   if (name === "tools") return 168;
   if (name === "packets") return 142;
@@ -1522,6 +1673,7 @@ function dropdownHtml(name: string): string {
       return `
         <div class="ribbon-row">
           <button data-action="game-options" type="button">Game</button>
+          <button data-action="army-options" type="button">Army</button>
           <button data-action="application-options" type="button">Application</button>
           <button data-action="core-options" type="button">CoreBots</button>
           <button data-action="theme-options" type="button">Application Themes</button>
@@ -1556,19 +1708,23 @@ function dropdownHtml(name: string): string {
         <div class="ribbon-row">
           <button data-action="view-plugins" type="button">View Plugins</button>
         </div>`;
-    case "auto":
+    case "auto": {
+      const attackRunning = isAutoRunning("attack");
+      const huntRunning = isAutoRunning("hunt");
+      const anyRunning = attackRunning || huntRunning;
       return `
         <div class="ribbon-row">
           <div class="dropdown-grid auto-actions">
-            <button data-action="auto-attack" type="button">Auto Attack</button>
-            <button data-action="auto-hunt" type="button">Auto Hunt</button>
-            <button data-action="auto-stop" type="button">Stop</button>
+            <button class="${attackRunning ? "auto-running" : ""}" data-action="auto-attack" type="button" aria-pressed="${attackRunning ? "true" : "false"}"${attackRunning ? " disabled" : ""}>${attackRunning ? "Attack On" : "Auto Attack"}</button>
+            <button class="${huntRunning ? "auto-running" : ""}" data-action="auto-hunt" type="button" aria-pressed="${huntRunning ? "true" : "false"}"${huntRunning ? " disabled" : ""}>${huntRunning ? "Hunt On" : "Auto Hunt"}</button>
+            <button data-action="auto-stop" type="button"${anyRunning ? "" : " disabled"}>Stop</button>
           </div>
           <div class="dropdown-grid">
             ${pickerHtml("auto-class", "Class")}
             ${pickerHtml("auto-mode", "Mode")}
           </div>
         </div>`;
+    }
     case "jump":
       return `
         <div class="ribbon-row">
@@ -1691,7 +1847,7 @@ async function jumpFromRibbon(): Promise<void> {
 
 async function runDropdownAction(action: string, menu: string): Promise<void> {
   const bot = createBot("Tool");
-  if (["game-options", "application-options", "core-options", "theme-options", "hotkeys"].includes(action)) {
+  if (["game-options", "army-options", "application-options", "core-options", "theme-options", "hotkeys"].includes(action)) {
     openToolWindow("options", { section: action });
     closeDropdown();
     return;
@@ -1731,12 +1887,21 @@ async function runDropdownAction(action: string, menu: string): Promise<void> {
     closeDropdown();
     return;
   }
-  if (action === "auto-attack") startAuto("attack");
-  if (action === "auto-hunt") startAuto("hunt");
+  if (action === "auto-attack") {
+    await startAuto("attack");
+    return;
+  }
+  if (action === "auto-hunt") {
+    await startAuto("hunt");
+    return;
+  }
   if (action === "auto-stop") {
     stopAuto("attack");
     stopAuto("hunt");
     log("event", "Auto actions stopped.");
+    renderOpenDropdown(false);
+    publishState();
+    return;
   }
   if (action === "jump-current") {
     const snapshot = await bot.snapshot();
@@ -1819,7 +1984,6 @@ async function applyGameOption(option: string, value: GameOptionValue): Promise<
         await toggleModule(bot, "HidePlayers", enabled);
         break;
       case "disable-fx":
-        await bot.call("disableFX", enabled);
         await toggleModule(bot, "DisableFX", enabled);
         break;
       case "disable-collisions":
@@ -1833,12 +1997,14 @@ async function applyGameOption(option: string, value: GameOptionValue): Promise<
         break;
       case "accept-all-drops":
         if (enabled) setLiveGameOptionTimer("reject-all-drops", false, 1000, () => Promise.resolve());
+        if (enabled) setLiveGameOptionTimer("quest-drops-only", false, 1000, () => Promise.resolve());
         setLiveGameOptionTimer(option, enabled, 900, async () => {
           reportDropAction("Accepted", await bot.call("acceptAllDrops"));
         });
         break;
       case "reject-all-drops":
         if (enabled) setLiveGameOptionTimer("accept-all-drops", false, 1000, () => Promise.resolve());
+        if (enabled) setLiveGameOptionTimer("quest-drops-only", false, 1000, () => Promise.resolve());
         setLiveGameOptionTimer(option, enabled, 900, async () => {
           reportDropAction("Rejected", await bot.call("rejectAllDrops", Boolean(gameOptionsState.values["accept-ac-drops"])));
         });
@@ -1848,7 +2014,10 @@ async function applyGameOption(option: string, value: GameOptionValue): Promise<
           setLiveGameOptionTimer("accept-all-drops", false, 1000, () => Promise.resolve());
           setLiveGameOptionTimer("reject-all-drops", false, 1000, () => Promise.resolve());
         }
-        log("event", enabled ? "Quest Drops Only enabled for script quest loops." : "Quest Drops Only disabled.");
+        setLiveGameOptionTimer(option, enabled, 900, async () => {
+          reportDropAction("Filtered quest drops", await bot.call("questDropsOnly", Boolean(gameOptionsState.values["accept-ac-drops"])));
+        });
+        log("event", enabled ? "Quest Drops Only enabled." : "Quest Drops Only disabled.");
         break;
       case "accept-ac-drops":
         setLiveGameOptionTimer(option, enabled, 900, async () => {
@@ -2050,6 +2219,386 @@ function withPrivateRoomSuffix(map: string, privateNumber: number): string {
   return `${map}-${room}`;
 }
 
+function isHomeTravelMap(map: string): boolean {
+  const base = (map || "").split("-")[0]?.toLowerCase() || "";
+  return base === "house" || base === "home";
+}
+
+function setArmyRole(role: ArmyRole): void {
+  if (armyRole === role) {
+    if (role === "leader") void publishArmyLocation(true);
+    if (role === "follower") requestArmyLocation();
+    renderOpenDropdown(false);
+    return;
+  }
+
+  if (armyRole === "leader") stopArmyLeader();
+  if (armyRole === "follower") stopArmyFollowerRequests();
+  armyRole = role;
+  armyPendingLocation = undefined;
+  armyFollowerLeader = "";
+  armyFollowerLastMessageAt = 0;
+  armyFollowerLastSeq = 0;
+  armyLastGotoKey = "";
+  armyLastAppliedKey = "";
+
+  if (role === "leader") {
+    startArmyLeader();
+    log("event", "Army Leader enabled.");
+  } else if (role === "follower") {
+    startArmyFollower();
+    log("event", "Army Follower enabled.");
+  } else {
+    stopArmyFollowerRequests();
+    log("event", "Army disabled.");
+  }
+
+  renderOpenDropdown(false);
+  publishState();
+}
+
+function startArmyLeader(): void {
+  stopArmyLeader();
+  armyLeaderLastLocation = undefined;
+  armyLeaderTimer = window.setInterval(() => void publishArmyLocation(), armySettings.publishIntervalMs);
+  void publishArmyLocation(true);
+}
+
+function stopArmyLeader(): void {
+  if (armyLeaderTimer !== undefined) {
+    window.clearInterval(armyLeaderTimer);
+    armyLeaderTimer = undefined;
+  }
+  armyLeaderLastLocation = undefined;
+  armyLeaderLastSentAt = 0;
+}
+
+function startArmyFollower(): void {
+  stopArmyFollowerRequests();
+  if (!armySettings.followOnEnable) return;
+
+  requestArmyLocation();
+  armyFollowerRequestTimer = window.setInterval(() => {
+    if (armyRole !== "follower" || armyFollowerLeader) {
+      stopArmyFollowerRequests();
+      return;
+    }
+    requestArmyLocation();
+  }, 1000);
+}
+
+function stopArmyFollowerRequests(): void {
+  if (armyFollowerRequestTimer !== undefined) {
+    window.clearInterval(armyFollowerRequestTimer);
+    armyFollowerRequestTimer = undefined;
+  }
+}
+
+function requestArmyLocation(): void {
+  if (armyRole !== "follower") return;
+  const message: ArmyRequestMessage = {
+    type: "veyra-army-request",
+    from: instanceId,
+    sentAt: Date.now()
+  };
+  armyBus.postMessage(message);
+}
+
+async function publishArmyLocation(force = false): Promise<void> {
+  if (armyRole !== "leader") return;
+
+  const snapshot = await createBot("Army").snapshot().catch(() => undefined);
+  if (!snapshot?.loggedIn || !snapshot.map) return;
+
+  const origin = armyOriginFromSnapshot(snapshot);
+  const now = Date.now();
+  const message: ArmyLocationMessage = {
+    type: "veyra-army-location",
+    from: instanceId,
+    seq: ++armyLeaderSeq,
+    username: snapshot.username,
+    map: origin.map,
+    room: origin.room,
+    targetMap: origin.targetMap,
+    cell: origin.cell,
+    pad: origin.pad,
+    x: roundArmyCoord(snapshot.x),
+    y: roundArmyCoord(snapshot.y),
+    sentAt: now
+  };
+
+  const changed = hasArmyLeaderLocationChanged(message);
+  if (!force && !changed && now - armyLeaderLastSentAt < armySettings.heartbeatMs) return;
+
+  armyLeaderLastLocation = message;
+  armyLeaderLastSentAt = now;
+  armyBus.postMessage(message);
+  if (changed || force) log("event", `Army Leader: ${describeArmyLocation(message)}.`);
+}
+
+function handleArmyMessage(raw: unknown): void {
+  const request = normalizeArmyRequestMessage(raw);
+  if (request) {
+    if (armyRole === "leader" && request.from !== instanceId) void publishArmyLocation(true);
+    return;
+  }
+
+  const message = normalizeArmyLocationMessage(raw);
+  if (!message || armyRole !== "follower" || message.from === instanceId) return;
+
+  const now = Date.now();
+  if (armyFollowerLeader && armyFollowerLeader !== message.from && now - armyFollowerLastMessageAt < armySettings.leaderLockMs) return;
+  if (armyFollowerLeader === message.from && message.seq <= armyFollowerLastSeq) return;
+
+  if (armyFollowerLeader !== message.from) {
+    armyFollowerLeader = message.from;
+    armyFollowerLastSeq = 0;
+    armyLastGotoKey = "";
+    stopArmyFollowerRequests();
+    log("event", `Army Follower linked to ${shortInstanceId(message.from)}.`);
+  }
+
+  armyFollowerLastMessageAt = now;
+  armyFollowerLastSeq = message.seq;
+  queueArmyFollow(message);
+}
+
+function normalizeArmyRequestMessage(raw: unknown): ArmyRequestMessage | undefined {
+  const record = asRecord(raw);
+  if (record.type !== "veyra-army-request") return undefined;
+  const from = stringFrom(record.from).trim();
+  if (!from) return undefined;
+  return {
+    type: "veyra-army-request",
+    from,
+    sentAt: Math.max(0, Math.floor(numberValue(record.sentAt)))
+  };
+}
+
+function normalizeArmyLocationMessage(raw: unknown): ArmyLocationMessage | undefined {
+  const record = asRecord(raw);
+  if (record.type !== "veyra-army-location") return undefined;
+
+  const from = stringFrom(record.from).trim();
+  const map = stringFrom(record.map).trim();
+  const targetMap = stringFrom(record.targetMap).trim();
+  if (!from || !map) return undefined;
+
+  return {
+    type: "veyra-army-location",
+    from,
+    seq: Math.max(0, Math.floor(numberValue(record.seq))),
+    username: stringFrom(record.username).trim(),
+    map,
+    room: Math.max(0, Math.floor(numberValue(record.room))),
+    targetMap: targetMap || map,
+    cell: stringFrom(record.cell, "Enter") || "Enter",
+    pad: stringFrom(record.pad, "Spawn") || "Spawn",
+    x: roundArmyCoord(numberValue(record.x)),
+    y: roundArmyCoord(numberValue(record.y)),
+    sentAt: Math.max(0, Math.floor(numberValue(record.sentAt)))
+  };
+}
+
+function queueArmyFollow(message: ArmyLocationMessage): void {
+  const key = armyMessageKey(message);
+  if (key === armyLastAppliedKey && !armyPendingLocation) return;
+  armyPendingLocation = message;
+  if (!armyFollowerBusy) void drainArmyFollowQueue();
+}
+
+async function drainArmyFollowQueue(): Promise<void> {
+  if (armyFollowerBusy) return;
+  armyFollowerBusy = true;
+  try {
+    while (armyRole === "follower" && armyPendingLocation) {
+      const message = armyPendingLocation;
+      armyPendingLocation = undefined;
+      await followArmyLocation(message);
+    }
+  } catch (error) {
+    log("debug", `Army Follower: ${describeUnknownError(error)}`);
+  } finally {
+    armyFollowerBusy = false;
+    if (armyRole === "follower" && armyPendingLocation) void drainArmyFollowQueue();
+  }
+}
+
+async function followArmyLocation(message: ArmyLocationMessage): Promise<void> {
+  const bot = createBot("Army");
+  let snapshot = await bot.snapshot().catch(() => undefined);
+  if (armyRole !== "follower" || !snapshot?.loggedIn || !message.map) return;
+
+  const origin = armyOriginFromMessage(message);
+  if (armySettings.syncMap) {
+    if (!snapshot.alive) {
+      const respawned = await bot.respawn().catch(() => undefined);
+      if (respawned) snapshot = respawned;
+    }
+    if (!snapshot) return;
+    const gotoKey = armyGotoKey(message);
+    if (message.username && (gotoKey !== armyLastGotoKey || !sameArmyMap(snapshot, origin))) {
+      log("event", `Army Follower: going to ${message.username}.`);
+      await bot.goto(message.username);
+      armyLastGotoKey = gotoKey;
+      snapshot = await waitForArmyLeaderMap(bot, origin);
+    }
+
+    const leaderVisible = message.username ? await isArmyLeaderVisible(bot, message.username) : true;
+    if (!leaderVisible || !snapshot || !sameArmyMap(snapshot, origin)) {
+      snapshot = await tryArmyFallbackRooms(bot, message, origin);
+    }
+  }
+
+  if (armySettings.syncCell && snapshot && !sameAutoOrigin(snapshot, origin)) {
+    log("event", `Army Follower: jumping to ${origin.cell}/${origin.pad}.`);
+    await bot.jump(origin.cell, origin.pad);
+    await sleep(200);
+  }
+
+  const current = await bot.snapshot().catch(() => undefined);
+  if (armySettings.syncPosition && current && sameArmyMap(current, origin) && current.cell === origin.cell && shouldArmyWalk(current, message)) {
+    await bot.walkTo(message.x, message.y, 8);
+  }
+
+  armyLastAppliedKey = armyMessageKey(message);
+}
+
+function armyOriginFromMessage(message: ArmyLocationMessage): AutoOrigin {
+  const targetMap = message.targetMap || message.map;
+  const targetRoom = privateRoomFromMap(targetMap);
+  return {
+    map: baseArmyMapName(message.map || targetMap),
+    room: targetRoom ?? 0,
+    targetMap,
+    cell: message.cell || "Enter",
+    pad: message.pad || "Spawn"
+  };
+}
+
+function armyOriginFromSnapshot(snapshot: PlayerSnapshot): AutoOrigin {
+  const rawMap = snapshot.map.trim();
+  const targetMap = rawMap || "battleon";
+  const explicitRoom = privateRoomFromMap(targetMap);
+  return {
+    map: baseArmyMapName(targetMap),
+    room: explicitRoom ?? 0,
+    targetMap,
+    cell: snapshot.cell || "Enter",
+    pad: snapshot.pad || "Spawn"
+  };
+}
+
+function sameArmyMap(snapshot: PlayerSnapshot, origin: AutoOrigin): boolean {
+  const sameMapName = baseArmyMapName(snapshot.map) === baseArmyMapName(origin.map || origin.targetMap);
+  const sameRoom = !armySettings.exactRoom || origin.room <= 0 || snapshot.room === origin.room;
+  return sameMapName && sameRoom;
+}
+
+async function waitForArmyLeaderMap(bot: BrowserFlashBot, origin: AutoOrigin): Promise<PlayerSnapshot | undefined> {
+  const startedAt = Date.now();
+  const deadline = Date.now() + 8000;
+  const minimumWait = origin.room > 0 ? 0 : 1800;
+  let snapshot: PlayerSnapshot | undefined;
+  while (Date.now() < deadline) {
+    snapshot = await bot.snapshot().catch(() => undefined);
+    const waited = Date.now() - startedAt >= minimumWait;
+    if (waited && snapshot && sameArmyMap(snapshot, origin)) return snapshot;
+    if (waited && snapshot && baseArmyMapName(snapshot.map) === baseArmyMapName(origin.map || origin.targetMap) && origin.room <= 0) return snapshot;
+    await sleep(350);
+  }
+  return snapshot;
+}
+
+async function tryArmyFallbackRooms(bot: BrowserFlashBot, message: ArmyLocationMessage, origin: AutoOrigin): Promise<PlayerSnapshot | undefined> {
+  const candidates = armyFallbackJoinCandidates(message, origin);
+  let latest = await bot.snapshot().catch(() => undefined);
+
+  for (const map of candidates) {
+    log("event", `Army Follower: joining ${map}.`);
+    await bot.call("joinMap", map, origin.cell, origin.pad).catch((error) => log("debug", `Army join ${map}: ${describeUnknownError(error)}`));
+    await sleep(900);
+    latest = await bot.snapshot().catch(() => latest);
+    if (!latest || baseArmyMapName(latest.map) !== baseArmyMapName(map)) continue;
+    if (!message.username || (await isArmyLeaderVisible(bot, message.username))) return latest;
+  }
+
+  return message.username ? undefined : latest;
+}
+
+function armyFallbackJoinCandidates(message: ArmyLocationMessage, origin: AutoOrigin): string[] {
+  const baseMap = baseArmyMapName(origin.targetMap || origin.map || message.map);
+  const explicitRoom = privateRoomFromMap(origin.targetMap);
+  const candidates = [
+    explicitRoom ? origin.targetMap : "",
+    ...armySettings.joinRooms.map((room) => `${baseMap}-${room}`),
+    armySettings.joinRooms.length === 0 ? origin.targetMap || baseMap : ""
+  ];
+  return uniqueStrings(candidates.filter(Boolean));
+}
+
+async function isArmyLeaderVisible(bot: BrowserFlashBot, username: string): Promise<boolean> {
+  const key = username.trim().toLowerCase();
+  if (!key) return false;
+  const raw = await bot.call<unknown>("getGameObjectKey", "world.uoTree", key).catch(() => undefined);
+  const record = asRecord(raw);
+  if (Object.keys(record).length === 0) return false;
+  const name = stringFrom(firstFrom(record, ["strUsername", "username", "sName", "name"])).trim().toLowerCase();
+  return !name || name === key;
+}
+
+function shouldArmyWalk(snapshot: PlayerSnapshot, message: ArmyLocationMessage): boolean {
+  if (!Number.isFinite(message.x) || !Number.isFinite(message.y) || (message.x === 0 && message.y === 0)) return false;
+  const dx = roundArmyCoord(snapshot.x) - message.x;
+  const dy = roundArmyCoord(snapshot.y) - message.y;
+  return Math.sqrt(dx * dx + dy * dy) > armySettings.walkThreshold;
+}
+
+function hasArmyLeaderLocationChanged(message: ArmyLocationMessage): boolean {
+  if (!armyLeaderLastLocation) return true;
+  if (armyLeaderLastLocation.targetMap.toLowerCase() !== message.targetMap.toLowerCase()) return true;
+  if (armyLeaderLastLocation.username !== message.username) return true;
+  if (armyLeaderLastLocation.cell !== message.cell || armyLeaderLastLocation.pad !== message.pad) return true;
+  return armyDistance(armyLeaderLastLocation.x, armyLeaderLastLocation.y, message.x, message.y) >= armySettings.moveThreshold;
+}
+
+function armyMessageKey(message: ArmyLocationMessage): string {
+  return `${message.username.toLowerCase()}|${message.targetMap.toLowerCase()}|${message.cell}|${message.pad}|${message.x}|${message.y}`;
+}
+
+function armyGotoKey(message: ArmyLocationMessage): string {
+  return `${message.username.toLowerCase()}|${message.map.toLowerCase()}|${message.room}`;
+}
+
+function armyDistance(ax: number, ay: number, bx: number, by: number): number {
+  const dx = ax - bx;
+  const dy = ay - by;
+  return Math.sqrt(dx * dx + dy * dy);
+}
+
+function roundArmyCoord(value: number): number {
+  return Number.isFinite(value) ? Math.round(value) : 0;
+}
+
+function describeArmyLocation(message: ArmyLocationMessage): string {
+  return `${message.targetMap || message.map} ${message.cell}/${message.pad} (${message.x}, ${message.y})`;
+}
+
+function baseArmyMapName(map: string): string {
+  return (map || "").split("-")[0]?.toLowerCase() || "";
+}
+
+function privateRoomFromMap(map: string): number | undefined {
+  const match = /-(\d+)$/.exec(map.trim());
+  if (!match) return undefined;
+  const room = Number(match[1]);
+  return Number.isFinite(room) && room > 0 ? Math.floor(room) : undefined;
+}
+
+function shortInstanceId(value: string): string {
+  return value.length > 12 ? `${value.slice(0, 8)}...` : value;
+}
+
 async function runExternalConsoleCommand(command: string): Promise<void> {
   const bot = createBot("Console");
   if (command === "/snapshot") {
@@ -2061,7 +2610,12 @@ async function runExternalConsoleCommand(command: string): Promise<void> {
     const map = parts[1] || "battleon";
     const cell = parts[2] || "Enter";
     const pad = parts[3] || "Spawn";
-    await bot.join(map, cell, pad);
+    if (isHomeTravelMap(map)) await bot.goHome();
+    else await bot.join(map, cell, pad);
+    return;
+  }
+  if (command === "/home" || command === "/house") {
+    await bot.goHome();
     return;
   }
   if (command.startsWith("/jump ")) {
@@ -2078,29 +2632,156 @@ async function runExternalConsoleCommand(command: string): Promise<void> {
   log("debug", `${command}: ${JSON.stringify(await bot.getGameObject(command)).slice(0, 3000)}`);
 }
 
-function startAuto(kind: "attack" | "hunt"): void {
-  const bot = createBot(kind === "attack" ? "AutoAttack" : "AutoHunt");
-  stopAuto(kind);
-  const tick = async () => {
-    try {
-      if (kind === "hunt") await bot.attack("*");
-      else await bot.attack("*");
-      await bot.useAvailableSkills();
-    } catch (error) {
-      log("debug", error instanceof Error ? error.message : String(error));
-    }
-  };
-  const timer = window.setInterval(() => void tick(), 650);
-  if (kind === "attack") autoAttackTimer = timer;
-  else autoHuntTimer = timer;
-  log("event", `${kind === "attack" ? "Auto Attack" : "Auto Hunt"} enabled.`);
+function isAutoRunning(kind: AutoKind): boolean {
+  return Boolean(autoRuns[kind]);
 }
 
-function stopAuto(kind: "attack" | "hunt"): void {
-  const timer = kind === "attack" ? autoAttackTimer : autoHuntTimer;
-  if (timer) window.clearInterval(timer);
-  if (kind === "attack") autoAttackTimer = undefined;
-  else autoHuntTimer = undefined;
+async function startAuto(kind: AutoKind): Promise<void> {
+  if (isAutoRunning(kind)) {
+    log("event", `${autoLabel(kind)} is already running.`);
+    renderOpenDropdown(false);
+    return;
+  }
+
+  const bot = createBot(kind === "attack" ? "AutoAttack" : "AutoHunt");
+  const snapshot = await bot.snapshot().catch((error) => {
+    log("debug", `${autoLabel(kind)} start failed: ${describeUnknownError(error)}`);
+    return undefined;
+  });
+  if (!snapshot?.loggedIn || !snapshot.map) {
+    log("event", `${autoLabel(kind)} needs the game loaded and logged in.`);
+    renderOpenDropdown(false);
+    return;
+  }
+
+  const run: AutoRunState = {
+    timer: 0,
+    origin: autoOriginFromSnapshot(snapshot),
+    busy: false
+  };
+  const tick = async () => {
+    if (run.busy || autoRuns[kind] !== run) return;
+    run.busy = true;
+    try {
+      await runAutoTick(kind, bot, run.origin);
+    } catch (error) {
+      log("debug", `${autoLabel(kind)}: ${describeUnknownError(error)}`);
+    } finally {
+      run.busy = false;
+    }
+  };
+
+  run.timer = window.setInterval(() => void tick(), autoTickInterval());
+  autoRuns[kind] = run;
+  log("event", `${autoLabel(kind)} enabled at ${describeAutoOrigin(run.origin)}.`);
+  renderOpenDropdown(false);
+  publishState();
+  void tick();
+}
+
+async function runAutoTick(kind: AutoKind, bot: BrowserFlashBot, origin: AutoOrigin): Promise<void> {
+  const snapshot = await bot.snapshot();
+  if (!snapshot.loggedIn) return;
+  if (!snapshot.alive) {
+    await bot.respawn();
+    await returnToAutoOrigin(bot, origin);
+    return;
+  }
+
+  if (kind === "hunt") await jumpToAutoHuntTarget(bot);
+
+  if (pickerState["auto-mode"].value !== "Skills only") await bot.attack("*");
+  await bot.useAvailableSkills();
+}
+
+async function jumpToAutoHuntTarget(bot: BrowserFlashBot): Promise<void> {
+  const target = await findAutoMonsterPosition(bot, "*");
+  if (!target) return;
+
+  const snapshot = await bot.snapshot().catch(() => undefined);
+  if (snapshot?.cell === target.cell && (!target.pad || target.pad === "Auto" || snapshot.pad === target.pad)) return;
+
+  await bot.jump(target.cell, target.pad || "Auto");
+  await sleep(250);
+}
+
+async function findAutoMonsterPosition(bot: BrowserFlashBot, monster: string | number): Promise<{ cell: string; pad: string } | undefined> {
+  const records = recordsFrom(await bot.call<unknown>("getMonsters").catch(() => []))
+    .map(asRecord)
+    .filter((record) => Object.keys(record).length > 0);
+  const targetId = typeof monster === "number" ? monster : 0;
+  const targetName = typeof monster === "number" ? "" : (monster || "*").trim().toLowerCase();
+  const candidates = records.filter((record) => {
+    if (typeof monster === "number") {
+      return numberFrom(record, ["MonMapID", "MapID", "monMapId", "MonID", "MonsterID", "id", "ID"]) === targetId;
+    }
+    const name = stringFrom(firstFrom(record, ["strMonName", "sName", "Name", "name"])).toLowerCase();
+    return targetName === "*" || name.includes(targetName);
+  });
+  const aliveCandidates = candidates.filter((record) => numberFrom(record, ["intHP", "HP", "hp"]) > 0);
+  aliveCandidates.sort(
+    (a, b) =>
+      numberFrom(a, ["intHP", "HP", "hp"]) - numberFrom(b, ["intHP", "HP", "hp"]) ||
+      numberFrom(a, ["MonMapID", "MapID", "monMapId", "MonID", "MonsterID", "id", "ID"]) -
+        numberFrom(b, ["MonMapID", "MapID", "monMapId", "MonID", "MonsterID", "id", "ID"])
+  );
+
+  const best = aliveCandidates[0];
+  if (!best) return undefined;
+  const cell = stringFrom(firstFrom(best, ["strFrame", "frame", "Frame", "cell", "Cell"])).trim();
+  const pad = stringFrom(firstFrom(best, ["strPad", "pad", "Pad"]), "Auto").trim() || "Auto";
+  return cell ? { cell, pad } : undefined;
+}
+
+async function returnToAutoOrigin(bot: BrowserFlashBot, origin: AutoOrigin): Promise<void> {
+  const snapshot = await bot.snapshot().catch(() => undefined);
+  if (snapshot && sameAutoOrigin(snapshot, origin)) return;
+
+  log("event", `Returning to ${describeAutoOrigin(origin)} after respawn.`);
+  await bot.joinExact(origin.targetMap, origin.cell, origin.pad);
+  await sleep(500);
+}
+
+function stopAuto(kind: AutoKind): void {
+  const run = autoRuns[kind];
+  if (!run) return;
+  window.clearInterval(run.timer);
+  delete autoRuns[kind];
+  renderOpenDropdown(false);
+  publishState();
+}
+
+function autoOriginFromSnapshot(snapshot: PlayerSnapshot): AutoOrigin {
+  const map = snapshot.map.trim();
+  const room = Number.isFinite(snapshot.room) && snapshot.room > 0 ? Math.floor(snapshot.room) : 0;
+  const targetMap = map && room > 0 && !/-\d+$/.test(map) ? `${map}-${room}` : map;
+  return {
+    map,
+    room,
+    targetMap,
+    cell: snapshot.cell || "Enter",
+    pad: snapshot.pad || "Spawn"
+  };
+}
+
+function sameAutoOrigin(snapshot: PlayerSnapshot, origin: AutoOrigin): boolean {
+  const sameMapName = snapshot.map.toLowerCase() === origin.map.toLowerCase();
+  const sameRoom = origin.room <= 0 || snapshot.room === 0 || snapshot.room === origin.room;
+  const sameCell = snapshot.cell === origin.cell;
+  const samePad = !origin.pad || origin.pad === "Auto" || snapshot.pad === origin.pad;
+  return sameMapName && sameRoom && sameCell && samePad;
+}
+
+function describeAutoOrigin(origin: AutoOrigin): string {
+  return `${origin.targetMap || origin.map} ${origin.cell}/${origin.pad}`;
+}
+
+function autoLabel(kind: AutoKind): string {
+  return kind === "attack" ? "Auto Attack" : "Auto Hunt";
+}
+
+function autoTickInterval(): number {
+  return pickerState["auto-mode"].value === "Fast" ? 350 : 650;
 }
 
 function closeDropdown(): void {
@@ -2172,6 +2853,7 @@ function nativeApi(): {
   openScriptInVsCode?: (scriptId: string) => Promise<unknown>;
   listServers?: () => Promise<unknown>;
   showLauncher?: () => Promise<unknown>;
+  showToolWindow?: (payload: { tool: string; section?: string; instanceId: string }) => Promise<unknown>;
   getLaunchPayload?: (launchId: string) => Promise<unknown>;
 } | undefined {
   return (window as unknown as {
@@ -2180,16 +2862,17 @@ function nativeApi(): {
       readJsonSetting?: (name: string) => Promise<unknown>;
       writeJsonSetting?: (name: string, value: unknown) => Promise<unknown>;
       readBuilderScripts?: () => Promise<unknown>;
-        writeBuilderScript?: (script: unknown) => Promise<unknown>;
-        writeBuilderScripts?: (scripts: unknown[]) => Promise<unknown>;
-        deleteBuilderScript?: (id: string) => Promise<unknown>;
-        openBuilderScriptInVsCode?: (script: unknown) => Promise<unknown>;
-        openScriptInVsCode?: (scriptId: string) => Promise<unknown>;
-        listServers?: () => Promise<unknown>;
-        showLauncher?: () => Promise<unknown>;
-        getLaunchPayload?: (launchId: string) => Promise<unknown>;
-      };
-    }).veyraNative;
+      writeBuilderScript?: (script: unknown) => Promise<unknown>;
+      writeBuilderScripts?: (scripts: unknown[]) => Promise<unknown>;
+      deleteBuilderScript?: (id: string) => Promise<unknown>;
+      openBuilderScriptInVsCode?: (script: unknown) => Promise<unknown>;
+      openScriptInVsCode?: (scriptId: string) => Promise<unknown>;
+      listServers?: () => Promise<unknown>;
+      showLauncher?: () => Promise<unknown>;
+      showToolWindow?: (payload: { tool: string; section?: string; instanceId: string }) => Promise<unknown>;
+      getLaunchPayload?: (launchId: string) => Promise<unknown>;
+    };
+  }).veyraNative;
 }
 
 function createBot(label: string): BrowserFlashBot {
@@ -2224,6 +2907,8 @@ function installFlashCallbacks(): void {
   target.loaded = (...args: unknown[]) => {
     logFlash("loaded", args);
     setStatus(gameBridgeReady ? "Client loaded." : "Client loaded. Waiting for game API...");
+    launchLoginReady = true;
+    queueLaunchLogin(500);
     return true;
   };
 
@@ -2248,6 +2933,7 @@ function requestClientLoad(): void {
   if (clientLoadRequested) return;
   clientLoadRequested = true;
   gameBridgeReady = false;
+  launchLoginReady = false;
   queuedGameOptionsApply = false;
 
   try {
@@ -2264,15 +2950,14 @@ function requestClientLoad(): void {
 function markGameBridgeReady(): void {
   if (gameBridgeReady) return;
   gameBridgeReady = true;
+  launchLoginReady = true;
   setStatus("Client loaded.");
   const delay = queuedGameOptionsApply ? 150 : 300;
   queuedGameOptionsApply = false;
   window.setTimeout(() => {
     void applySavedGameOptions().catch((error) => log("debug", `Apply game options after ready: ${describeUnknownError(error)}`));
   }, delay);
-  window.setTimeout(() => {
-    void loginLaunchAccount();
-  }, 700);
+  queueLaunchLogin(700);
 }
 
 async function autoLoadWhenReady(): Promise<void> {
@@ -2301,34 +2986,82 @@ async function hydrateLaunchAccount(): Promise<void> {
   launchAccount = normalized;
   setStatus(`Launcher account queued: ${normalized.username}.`);
   log("event", `Launcher queued ${normalized.username}${normalized.server?.name ? ` for ${normalized.server.name}` : ""}.`);
+  queueLaunchLogin(launchLoginReady || gameBridgeReady ? 300 : 0);
+}
+
+function queueLaunchLogin(delayMs: number): void {
+  if (!launchAccount || (!launchLoginReady && !gameBridgeReady) || launchLoginStarted) return;
+  if (launchLoginTimer !== undefined) window.clearTimeout(launchLoginTimer);
+  launchLoginTimer = window.setTimeout(() => {
+    launchLoginTimer = undefined;
+    void loginLaunchAccount();
+  }, delayMs);
 }
 
 async function loginLaunchAccount(): Promise<void> {
   if (!launchAccount || launchLoginStarted) return;
   launchLoginStarted = true;
+  if (launchLoginTimer !== undefined) {
+    window.clearTimeout(launchLoginTimer);
+    launchLoginTimer = undefined;
+  }
   const account = launchAccount;
   const bot = createBot("Launcher");
 
-  for (let attempt = 1; attempt <= 30; attempt += 1) {
+  for (let attempt = 1; attempt <= 60; attempt += 1) {
     try {
       await bot.call("setLoginCredentials", account.username, account.password).catch(() => undefined);
-      const loginResult = await bot.call<unknown>("login", account.username, account.password);
-      if (booleanFrom(loginResult)) {
-        log("event", `Login submitted for ${account.username}.`);
-        if (account.server) {
-          await sleep(1200);
-          await bot.call("connectToServer", JSON.stringify(toFlashServer(account.server)));
-          log("event", `Requested ${account.server.name} from launcher.`);
-        }
-        return;
+      await submitLaunchLogin(bot, account);
+      log("event", `Login submitted for ${account.username}.`);
+      if (account.server) {
+        await connectLaunchServer(bot, account.server);
       }
+      return;
     } catch (error) {
-      if (attempt === 30) log("event", `Launcher login failed: ${describeUnknownError(error)}.`);
+      if (attempt === 60) log("event", `Launcher login failed: ${describeUnknownError(error)}.`);
     }
     await sleep(500);
   }
 
   log("event", `Launcher could not submit login for ${account.username}; leave the client open and retry manually.`);
+}
+
+async function submitLaunchLogin(bot: BrowserFlashBot, account: LaunchAccountPayload): Promise<void> {
+  try {
+    await bot.callGameFunction<unknown>("login", account.username, account.password);
+    return;
+  } catch (error) {
+    const fallback = await bot.call<unknown>("login", account.username, account.password).catch(() => false);
+    if (!booleanFrom(fallback)) throw error;
+  }
+}
+
+async function connectLaunchServer(bot: BrowserFlashBot, server: GameServerInfo): Promise<void> {
+  const ready = await waitForLaunchServerList(bot, 15000);
+  if (ready && server.name) {
+    const clicked = await bot.call<unknown>("clickServer", server.name).catch(() => false);
+    if (booleanFrom(clicked)) {
+      log("event", `Clicked ${server.name} from launcher server list.`);
+      return;
+    }
+  }
+
+  await bot.call("connectToServer", JSON.stringify(toFlashServer(server)));
+  log("event", `Requested ${server.name} from launcher.`);
+}
+
+async function waitForLaunchServerList(bot: BrowserFlashBot, timeoutMs: number): Promise<boolean> {
+  const deadline = Date.now() + timeoutMs;
+  while (Date.now() < deadline) {
+    const [loginVisible, serverListMissing, serverEntries] = await Promise.all([
+      bot.getGameObject<unknown>("mcLogin.visible").catch(() => false),
+      bot.call<unknown>("isNull", "mcLogin.sl.iList").catch(() => true),
+      bot.getGameObject<unknown>("mcLogin.sl.iList.numChildren").catch(() => 0)
+    ]);
+    if (booleanFrom(loginVisible) && !booleanFrom(serverListMissing) && Number(serverEntries) > 0) return true;
+    await sleep(250);
+  }
+  return false;
 }
 
 function normalizeLaunchAccount(value: unknown): LaunchAccountPayload | undefined {
@@ -2342,7 +3075,6 @@ function normalizeLaunchAccount(value: unknown): LaunchAccountPayload | undefine
     username,
     password,
     label: stringFrom(record.label),
-    group: stringFrom(record.group),
     server: serverRecord.name || serverRecord.sName ? normalizeGameServers([serverRecord])[0] ?? null : null
   };
 }
@@ -2536,6 +3268,8 @@ function publishState(): void {
     loadedScriptId,
     builderScripts: builderScripts.map(normalizeBuilderScript),
     running: Boolean(scriptAbort),
+    armyRole,
+    armySettings,
     theme: activeTheme,
     gameOptions: gameOptionsState,
     logs: {

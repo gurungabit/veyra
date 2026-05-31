@@ -23,6 +23,7 @@ import flash.system.Security;
 import flash.text.TextField;
 import flash.text.TextFieldType;
 import flash.utils.Timer;
+import flash.utils.getTimer;
 import flash.utils.getQualifiedClassName;
 
 import veyra.api.Auras;
@@ -59,6 +60,9 @@ public class Main extends MovieClip {
     private var customBGReady:MovieClip = null;
     public var customBGLagKiller:MovieClip = null;
     private var customBackgroundURL:String;
+    private var houseReplayKey:String = "";
+    private var houseReplayAt:int = 0;
+    private var pendingHouseMove:Object;
 
     public function Main() {
         String.prototype.trim = function():String {
@@ -263,7 +267,6 @@ public class Main extends MovieClip {
             this.stg.align = StageAlign.TOP;
 
             this.gameDomain = LoaderInfo(event.target).applicationDomain;
-            this.notifyClientVisible();
             if (this.isGameRoot(this.game)) {
                 this.initializeGameBridge();
             } else {
@@ -319,6 +322,8 @@ public class Main extends MovieClip {
             this.resolveGameTimer.removeEventListener(TimerEvent.TIMER, this.onResolveGameTimer);
             this.external.debug("Main::resolveGame found game root.");
             this.initializeGameBridge();
+        } else if (this.isLoginRoot(candidate)) {
+            this.notifyClientVisible();
         }
     }
 
@@ -351,12 +356,24 @@ public class Main extends MovieClip {
                 }
             }
         }
+        if (this.isLoginRoot(root)) {
+            return root;
+        }
         return null;
     }
 
     private function isGameRoot(value:*):Boolean {
         try {
             return value != null && value.sfc != null && value.world != null && value.params != null;
+        } catch (ex:Error) {
+            return false;
+        }
+        return false;
+    }
+
+    private function isLoginRoot(value:*):Boolean {
+        try {
+            return value != null && value.mcLogin != null && value["login"] is Function;
         } catch (ex:Error) {
             return false;
         }
@@ -411,6 +428,102 @@ public class Main extends MovieClip {
 
     public function onExtensionResponse(packet:*):void {
         this.external.call('pext', JSON.stringify(packet));
+        this.scheduleHouseMoveReplay(packet);
+    }
+
+    private function scheduleHouseMoveReplay(packet:*):void {
+        try {
+            if (packet == null || packet.params == null || packet.params.type != "json") {
+                return;
+            }
+
+            var data:* = packet.params.dataObj;
+            if (data == null || data.houseData == null || data.strMapFileName == null) {
+                return;
+            }
+
+            var key:String = String(data.areaId) + "|" + String(data.strMapFileName);
+            var now:int = getTimer();
+            if (key == this.houseReplayKey && now - this.houseReplayAt < 5000) {
+                return;
+            }
+
+            this.houseReplayKey = key;
+            this.houseReplayAt = now;
+            this.pendingHouseMove = {
+                r: -1,
+                o: {
+                    cmd: "moveToArea",
+                    areaName: "house",
+                    uoBranch: data.uoBranch,
+                    strMapFileName: data.strMapFileName,
+                    intType: "1",
+                    monBranch: [],
+                    houseData: this.cloneHouseDataForReplay(data.houseData),
+                    sExtra: "",
+                    areaId: data.areaId,
+                    strMapName: "house"
+                }
+            };
+            this.replayPendingHouseMove();
+        } catch (ex:Error) {
+            this.external.debug("Main::scheduleHouseMoveReplay failed " + ex.message);
+        }
+    }
+
+    private function replayPendingHouseMove():void {
+        try {
+            if (this.pendingHouseMove != null) {
+                handleJsonPacket(this.pendingHouseMove);
+                this.external.debug("Main::replayed house moveToArea as visitor.");
+            }
+        } catch (ex:Error) {
+            this.external.debug("Main::replayHouseMove failed " + ex.message);
+        }
+        this.pendingHouseMove = null;
+    }
+
+    private function cloneHouseDataForReplay(houseData:*):Object {
+        var text:String = JSON.stringify(houseData);
+        var username:String = this.currentUsernameForHouseReplay();
+        if (username.length > 0) {
+            text = text.replace(new RegExp(this.escapeRegExp(username), "ig"), "Veyra user");
+        }
+        return JSON.parse(text);
+    }
+
+    private function currentUsernameForHouseReplay():String {
+        try {
+            if (this.game != null && this.game.sfc != null && this.game.sfc.myUserName != null) {
+                return String(this.game.sfc.myUserName);
+            }
+        } catch (ex1:Error) {
+        }
+        try {
+            if (this.game != null && this.game.loginInfo != null && this.game.loginInfo.strUsername != null) {
+                return String(this.game.loginInfo.strUsername);
+            }
+        } catch (ex2:Error) {
+        }
+        try {
+            if (this.game != null && this.game.world != null && this.game.world.myAvatar != null) {
+                var objData:* = this.game.world.myAvatar.objData;
+                if (objData != null) {
+                    if (objData.strUsername != null) {
+                        return String(objData.strUsername);
+                    }
+                    if (objData.strName != null) {
+                        return String(objData.strName);
+                    }
+                }
+            }
+        } catch (ex3:Error) {
+        }
+        return "";
+    }
+
+    private function escapeRegExp(value:String):String {
+        return value.replace(/([\\\^\$\*\+\?\.\(\)\|\{\}\[\]])/g, "\\$1");
     }
 
     private function onGameClick(event:MouseEvent) : void
@@ -699,10 +812,7 @@ public class Main extends MovieClip {
     }
 
     public static function sendClientPacket(packet:String, type:String):void {
-        if (_handler == null) {
-            var cls:Class = Class(instance.gameDomain.getDefinition('it.gotoandplay.smartfoxserver.handlers.ExtHandler'));
-            _handler = new cls(instance.game.sfc);
-        }
+        ensureExtHandler();
         switch (type) {
             case 'xml':
                 xmlReceived(packet);
@@ -723,12 +833,24 @@ public class Main extends MovieClip {
     }
 
     public static function jsonReceived(packet:String):void {
-        _handler.handleMessage(JSON.parse(packet)['b'], 'json');
+        handleJsonPacket(JSON.parse(packet)['b']);
     }
 
     public static function strReceived(packet:String):void {
         var array:Array = packet.substr(1, packet.length - 2).split('%');
         _handler.handleMessage(array.splice(1, array.length - 1), 'str');
+    }
+
+    private static function ensureExtHandler():void {
+        if (_handler == null) {
+            var cls:Class = Class(instance.gameDomain.getDefinition('it.gotoandplay.smartfoxserver.handlers.ExtHandler'));
+            _handler = new cls(instance.game.sfc);
+        }
+    }
+
+    private static function handleJsonPacket(body:Object):void {
+        ensureExtHandler();
+        _handler.handleMessage(body, 'json');
     }
 
     public static function packetReceived(packet:*):void {

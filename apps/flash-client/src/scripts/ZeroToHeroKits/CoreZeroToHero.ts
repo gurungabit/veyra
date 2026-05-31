@@ -300,7 +300,7 @@ export class CoreZeroToHero {
 
   private async handleLevel70(): Promise<void> {
     if (!(await this.runtime.contains("Horc Evader")) || !(await this.runtime.anyRank10(["Horc Evader"])))
-      await this.runtime.buyItem("bloodtusk", 308, "Horc Evader");
+      await this.runtime.runTask("HorcEvader.GetHE");
     for (const enhancement of ["Smite", "Vim", "Pneuma", "Examen", "Anima"])
       await this.runtime.unlockEnhancement(enhancement);
     if (!(await this.runtime.contains("ArchPaladin")) || !(await this.runtime.anyRank10(["ArchPaladin"])))

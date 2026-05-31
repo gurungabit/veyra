@@ -78,6 +78,10 @@ export type VeyraQuestAction =
   | { kind: "bank"; items: string | string[] };
 
 export const RANK_10_CLASS_POINTS = 302500;
+const SANDSEA_FACTION_ID = 13;
+const HORC_FACTION_ID = 19;
+const EMBERSEA_FACTION_ID = 43;
+const GLACERA_FACTION_ID = 52;
 
 const experienceRoutes: FarmRoute[] = [
   {
@@ -635,7 +639,6 @@ export class ZeroToHeroRuntime {
     shopItemId = -1
   ): Promise<void> {
     this.throwIfAborted();
-    if (map) await this.join(map);
     if (quantity <= 1 && (await this.contains(item, 1, false, true))) {
       this.log(`${displayItem(item)} is already owned; skipping shop ${shopId}.`);
       return;
@@ -643,6 +646,7 @@ export class ZeroToHeroRuntime {
 
     let lastOwned = await this.itemQuantityOf(item, false);
     for (let attempt = 1; attempt <= 3; attempt += 1) {
+      if (map) await this.join(map);
       const shopInfo = await this.loadShop(shopId);
       const shopItem = findShopItem(shopInfo, item, shopItemId);
       if (!shopItem) {
@@ -658,9 +662,14 @@ export class ZeroToHeroRuntime {
       const resolvedShopItemId = shopItemShopItemId(shopItem);
       if (itemId <= 0) throw new Error(`Shop ${shopId} item ${displayItem(item)} has no usable ItemID.`);
 
+      const label = itemName(toItemRecord(shopItem)) || displayItem(item);
+      if (await this.ensureShopItemPrerequisites(shopItem, label)) {
+        lastOwned = await this.itemQuantityOf(item, false);
+        continue;
+      }
+
       const buyQuantity = quantity > 0 ? quantity : -1;
       const expectedOwned = Math.max(1, lastOwned + (quantity > 0 ? quantity : 1));
-      const label = itemName(toItemRecord(shopItem)) || displayItem(item);
       this.log(`Buying ${label} from shop ${shopId}${attempt > 1 ? ` (retry ${attempt})` : ""}.`);
       await this.throttleServerAction();
       await this.bot.call("buyItemByID", itemId, resolvedShopItemId > 0 ? resolvedShopItemId : -1, buyQuantity);
@@ -672,6 +681,60 @@ export class ZeroToHeroRuntime {
     }
 
     throw new Error(`${displayItem(item)} was not added to inventory after buying from shop ${shopId}.`);
+  }
+
+  private async ensureShopItemPrerequisites(
+    shopItem: Record<string, unknown>,
+    label: string
+  ): Promise<boolean> {
+    const level = shopItemRequiredLevel(shopItem);
+    if (level > 0 && (await this.snapshot()).level < level) {
+      this.log(`${label} requires level ${level}; farming XP first.`);
+      await this.farmExperience(Math.min(level, 100));
+      return true;
+    }
+
+    const faction = shopItemFaction(shopItem);
+    const requiredRank = shopItemRequiredReputationRank(shopItem);
+    if (!faction || requiredRank <= 0) return false;
+
+    const factionId = knownFactionId(faction);
+    if (factionId && (await this.factionRank(factionId)) >= requiredRank) return false;
+
+    const handled = await this.farmShopFactionRequirement(faction, requiredRank, label);
+    if (!handled) this.log(`${label} requires ${faction} Rank ${requiredRank}; no Veyra reputation route is mapped yet.`);
+    return handled;
+  }
+
+  private async farmShopFactionRequirement(
+    faction: string,
+    requiredRank: number,
+    label: string
+  ): Promise<boolean> {
+    switch (normalizeFactionName(faction)) {
+      case "sandsea":
+      case "sandsearep":
+      case "sandseareputation":
+        await this.sandseaRep(requiredRank, label);
+        return true;
+      case "horc":
+      case "horcrep":
+      case "horcreputation":
+        await this.horcRep(requiredRank, label);
+        return true;
+      case "embersea":
+      case "embersearep":
+      case "emberseareputation":
+        await runEmberseaRep(this, requiredRank);
+        return true;
+      case "glacera":
+      case "glacerarep":
+      case "glacerareputation":
+        await this.glaceraRepPass(requiredRank);
+        return true;
+      default:
+        return false;
+    }
   }
 
   async acceptQuest(questId: number): Promise<void> {
@@ -706,8 +769,7 @@ export class ZeroToHeroRuntime {
   async isQuestCompleted(questId: number): Promise<boolean> {
     const checks = await Promise.all([
       this.bot.callGameFunction<unknown>("world.isQuestComplete", questId).catch(() => undefined),
-      this.bot.callGameFunction<unknown>("world.isQuestCompleted", questId).catch(() => undefined),
-      this.bot.callGameFunction<unknown>("world.getAchievement", questId, 0).catch(() => undefined)
+      this.bot.callGameFunction<unknown>("world.isQuestCompleted", questId).catch(() => undefined)
     ]);
     if (checks.some(toBoolean)) return true;
 
@@ -925,6 +987,15 @@ export class ZeroToHeroRuntime {
     dropWhitelist: string[] = []
   ): Promise<void> {
     if (item) this.log(`Farming ${item}${quantity > 1 ? ` x${quantity}` : ""} from ${monster}.`);
+    if (!item) {
+      await this.recoverIfDead(location);
+      if (location?.map && !location.cell) await this.jumpToMonsterCell(monster, `fighting ${monster}`);
+      await this.bot.attack(monster);
+      await this.bot.useAvailableSkills();
+      await this.bot.delay(650, this.signal);
+      return;
+    }
+
     const acceptedDrops = item
       ? uniqueDropNames([String(item), ...dropWhitelist])
       : uniqueDropNames(dropWhitelist);
@@ -1202,6 +1273,9 @@ export class ZeroToHeroRuntime {
       case "MasterRanger.GetMR":
         await this.masterRanger();
         return true;
+      case "HorcEvader.GetHE":
+        await this.horcEvader();
+        return true;
       case "Dragonslayer.GetDragonslayer":
         await this.dragonslayer();
         return true;
@@ -1352,42 +1426,111 @@ export class ZeroToHeroRuntime {
   }
 
   private async mazumiQuests(): Promise<void> {
-    await this.completeKillQuest({
-      questId: 90,
-      map: "pirates",
-      monster: "Fishman Soldier",
-      item: "Pirate Pegleg",
-      quantity: 1,
-      isTemp: true
-    });
-    if (!(await this.isQuestCompleted(91))) {
-      await this.acceptQuest(91);
-      await this.hunt("greenguardwest", "Kittarian", "Kittarian's Wallet", 2, true);
-      await this.hunt("greenguardwest", "River Fishman", "River Fishman's Wallet", 2, true);
-      await this.hunt("greenguardwest", "Slime", "Slime-Soaked Wallet", 2, true);
-      await this.killMonster("greenguardwest", "West3", "Up", "Frogzard", "Frogzard's Lint Hoard", 2, true);
-      await this.killMonster(
-        "greenguardwest",
-        "West12",
-        "Up",
-        "Big Bad Boar",
-        "Big Bad Boar's Wallet",
-        1,
-        true
-      );
-      await this.completeQuest(91);
+    if (await this.isStoryQuestComplete(92)) {
+      this.log("Mazumi quests are already complete through Hit Job.");
+      return;
     }
-    if (!(await this.isQuestCompleted(92))) {
-      await this.acceptQuest(92);
-      await this.hunt("greenguardwest", "Breken the Vile", "Breken the Vile's Sword", 1, true);
-      await this.hunt("greenguardwest", "Ogug Stoneaxe", "Ogug Stoneaxe's Helmet", 1, true);
-      await this.completeQuest(92);
+
+    this.log("Mazumi route: completing Ninja prerequisite quests through Hit Job.");
+    await this.storyKillQuest(90, "pirates", "Fishman Soldier");
+    await this.completeQuestPlan(91, [
+      { kind: "hunt", map: "greenguardwest", monster: "Kittarian", item: "Kittarian's Wallet", quantity: 2 },
+      {
+        kind: "hunt",
+        map: "greenguardwest",
+        monster: "River Fishman",
+        item: "River Fishman's Wallet",
+        quantity: 2
+      },
+      { kind: "hunt", map: "greenguardwest", monster: "Slime", item: "Slime-Soaked Wallet", quantity: 2 },
+      {
+        kind: "hunt",
+        map: "greenguardwest",
+        cell: "West3",
+        pad: "Up",
+        monster: "Frogzard",
+        item: "Frogzard's Lint Hoard",
+        quantity: 2
+      },
+      {
+        kind: "hunt",
+        map: "greenguardwest",
+        cell: "West12",
+        pad: "Up",
+        monster: "Big Bad Boar",
+        item: "Big Bad Boar's Wallet"
+      }
+    ]);
+    await this.storyKillQuest(92, "greenguardwest", ["Breken the Vile", "Ogug Stoneaxe"]);
+
+    if (!(await this.isStoryQuestComplete(92))) {
+      throw new Error("Ninja prerequisite quest Hit Job (92) is still incomplete; shop 178 will not unlock Ninja yet.");
     }
   }
 
   private async masterRanger(): Promise<void> {
-    if (!(await this.contains("Master Ranger"))) await this.buyItem("sandsea", 242, 7260, 1, 5682);
+    if (!(await this.contains("Master Ranger"))) {
+      await this.sandseaRep(10, "Master Ranger");
+      await this.buyItem("sandsea", 242, 7260, 1, 5682);
+    }
     await this.rankClass("Master Ranger");
+  }
+
+  private async horcEvader(): Promise<void> {
+    if (!(await this.contains("Horc Evader"))) {
+      await this.horcRep(10, "Horc Evader");
+      await this.buyItem("bloodtusk", 308, "Horc Evader");
+    }
+    await this.rankClass("Horc Evader");
+  }
+
+  private async sandseaRep(targetRank = 10, reason = "Sandsea item"): Promise<void> {
+    const startRank = await this.factionRank(SANDSEA_FACTION_ID);
+    if (startRank >= targetRank) {
+      this.log(`Sandsea reputation is already Rank ${startRank}; skipping reputation farm.`);
+      return;
+    }
+
+    this.log(`${reason} requires Sandsea Rank ${targetRank}; farming Sandsea from Rank ${startRank}.`);
+    await this.farmRepeatableFaction({
+      factionId: SANDSEA_FACTION_ID,
+      factionName: "Sandsea",
+      targetRank,
+      questIds: [916, 917, 919, 921, 922],
+      action: async () => {
+        await this.hunt("sandsea", "Bupers Camel", "Bupers Camel Document", 10, true);
+        await this.hunt("sandsea", "Bupers Camel", "Barrel of Desert Water", 10, true);
+        await this.hunt("sandsea", "Bupers Camel", "Flexible Camel Spit", 7, true);
+        await this.hunt("sandsea", "Bupers Camel", "Oasis Jewelry Piece", 4, true);
+        await this.hunt("sandsea", "Bupers Camel", "Camel Skull", 2, true);
+        await this.hunt("sandsea", "Cactus Creeper", "Sandsea Cotton", 8, true);
+        await this.hunt("sandsea", "Cactus Creeper", "Cactus Creeper Head", 8, true);
+      },
+      afterComplete: async () => {
+        await this.jump("Enter", "Spawn").catch(() => undefined);
+      }
+    });
+  }
+
+  private async horcRep(targetRank = 10, reason = "Horc item"): Promise<void> {
+    const startRank = await this.factionRank(HORC_FACTION_ID);
+    if (startRank >= targetRank) {
+      this.log(`Horc reputation is already Rank ${startRank}; skipping reputation farm.`);
+      return;
+    }
+
+    this.log(`${reason} requires Horc Rank ${targetRank}; farming Horc from Rank ${startRank}.`);
+    await this.farmRepeatableFaction({
+      factionId: HORC_FACTION_ID,
+      factionName: "Horc",
+      targetRank,
+      questIds: [1265],
+      action: async () => {
+        await this.hunt("bloodtuskwar", "Chaotic Lemurphant", "Chaorrupted Eye", 3, true);
+        await this.hunt("bloodtuskwar", "Chaotic Horcboar", "Chaorrupted Tentacle", 5, true);
+        await this.hunt("bloodtuskwar", "Chaotic Chinchilizard", "Chaorrupted Tusk", 5, true);
+      }
+    });
   }
 
   private async dragonslayer(): Promise<void> {
@@ -5677,45 +5820,38 @@ export class ZeroToHeroRuntime {
   }
 
   private async lairStory(): Promise<void> {
-    await this.completeKillQuest({
-      questId: 165,
-      map: "lair",
-      monster: "Wyvern",
-      item: "Dragonslayer Veteran Medal",
-      quantity: 1,
-      isTemp: true
-    });
-    await this.completeKillQuest({
-      questId: 166,
-      map: "lair",
-      monster: "Bronze Draconian",
-      item: "Dragonslayer Sergeant Medal",
-      quantity: 1,
-      isTemp: true
-    });
-    await this.completeKillQuest({
-      questId: 167,
-      map: "lair",
-      monster: "Dark Draconian",
-      item: "Dragonslayer Captain Medal",
-      quantity: 1,
-      isTemp: true
-    });
-    await this.completeKillQuest({
-      questId: 168,
-      map: "lair",
-      monster: "Red Dragon",
-      item: "Dragonslayer Marshal Medal",
-      quantity: 1,
-      isTemp: true
-    });
+    await this.storyKillQuest(165, "lair", "Wyvern");
+    await this.storyKillQuest(166, "lair", "Bronze Draconian");
+    await this.storyKillQuest(167, "lair", "Dark Draconian");
+    await this.storyKillQuest(168, "lair", "Red Dragon");
   }
 
-  private async glaceraRepPass(): Promise<void> {
-    this.log("Running a Glacera reputation combat pass.");
-    for (const questId of [5597, 5598, 5599, 5600]) await this.acceptQuest(questId);
-    await this.killMonster("icewindwar", "r5", "Left", "*");
-    for (const questId of [5597, 5598, 5599, 5600]) await this.completeQuest(questId).catch(() => undefined);
+  private async glaceraRepPass(targetRank = 10): Promise<void> {
+    const startRank = await this.factionRank(GLACERA_FACTION_ID);
+    if (startRank >= targetRank) {
+      this.log(`Glacera reputation is already Rank ${startRank}; skipping reputation farm.`);
+      return;
+    }
+
+    if (!(await this.isStoryQuestComplete(5601))) {
+      this.log("Glacera reputation quests are locked; running Glacera story first.");
+      const { default: glaceraStory } = await import("../Story/Glacera.js");
+      await glaceraStory.run(this.bot, this.options);
+    }
+
+    this.log(`Farming Glacera reputation from Rank ${startRank} to Rank ${targetRank}.`);
+    await this.farmRepeatableFaction({
+      factionId: GLACERA_FACTION_ID,
+      factionName: "Glacera",
+      targetRank,
+      questIds: [5597, 5598, 5599, 5600],
+      action: async () => {
+        await this.killMonster("icewindwar", "r5", "Left", "*", "Frostspawn Medal", 10, true);
+        await this.killMonster("icewindwar", "r5", "Left", "*", "Mega Frostspawn Medal", 5, true);
+        await this.killMonster("icewindwar", "r5", "Left", "*", "World Ender Medal", 10, true);
+        await this.killMonster("icewindwar", "r5", "Left", "*", "Mega World Ender Medal", 5, true);
+      }
+    });
   }
 
   private async ensureMassiveHorcCleaver(): Promise<void> {
@@ -6008,6 +6144,52 @@ export class ZeroToHeroRuntime {
     }
   }
 
+  private async farmRepeatableFaction(options: {
+    factionId: number;
+    factionName: string;
+    targetRank: number;
+    questIds: number[];
+    action: () => Promise<void>;
+    afterComplete?: () => Promise<void>;
+  }): Promise<void> {
+    let loops = 0;
+    let staleTurnIns = 0;
+    let lastRank = await this.factionRank(options.factionId);
+
+    while ((await this.factionRank(options.factionId)) < options.targetRank) {
+      if (this.options.maxFarmLoops && loops >= this.options.maxFarmLoops) {
+        this.log(`Stopped ${options.factionName} reputation farm after ${loops} loops due to maxFarmLoops.`);
+        return;
+      }
+
+      loops += 1;
+      const beforeRep = await this.factionRep(options.factionId);
+      for (const questId of options.questIds) await this.acceptQuest(questId);
+      await options.action();
+      for (const questId of options.questIds) await this.completeQuest(questId);
+      await options.afterComplete?.();
+      await this.bot.delay(750, this.signal);
+
+      const afterRep = await this.factionRep(options.factionId);
+      const rank = classRankFromPoints(afterRep);
+      if (rank > lastRank || loops === 1 || loops % 10 === 0) {
+        this.log(`${options.factionName} reputation progress: Rank ${rank}, ${afterRep} rep.`);
+        lastRank = rank;
+      }
+
+      if (afterRep <= beforeRep) {
+        staleTurnIns += 1;
+        if (staleTurnIns >= 3) {
+          throw new Error(
+            `${options.factionName} reputation did not increase after ${staleTurnIns} farming loops.`
+          );
+        }
+      } else {
+        staleTurnIns = 0;
+      }
+    }
+  }
+
   async factionRep(factionId: number): Promise<number> {
     const rep = await this.bot.callGameFunction<unknown>("world.myAvatar.getRep", factionId).catch(() => undefined);
     return rep === undefined ? 0 : Math.max(0, toNumber(rep));
@@ -6092,9 +6274,14 @@ export class ZeroToHeroRuntime {
     const location = { map };
     await this.join(map);
     let loops = 0;
+    let lastRequirementSummary = "";
     while (!this.signal?.aborted) {
       const readiness = await this.questCompletionReadiness(questId).catch(() => undefined);
       if (readiness?.ready) return;
+      if (readiness?.summary && readiness.summary !== lastRequirementSummary) {
+        lastRequirementSummary = readiness.summary;
+        this.log(`Farming quest ${questId} requirements: ${readiness.summary}.`);
+      }
       if (this.options.maxFarmLoops && loops >= this.options.maxFarmLoops) {
         this.log(`Stopped quest ${questId} farm after ${loops} loops due to maxFarmLoops.`);
         return;
@@ -6102,15 +6289,85 @@ export class ZeroToHeroRuntime {
       loops += 1;
       for (const monster of monsters) {
         this.throwIfAborted();
-        await this.recoverIfDead(location);
-        await this.jumpToMonsterCell(monster, `quest ${questId}`);
-        await this.bot.attack(monster);
-        await this.bot.useAvailableSkills();
-        await this.acceptQuestDrops(questId);
-        await this.bot.delay(650, this.signal);
+        await this.attackQuestMonsterUntilClear(questId, monster, location);
         if ((await this.questCompletionReadiness(questId).catch(() => undefined))?.ready) return;
       }
     }
+  }
+
+  private async attackQuestMonsterUntilClear(
+    questId: number,
+    monster: MonsterTarget,
+    location: CombatLocation
+  ): Promise<void> {
+    const deadline = Date.now() + 90000;
+    let engaged = false;
+
+    while (!this.signal?.aborted && Date.now() < deadline) {
+      if ((await this.questCompletionReadiness(questId).catch(() => undefined))?.ready) return;
+
+      if (await this.recoverIfDead(location)) {
+        engaged = false;
+        await this.bot.delay(500, this.signal);
+      }
+
+      let target = await this.currentTargetMonster();
+      let hasTarget = Boolean(target && this.monsterRecordMatches(target, monster));
+      let hp = target && hasTarget ? numberFrom(target, ["intHP", "HP", "hp"]) : 0;
+
+      if (!hasTarget || hp <= 0) {
+        if (engaged) {
+          await this.bot.delay(650, this.signal);
+          await this.acceptQuestDrops(questId);
+          return;
+        }
+
+        await this.jumpToMonsterCell(monster, `quest ${questId}`);
+        await this.attackMonsterTarget(monster);
+        await this.bot.delay(250, this.signal);
+        target = await this.currentTargetMonster();
+        hasTarget = Boolean(target && this.monsterRecordMatches(target, monster));
+        hp = target && hasTarget ? numberFrom(target, ["intHP", "HP", "hp"]) : 0;
+      }
+
+      if (hasTarget && hp > 0) engaged = true;
+      await this.bot.useAvailableSkills();
+      await this.acceptQuestDrops(questId);
+      await this.bot.delay(450, this.signal);
+
+      const updatedTarget = await this.currentTargetMonster();
+      if (engaged && (!updatedTarget || !this.monsterRecordMatches(updatedTarget, monster) || numberFrom(updatedTarget, ["intHP", "HP", "hp"]) <= 0)) {
+        await this.bot.delay(650, this.signal);
+        await this.acceptQuestDrops(questId);
+        return;
+      }
+    }
+
+    this.log(`Timed out fighting ${monster} for quest ${questId}; checking quest progress before retrying.`);
+  }
+
+  private async attackMonsterTarget(monster: MonsterTarget): Promise<boolean> {
+    const result =
+      typeof monster === "number"
+        ? await this.bot.call<unknown>("attackMonsterID", monster).catch(() => false)
+        : await this.bot.call<unknown>("attackMonsterName", monster).catch(() => false);
+    return toBoolean(result);
+  }
+
+  private async currentTargetMonster(): Promise<Record<string, unknown> | undefined> {
+    const raw = await this.bot.call<unknown>("getTargetMonster").catch(() => undefined);
+    const record = asRecord(parseMaybeJson<unknown>(raw));
+    return Object.keys(record).length > 0 ? record : undefined;
+  }
+
+  private monsterRecordMatches(record: Record<string, unknown>, monster: MonsterTarget): boolean {
+    if (typeof monster === "number") {
+      return numberFrom(record, ["MonMapID", "MapID", "monMapId", "MonID", "MonsterID", "id", "ID"]) === monster;
+    }
+
+    const targetName = monster.trim().toLowerCase();
+    const name = stringFrom(firstFrom(record, ["strMonName", "sName", "Name", "name"])).toLowerCase();
+    return targetName === "*" || name.includes(targetName);
   }
 
   private async acceptQuestDrops(questId: number): Promise<void> {
@@ -6557,6 +6814,57 @@ function shopItemItemId(record: Record<string, unknown>): number {
 
 function shopItemShopItemId(record: Record<string, unknown>): number {
   return firstPositiveNumberFrom(record, ["ShopItemID", "iShopItemID", "shopItemId", "iSel"]);
+}
+
+function shopItemRequiredLevel(record: Record<string, unknown>): number {
+  return firstPositiveNumberFrom(record, ["Level", "iLvl", "iLevel", "requiredLevel", "RequiredLevel"]);
+}
+
+function shopItemFaction(record: Record<string, unknown>): string {
+  const faction = stringFrom(
+    firstFrom(record, ["Faction", "sFaction", "faction", "strFaction", "RequiredFaction", "requiredFaction"])
+  ).trim();
+  return faction.toLowerCase() === "none" ? "" : faction;
+}
+
+function shopItemRequiredReputationRank(record: Record<string, unknown>): number {
+  const value = firstPositiveNumberFrom(record, [
+    "RequiredReputation",
+    "iReqRep",
+    "ReqRep",
+    "requiredReputation",
+    "requiredRep",
+    "iRequiredReputation"
+  ]);
+  if (value <= 0) return 0;
+  return value > 10 ? classRankFromPoints(value) : value;
+}
+
+function normalizeFactionName(faction: string): string {
+  return faction.toLowerCase().replace(/[^a-z0-9]/g, "");
+}
+
+function knownFactionId(faction: string): number | undefined {
+  switch (normalizeFactionName(faction)) {
+    case "sandsea":
+    case "sandsearep":
+    case "sandseareputation":
+      return SANDSEA_FACTION_ID;
+    case "horc":
+    case "horcrep":
+    case "horcreputation":
+      return HORC_FACTION_ID;
+    case "embersea":
+    case "embersearep":
+    case "emberseareputation":
+      return EMBERSEA_FACTION_ID;
+    case "glacera":
+    case "glacerarep":
+    case "glacerareputation":
+      return GLACERA_FACTION_ID;
+    default:
+      return undefined;
+  }
 }
 
 function firstPositiveNumberFrom(record: Record<string, unknown>, keys: string[]): number {

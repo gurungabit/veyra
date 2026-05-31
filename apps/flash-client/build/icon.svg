@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024" role="img" aria-labelledby="title">
+  <title id="title">Veyra app icon</title>
+  <defs>
+    <linearGradient id="background" x1="112" y1="80" x2="912" y2="944" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#172522" />
+      <stop offset="1" stop-color="#11101c" />
+    </linearGradient>
+    <linearGradient id="mark" x1="256" y1="218" x2="768" y2="806" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#fff0aa" />
+      <stop offset="0.46" stop-color="#6ff5df" />
+      <stop offset="1" stop-color="#a98aff" />
+    </linearGradient>
+    <filter id="shadow" x="-35%" y="-35%" width="170%" height="180%">
+      <feDropShadow dx="0" dy="28" stdDeviation="26" flood-color="#000000" flood-opacity="0.44" />
+    </filter>
+  </defs>
+
+  <rect width="1024" height="1024" rx="224" fill="url(#background)" />
+  <path d="M254 270L512 776L770 270" fill="none" stroke="#05090b" stroke-width="154" stroke-linecap="round" stroke-linejoin="round" opacity="0.54" />
+  <path d="M254 270L512 776L770 270" fill="none" stroke="url(#mark)" stroke-width="104" stroke-linecap="round" stroke-linejoin="round" filter="url(#shadow)" />
+  <path d="M370 302L512 586L654 302" fill="none" stroke="#111a20" stroke-width="62" stroke-linecap="round" stroke-linejoin="round" opacity="0.74" />
+  <path d="M512 594L550 678L512 744L474 678L512 594Z" fill="#eefdf7" opacity="0.94" />
+</svg>

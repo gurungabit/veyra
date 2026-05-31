@@ -17,5 +17,6 @@ window.veyraNative = {
   startLauncherAccounts: (accountIds, serverName) => ipcRenderer.invoke("launcher-start-accounts", accountIds, serverName),
   openEmptyClient: () => ipcRenderer.invoke("launcher-empty-client"),
   showLauncher: () => ipcRenderer.invoke("launcher-show"),
-  getLaunchPayload: (launchId) => ipcRenderer.invoke("launcher-get-payload", launchId)
+  getLaunchPayload: (launchId) => ipcRenderer.invoke("launcher-get-payload", launchId),
+  showToolWindow: (payload) => ipcRenderer.invoke("tool-window-show", payload)
 };

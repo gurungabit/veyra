@@ -14,13 +14,43 @@ export const meta = {
   "version": "0.1.0"
 };
 
-const steps: StoryStep[] = [];
+const steps: StoryStep[] = [
+  {
+    "kind": "achievements",
+    "map": "oaklore",
+    "ids": [
+      22,
+      23,
+      24,
+      25,
+      26,
+      27,
+      28,
+      29,
+      30,
+      31
+    ],
+    "labels": [
+      "Combat",
+      "Interact",
+      "Quest",
+      "Skill",
+      "Shop",
+      "Enhance",
+      "Rest",
+      "World",
+      "Emotes",
+      "Travel"
+    ],
+    "stopIfHas": 31
+  }
+];
 
 export const definition = defineGeneratedStory(
   {
     id: "story.tutorial",
     category: "Story",
-    map: "story",
+    map: "oaklore",
     meta
   },
   steps
