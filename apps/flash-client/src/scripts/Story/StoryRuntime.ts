@@ -1,4 +1,4 @@
-import type { FarmJoeRuntime, MonsterTarget, VeyraQuestAction } from "../FarmJoeKits/FarmJoeRuntime.js";
+import type { ZeroToHeroRuntime, MonsterTarget, VeyraQuestAction } from "../ZeroToHeroKits/ZeroToHeroRuntime.js";
 
 const storyStepDelayMs = 1400;
 
@@ -19,7 +19,7 @@ export type StoryStep =
   | { kind: "plan"; questId: number; actions: VeyraQuestAction[]; rewardId?: number; repeatable?: boolean };
 
 export async function runStorySteps(
-  runtime: FarmJoeRuntime,
+  runtime: ZeroToHeroRuntime,
   steps: StoryStep[],
   label = "story route"
 ): Promise<void> {
@@ -30,7 +30,7 @@ export async function runStorySteps(
   }
 }
 
-export async function runStoryStep(runtime: FarmJoeRuntime, step: StoryStep): Promise<void> {
+export async function runStoryStep(runtime: ZeroToHeroRuntime, step: StoryStep): Promise<void> {
   switch (step.kind) {
     case "chain":
       await runtime.chainQuest(step.questId, step.rewardId ?? -1);

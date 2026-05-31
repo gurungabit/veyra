@@ -1,5 +1,5 @@
 import type { Bot } from "../bot.js";
-import { FarmJoeRuntime, type FarmJoeRuntimeOptions } from "./FarmJoeKits/FarmJoeRuntime.js";
+import { ZeroToHeroRuntime, type ZeroToHeroRuntimeOptions } from "./ZeroToHeroKits/ZeroToHeroRuntime.js";
 import { runEmberseaRep } from "./Reputation/Embersea.js";
 
 export const meta = {
@@ -9,10 +9,10 @@ export const meta = {
   version: "0.1.0"
 };
 
-export interface EmberseaRepOptions extends FarmJoeRuntimeOptions {
+export interface EmberseaRepOptions extends ZeroToHeroRuntimeOptions {
   targetRank?: number;
 }
 
 export async function main(bot: Bot, options: EmberseaRepOptions = {}): Promise<void> {
-  await runEmberseaRep(new FarmJoeRuntime(bot, options), options.targetRank ?? 10);
+  await runEmberseaRep(new ZeroToHeroRuntime(bot, options), options.targetRank ?? 10);
 }

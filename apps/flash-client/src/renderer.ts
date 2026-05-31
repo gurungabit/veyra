@@ -13,7 +13,7 @@ import { main as runAllStories, meta as allStoriesMeta } from "./scripts/AllStor
 import { main as runFireIslandEmberseaStory, meta as fireIslandEmberseaStoryMeta } from "./scripts/FireIslandEmberseaStory.js";
 import { main as runFireIslandPyrewatchStory, meta as fireIslandPyrewatchStoryMeta } from "./scripts/FireIslandPyrewatchStory.js";
 import { main as runClassXP, meta as classXpMeta } from "./scripts/ClassXP.js";
-import { main as runFarmJoeDoAll, meta as farmJoeDoAllMeta } from "./scripts/FarmJoeKits/FarmerJoeKit0DoAll.js";
+import { main as runZeroToHeroDoAll, meta as zeroToHeroDoAllMeta } from "./scripts/ZeroToHeroKits/ZeroToHeroKit0DoAll.js";
 import { main as runHighLevelXP, meta as highLevelXpMeta } from "./scripts/HighLevelXP.js";
 import { generatedStoryDefinitions } from "./scripts/Story/index.js";
 
@@ -115,11 +115,11 @@ const builtInScripts: ScriptDefinition[] = [
     run: (bot, options) => runFireIslandPyrewatchStory(bot, withSignal({}, options.signal))
   },
   {
-    id: "farmjoe.do-all",
-    category: "FarmJoeKits",
+    id: "zero-to-hero.do-all",
+    category: "ZeroToHeroKits",
     map: "icestormunder",
-    meta: farmJoeDoAllMeta,
-    run: (bot, options) => runFarmJoeDoAll(bot, withSignal({}, options.signal))
+    meta: zeroToHeroDoAllMeta,
+    run: (bot, options) => runZeroToHeroDoAll(bot, withSignal({}, options.signal))
   },
   ...generatedStoryDefinitions
 ];

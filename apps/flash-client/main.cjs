@@ -462,13 +462,13 @@ function scriptSourcePath(scriptId) {
   const paths = {
     "leveling.high-level-xp": join(scriptsDir, "HighLevelXP.ts"),
     "leveling.class-xp": join(scriptsDir, "ClassXP.ts"),
-    "farmjoe.do-all": join(scriptsDir, "FarmJoeKits", "FarmerJoeKit0DoAll.ts"),
-    "farmjoe.core": join(scriptsDir, "FarmJoeKits", "CoreFarmerJoe.ts"),
-    "farmjoe.member-farms": join(scriptsDir, "FarmJoeKits", "MemberFarmsKit.ts"),
-    "farmjoe.ultra-preps.player1": join(scriptsDir, "FarmJoeKits", "JoePrepsForUltras.ts"),
-    "farmjoe.ultra-preps.player2": join(scriptsDir, "FarmJoeKits", "JoePrepsForUltras.ts"),
-    "farmjoe.ultra-preps.player3": join(scriptsDir, "FarmJoeKits", "JoePrepsForUltras.ts"),
-    "farmjoe.ultra-preps.player4": join(scriptsDir, "FarmJoeKits", "JoePrepsForUltras.ts")
+    "zero-to-hero.do-all": join(scriptsDir, "ZeroToHeroKits", "ZeroToHeroKit0DoAll.ts"),
+    "zero-to-hero.core": join(scriptsDir, "ZeroToHeroKits", "CoreZeroToHero.ts"),
+    "zero-to-hero.member-farms": join(scriptsDir, "ZeroToHeroKits", "MemberFarmsKit.ts"),
+    "zero-to-hero.ultra-preps.player1": join(scriptsDir, "ZeroToHeroKits", "ZeroToHeroPrepsForUltras.ts"),
+    "zero-to-hero.ultra-preps.player2": join(scriptsDir, "ZeroToHeroKits", "ZeroToHeroPrepsForUltras.ts"),
+    "zero-to-hero.ultra-preps.player3": join(scriptsDir, "ZeroToHeroKits", "ZeroToHeroPrepsForUltras.ts"),
+    "zero-to-hero.ultra-preps.player4": join(scriptsDir, "ZeroToHeroKits", "ZeroToHeroPrepsForUltras.ts")
   };
   return paths[String(scriptId || "")] || "";
 }

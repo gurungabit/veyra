@@ -1,5 +1,5 @@
 import type { Bot } from "../bot.js";
-import { FarmJoeRuntime, type FarmJoeRuntimeOptions } from "./FarmJoeKits/FarmJoeRuntime.js";
+import { ZeroToHeroRuntime, type ZeroToHeroRuntimeOptions } from "./ZeroToHeroKits/ZeroToHeroRuntime.js";
 import { allStoriesPlan } from "./Story/AllStoriesPlan.js";
 import { runStorySteps } from "./Story/StoryRuntime.js";
 
@@ -10,6 +10,6 @@ export const meta = {
   version: "0.1.0"
 };
 
-export async function main(bot: Bot, options: FarmJoeRuntimeOptions = {}): Promise<void> {
-  await runStorySteps(new FarmJoeRuntime(bot, options), allStoriesPlan, "Complete All Stories");
+export async function main(bot: Bot, options: ZeroToHeroRuntimeOptions = {}): Promise<void> {
+  await runStorySteps(new ZeroToHeroRuntime(bot, options), allStoriesPlan, "Complete All Stories");
 }

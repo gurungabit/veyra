@@ -2,7 +2,7 @@
 // Do not edit by hand. Run pnpm stories:generate.
 
 import type { Bot } from "../../bot.js";
-import { FarmJoeRuntime, type FarmJoeRuntimeOptions } from "../FarmJoeKits/FarmJoeRuntime.js";
+import { ZeroToHeroRuntime, type ZeroToHeroRuntimeOptions } from "../ZeroToHeroKits/ZeroToHeroRuntime.js";
 import { runStorySteps, type StoryStep } from "./StoryRuntime.js";
 
 export type { StoryStep };
@@ -17,7 +17,7 @@ export interface GeneratedStoryDefinition {
     tags: string[];
     version: string;
   };
-  run: (bot: Bot, options?: FarmJoeRuntimeOptions) => Promise<void>;
+  run: (bot: Bot, options?: ZeroToHeroRuntimeOptions) => Promise<void>;
 }
 
 export function defineGeneratedStory(
@@ -26,6 +26,6 @@ export function defineGeneratedStory(
 ): GeneratedStoryDefinition {
   return {
     ...definition,
-    run: (bot, options = {}) => runStorySteps(new FarmJoeRuntime(bot, options), steps, definition.meta.name)
+    run: (bot, options = {}) => runStorySteps(new ZeroToHeroRuntime(bot, options), steps, definition.meta.name)
   };
 }

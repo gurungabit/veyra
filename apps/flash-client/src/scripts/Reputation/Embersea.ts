@@ -1,9 +1,9 @@
-import type { FarmJoeRuntime } from "../FarmJoeKits/FarmJoeRuntime.js";
+import type { ZeroToHeroRuntime } from "../ZeroToHeroKits/ZeroToHeroRuntime.js";
 import { runFireIslandPyrewatchStory } from "../Story/FireIsland.js";
 
 const EMBERSEA_FACTION_ID = 43;
 
-export async function runEmberseaRep(runtime: FarmJoeRuntime, targetRank = 10): Promise<void> {
+export async function runEmberseaRep(runtime: ZeroToHeroRuntime, targetRank = 10): Promise<void> {
   const currentRank = await runtime.factionRank(EMBERSEA_FACTION_ID);
   if (currentRank >= targetRank) {
     runtime.log(`Embersea reputation is already Rank ${currentRank}; skipping reputation farm.`);
@@ -24,13 +24,13 @@ export async function runEmberseaRep(runtime: FarmJoeRuntime, targetRank = 10): 
   }
 }
 
-async function ensureSpreadingLikeWildfireUnlocked(runtime: FarmJoeRuntime): Promise<void> {
+async function ensureSpreadingLikeWildfireUnlocked(runtime: ZeroToHeroRuntime): Promise<void> {
   if (await runtime.isStoryQuestComplete(4080)) return;
   runtime.log("Spreading Like Wildfire quest 4080 is story-locked; running Pyrewatch story first.");
   await runFireIslandPyrewatchStory(runtime, false);
 }
 
-async function farmEmberseaRepWithPyrewatch(runtime: FarmJoeRuntime, targetRank: number): Promise<void> {
+async function farmEmberseaRepWithPyrewatch(runtime: ZeroToHeroRuntime, targetRank: number): Promise<void> {
   runtime.log("Embersea route: Spreading Like Wildfire quest 4080 via Pyrewatch map items.");
   await runtime.farmFactionQuest({
     factionId: EMBERSEA_FACTION_ID,
@@ -43,7 +43,7 @@ async function farmEmberseaRepWithPyrewatch(runtime: FarmJoeRuntime, targetRank:
   });
 }
 
-async function farmEmberseaRepWithBlazebinders(runtime: FarmJoeRuntime, targetRank: number): Promise<void> {
+async function farmEmberseaRepWithBlazebinders(runtime: ZeroToHeroRuntime, targetRank: number): Promise<void> {
   runtime.log("Embersea route: Slay the Blazebinders quest 4228 via fireforge Blazebinders.");
   await runtime.farmFactionQuest({
     factionId: EMBERSEA_FACTION_ID,

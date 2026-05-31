@@ -1,7 +1,7 @@
-import type { FarmJoeRuntime } from "../FarmJoeKits/FarmJoeRuntime.js";
+import type { ZeroToHeroRuntime } from "../ZeroToHeroKits/ZeroToHeroRuntime.js";
 
 export async function runFireIslandPyrewatchStory(
-  runtime: FarmJoeRuntime,
+  runtime: ZeroToHeroRuntime,
   includeDefenderBadge = true
 ): Promise<void> {
   const targetQuest = includeDefenderBadge ? 4081 : 4080;
@@ -46,7 +46,7 @@ export async function runFireIslandPyrewatchStory(
   if (includeDefenderBadge) await runtime.storyKillQuest(4081, "pyrewatch", "Storm Scout");
 }
 
-export async function runFireIslandEmberseaStory(runtime: FarmJoeRuntime): Promise<void> {
+export async function runFireIslandEmberseaStory(runtime: ZeroToHeroRuntime): Promise<void> {
   if (await runtime.isStoryQuestComplete(4055)) return;
   runtime.log("Running Fire Island Embersea story.");
   await runtime.storyKillQuest(4054, "embersea", ["Flame Soldier", "Storm Scout"]);
