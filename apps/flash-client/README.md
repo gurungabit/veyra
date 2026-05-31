@@ -6,10 +6,14 @@ The renderer is served from a local `127.0.0.1` HTTPS server so Flash `ExternalI
 
 ## Requirements
 
-- Electron 8.
-- A PPAPI Pepper Flash plugin.
+- Node.js 22 LTS or newer.
+- pnpm 11.3.0 via Corepack.
+- Electron 8, installed by `pnpm install`.
+- A PPAPI Pepper Flash plugin, usually from Artix Game Launcher.
 - `apps/flash-client/client.swf`.
-- Flash local-trusted access for the local SWF and HTML folders.
+- Flash local-trusted access for the local SWF and HTML folders. Veyra writes the trust file automatically on launch.
+
+Only rebuild the ActionScript SWF when `apps/flash-client/as3-client` changes. That path also needs Java and Apache Flex SDK 4.16.1.
 
 Electron cannot use the installed `NPSWF*.dll` files from `C:\Windows\System32\Macromed\Flash` or `C:\Windows\SysWOW64\Macromed\Flash`. Those are NPAPI plugins.
 
@@ -70,9 +74,11 @@ Artifacts are written to `apps/flash-client/release/`. `app:dist:win` should be 
 
 By default packaging fails if the target platform's Pepper Flash plugin is not bundled. Set `VEYRA_ALLOW_EXTERNAL_FLASH=1` only for developer builds that intentionally rely on a locally installed plugin.
 
-Then run:
+For source development, run from the repository root:
 
-```powershell
+```sh
+corepack enable
+pnpm install
 pnpm app
 ```
 
@@ -81,6 +87,18 @@ The app writes a Flash trust file automatically:
 ```text
 %APPDATA%\Macromedia\Flash Player\#Security\FlashPlayerTrust\veyra.cfg
 ```
+
+On macOS the equivalent trust directory is under `~/Library/Preferences/Macromedia/Flash Player/#Security/FlashPlayerTrust/`.
+
+## End-User Install
+
+End users do not need Node.js or pnpm when using a packaged release. They need the Veyra release artifact and a local PPAPI Pepper Flash plugin.
+
+- macOS: download the `.dmg` or `.zip`, open or extract it, then launch `Veyra`.
+- Windows: download the installer `.exe` or `.zip`, install or extract it, then launch `Veyra.exe`.
+- If the app reports that Pepper Flash is missing, install Artix Game Launcher or provide `VEYRA_PEPPER_FLASH`.
+
+GitHub Actions release artifacts are built with `VEYRA_ALLOW_EXTERNAL_FLASH=1`, so they expect the end-user machine to provide Pepper Flash locally. Local maintainer builds can bundle the plugin first with `pnpm flash:bundle`.
 
 ## Test Script
 
