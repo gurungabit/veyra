@@ -136,8 +136,9 @@ interface PacketServerOption {
 const params = new URLSearchParams(window.location.search);
 const tool = params.get("tool") || "advanced";
 const section = params.get("section") || "";
+const instanceId = params.get("instanceId") || "main";
 const requestedBuilderScriptId = params.get("script") || "";
-const bus = new BroadcastChannel("veyra-tools");
+const bus = new BroadcastChannel(`veyra-tools-${instanceId}`);
 const root = byId<HTMLElement>("tool-root");
 const title = byId<HTMLElement>("tool-title");
 const statusText = byId<HTMLElement>("tool-status");
@@ -166,6 +167,7 @@ let fastTravelSettings: FastTravelSettings = defaultFastTravelSettings();
 let packetInterceptorSettings: PacketInterceptorSettings = defaultPacketInterceptorSettings();
 let packetInterceptorServers: PacketServerOption[] = [];
 let packetInterceptorServersRequested = false;
+let gameServerListRequested = false;
 let packetInterceptorStatus: "idle" | "connecting" | "connected" | "failed" = "idle";
 let packetInterceptorMessage = "";
 let currentDrops: Record<string, unknown>[] = [];
@@ -270,6 +272,7 @@ bus.onmessage = (event: MessageEvent<unknown>) => {
       void writePacketInterceptorSettings();
     }
     if (tool === "packets" && section === "packet-interceptor") renderPackets();
+    if (tool === "options" && (!section || section === "game-options")) renderGameOptions();
     return;
   }
   if (message?.type === "packet-interceptor-connection" && typeof message.connected === "boolean") {
@@ -1748,6 +1751,10 @@ function renderOptions(): void {
 function renderGameOptions(): void {
   const draft = getGameOptionsDraft();
   const query = gameOptionSearch.trim().toLowerCase();
+  if (!gameServerListRequested && packetInterceptorServers.length === 0) {
+    gameServerListRequested = true;
+    window.setTimeout(() => command("refresh-game-servers"), 0);
+  }
   const options = GAME_OPTION_DEFS.filter((option) => {
     if (!query) return true;
     return `${option.label} ${option.id}`.toLowerCase().includes(query);
@@ -1765,6 +1772,7 @@ function renderGameOptions(): void {
       <label class="field relogin-server-field"><span>Relogin Server</span><select id="game-relogin-server">
         ${serverOptions(String(draft.values["relogin-server"] ?? "Twilly"))}
       </select></label>
+      <p class="muted">${packetInterceptorServers.length > 0 ? `${packetInterceptorServers.length} live servers loaded.` : "Loading live server list..."}</p>
       <div class="option-footer">
         <button data-game-reset type="button">Reset</button>
         <button data-game-default type="button">Default</button>
@@ -2010,9 +2018,10 @@ function nativeApi(): {
 }
 
 function serverOptions(selected: string): string {
-  const servers = RELOGIN_SERVERS.includes(selected) ? RELOGIN_SERVERS : [selected, ...RELOGIN_SERVERS];
+  const liveServers = packetInterceptorServers.length > 0 ? packetInterceptorServers : RELOGIN_SERVERS.map((server) => ({ name: server, label: server, connectable: false }));
+  const servers = liveServers.some((server) => sameServerName(server.name, selected)) ? liveServers : [{ name: selected, label: selected, connectable: false }, ...liveServers];
   return servers
-    .map((server) => `<option value="${escapeAttr(server)}"${server === selected ? " selected" : ""}>${escapeHtml(server)}</option>`)
+    .map((server) => `<option value="${escapeAttr(server.name)}"${sameServerName(server.name, selected) ? " selected" : ""}>${escapeHtml(server.label)}</option>`)
     .join("");
 }
 

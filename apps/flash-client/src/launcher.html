@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="Content-Security-Policy" content="default-src * 'unsafe-inline' 'unsafe-eval' data: blob: file:;" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Veyra Launcher</title>
+    <link rel="stylesheet" href="./styles.css?v=20260530-launcher-1" />
+  </head>
+  <body class="launcher-body">
+    <main class="launcher-shell">
+      <header class="launcher-header">
+        <div>
+          <h1>Veyra Launcher</h1>
+          <p id="launcher-status">Loading accounts and live servers...</p>
+        </div>
+        <div class="launcher-actions">
+          <button id="refresh-servers" type="button">Refresh Servers</button>
+          <button id="open-empty-client" type="button">Open Empty Client</button>
+        </div>
+      </header>
+
+      <section class="launcher-layout">
+        <section class="launcher-panel accounts-panel">
+          <div class="panel-heading">
+            <h2>Accounts</h2>
+            <label class="field server-field">
+              <span>Login Server</span>
+              <select id="server-select"></select>
+            </label>
+          </div>
+          <div id="server-summary" class="launcher-note">Server list loading...</div>
+          <div id="account-list" class="account-list"></div>
+          <div class="launcher-footer">
+            <button id="select-all" type="button">Select All</button>
+            <button id="start-selected" class="primary" type="button">Start Selected</button>
+          </div>
+        </section>
+
+        <section class="launcher-panel account-editor">
+          <h2>Add Account</h2>
+          <label class="field">
+            <span>Username</span>
+            <input id="account-username" autocomplete="username" />
+          </label>
+          <label class="field">
+            <span>Password</span>
+            <input id="account-password" autocomplete="current-password" type="password" />
+          </label>
+          <label class="field">
+            <span>Label</span>
+            <input id="account-label" placeholder="Optional display name" />
+          </label>
+          <label class="field">
+            <span>Group</span>
+            <input id="account-group" value="Default" />
+          </label>
+          <button id="save-account" class="primary" type="button">Save Account</button>
+          <p class="launcher-note">Passwords are encrypted locally before writing the Veyra launcher vault.</p>
+        </section>
+      </section>
+
+      <section class="launcher-log-wrap">
+        <pre id="launcher-log" class="launcher-log"></pre>
+      </section>
+    </main>
+    <script type="module" src="../dist/launcher.js?v=20260530-launcher-1"></script>
+  </body>
+</html>

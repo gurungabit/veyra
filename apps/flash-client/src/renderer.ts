@@ -56,15 +56,34 @@ interface PickerState {
 interface GameServerInfo {
   name: string;
   label: string;
+  ip?: string;
+  port?: number;
+  playerCount?: number;
+  maxPlayers?: number;
   count?: number;
   max?: number;
   online?: boolean;
+  upgrade?: boolean;
+  language?: string;
+  chat?: number;
+  level?: number;
   connectable: boolean;
   raw: Record<string, unknown>;
   refreshedAt: string;
 }
 
+interface LaunchAccountPayload {
+  id: string;
+  username: string;
+  password: string;
+  label?: string;
+  group?: string;
+  server?: GameServerInfo | null;
+}
+
 const params = new URLSearchParams(window.location.search);
+const instanceId = params.get("instanceId") || "main";
+const launchId = params.get("launchId") || "";
 const swfUrl = params.get("swf") ?? "";
 const gameBase = params.get("gameBase") ?? `${window.location.origin}/game/`;
 const flashPath = params.get("flashPath") ?? "";
@@ -167,7 +186,9 @@ let jumpPadManual = false;
 let loadedShopCache: unknown[] = [];
 let activeTheme = "veyra-dark";
 let gameOptionsState: GameOptionsState = readGameOptionsState();
-const toolBus = new BroadcastChannel("veyra-tools");
+let launchAccount: LaunchAccountPayload | undefined;
+let launchLoginStarted = false;
+const toolBus = new BroadcastChannel(`veyra-tools-${instanceId}`);
 const pickerState: Record<PickerId, PickerState> = {
   "auto-class": { value: "Equipped", options: ["Equipped", "Farm", "Solo"], open: false },
   "auto-mode": { value: "Safe", options: ["Safe", "Fast", "Skills only"], open: false },
@@ -190,6 +211,7 @@ function boot(): void {
 
   flashEl = mountFlashObject(swfUrl);
   hydrateScripts();
+  void hydrateLaunchAccount();
   void hydrateBuilderScriptsFromFile();
   renderScriptList();
   setLoadedScript(selectedScriptId);
@@ -290,9 +312,10 @@ function installToolBus(): void {
 function openToolWindow(name: string, extraParams: Record<string, string> = {}): void {
   const url = new URL(`${window.location.origin}/src/tool.html`);
   url.searchParams.set("tool", name);
+  url.searchParams.set("instanceId", instanceId);
   for (const [key, value] of Object.entries(extraParams)) url.searchParams.set(key, value);
   const [width, height] = toolWindowSize(name, extraParams.section ?? "");
-  const child = window.open(url.toString(), `veyra-${name}`, `width=${width},height=${height}`);
+  const child = window.open(url.toString(), `veyra-${instanceId}-${name}`, `width=${width},height=${height}`);
   window.setTimeout(() => resizeToolWindow(child, name, extraParams.section ?? ""), 80);
   log("event", `Opened ${name} window.`);
 }
@@ -480,6 +503,9 @@ async function handleToolCommand(command: string, payload: unknown): Promise<voi
       if (!packetCaptureStarted) await runAction("capture-packets");
       break;
     case "packet-interceptor-refresh-servers":
+      await publishPacketServerList(true);
+      break;
+    case "refresh-game-servers":
       await publishPacketServerList(true);
       break;
     case "packet-interceptor-connect":
@@ -1026,6 +1052,10 @@ async function publishPacketServerList(force = false): Promise<GameServerInfo[]>
 }
 
 async function fetchLivePacketServers(): Promise<GameServerInfo[]> {
+  const nativeServers = await nativeApi()?.listServers?.().catch(() => undefined);
+  const normalizedNativeServers = normalizeGameServers(nativeServers);
+  if (normalizedNativeServers.length > 0) return normalizedNativeServers;
+
   const endpoints = ["https://content.aq.com/game/api/data/servers", "http://content.aq.com/game/api/data/servers"];
   let lastError: unknown;
 
@@ -1397,6 +1427,10 @@ async function runTopAction(action: string): Promise<void> {
   if (action === "open-bank") {
     await createBot("Bank").callGameFunction("world.toggleBank");
     log("event", "Bank opened.");
+  }
+  if (action === "show-launcher") {
+    await nativeApi()?.showLauncher?.();
+    log("event", "Launcher opened.");
   }
 }
 
@@ -2136,6 +2170,9 @@ function nativeApi(): {
   deleteBuilderScript?: (id: string) => Promise<unknown>;
   openBuilderScriptInVsCode?: (script: unknown) => Promise<unknown>;
   openScriptInVsCode?: (scriptId: string) => Promise<unknown>;
+  listServers?: () => Promise<unknown>;
+  showLauncher?: () => Promise<unknown>;
+  getLaunchPayload?: (launchId: string) => Promise<unknown>;
 } | undefined {
   return (window as unknown as {
     veyraNative?: {
@@ -2148,6 +2185,9 @@ function nativeApi(): {
         deleteBuilderScript?: (id: string) => Promise<unknown>;
         openBuilderScriptInVsCode?: (script: unknown) => Promise<unknown>;
         openScriptInVsCode?: (scriptId: string) => Promise<unknown>;
+        listServers?: () => Promise<unknown>;
+        showLauncher?: () => Promise<unknown>;
+        getLaunchPayload?: (launchId: string) => Promise<unknown>;
       };
     }).veyraNative;
 }
@@ -2230,6 +2270,9 @@ function markGameBridgeReady(): void {
   window.setTimeout(() => {
     void applySavedGameOptions().catch((error) => log("debug", `Apply game options after ready: ${describeUnknownError(error)}`));
   }, delay);
+  window.setTimeout(() => {
+    void loginLaunchAccount();
+  }, 700);
 }
 
 async function autoLoadWhenReady(): Promise<void> {
@@ -2242,6 +2285,82 @@ async function autoLoadWhenReady(): Promise<void> {
   }
   setStatus("Flash callback not ready.");
   log("debug", "The Flash plugin loaded, but the SWF did not expose loadClient().");
+}
+
+async function hydrateLaunchAccount(): Promise<void> {
+  if (!launchId) return;
+  const payload = await nativeApi()?.getLaunchPayload?.(launchId).catch((error) => {
+    log("debug", `Launcher payload load failed: ${describeUnknownError(error)}`);
+    return undefined;
+  });
+  const normalized = normalizeLaunchAccount(payload);
+  if (!normalized) {
+    log("event", "Launcher account payload was not found for this client.");
+    return;
+  }
+  launchAccount = normalized;
+  setStatus(`Launcher account queued: ${normalized.username}.`);
+  log("event", `Launcher queued ${normalized.username}${normalized.server?.name ? ` for ${normalized.server.name}` : ""}.`);
+}
+
+async function loginLaunchAccount(): Promise<void> {
+  if (!launchAccount || launchLoginStarted) return;
+  launchLoginStarted = true;
+  const account = launchAccount;
+  const bot = createBot("Launcher");
+
+  for (let attempt = 1; attempt <= 30; attempt += 1) {
+    try {
+      await bot.call("setLoginCredentials", account.username, account.password).catch(() => undefined);
+      const loginResult = await bot.call<unknown>("login", account.username, account.password);
+      if (booleanFrom(loginResult)) {
+        log("event", `Login submitted for ${account.username}.`);
+        if (account.server) {
+          await sleep(1200);
+          await bot.call("connectToServer", JSON.stringify(toFlashServer(account.server)));
+          log("event", `Requested ${account.server.name} from launcher.`);
+        }
+        return;
+      }
+    } catch (error) {
+      if (attempt === 30) log("event", `Launcher login failed: ${describeUnknownError(error)}.`);
+    }
+    await sleep(500);
+  }
+
+  log("event", `Launcher could not submit login for ${account.username}; leave the client open and retry manually.`);
+}
+
+function normalizeLaunchAccount(value: unknown): LaunchAccountPayload | undefined {
+  const record = asRecord(value);
+  const username = stringFrom(record.username);
+  const password = stringFrom(record.password);
+  if (!username || !password) return undefined;
+  const serverRecord = asRecord(record.server);
+  return {
+    id: stringFrom(record.id),
+    username,
+    password,
+    label: stringFrom(record.label),
+    group: stringFrom(record.group),
+    server: serverRecord.name || serverRecord.sName ? normalizeGameServers([serverRecord])[0] ?? null : null
+  };
+}
+
+function toFlashServer(server: GameServerInfo): Record<string, unknown> {
+  const raw = { ...(server.raw || {}) };
+  const name = cleanServerName(stringFrom(firstFrom(raw, ["sName", "name", "Name"]), server.name));
+  raw.sName = name;
+  raw.sIP = stringFrom(firstFrom(raw, ["sIP", "ip", "IP"]), server.ip ?? "");
+  raw.iPort = numberFrom(raw, ["iPort", "port", "Port"]) || server.port || 5588;
+  raw.iCount = numberFrom(raw, ["iCount", "count", "playerCount", "PlayerCount"]) || server.playerCount || server.count || 0;
+  raw.iMax = numberFrom(raw, ["iMax", "max", "maxPlayers", "MaxPlayers"]) || server.maxPlayers || server.max || 0;
+  raw.bOnline = booleanFrom(firstFrom(raw, ["bOnline", "online", "Online"]) ?? server.online ?? true) ? 1 : 0;
+  raw.bUpg = booleanFrom(firstFrom(raw, ["bUpg", "upgrade", "Upgrade"]) ?? server.upgrade ?? false) ? 1 : 0;
+  raw.sLang = stringFrom(firstFrom(raw, ["sLang", "language", "Language"]), server.language ?? "");
+  raw.iChat = numberFrom(raw, ["iChat", "chat", "Chat"]) || server.chat || 0;
+  raw.iLevel = numberFrom(raw, ["iLevel", "level", "Level"]) || server.level || 0;
+  return raw;
 }
 
 function callFlash<T>(name: string, ...args: unknown[]): T {

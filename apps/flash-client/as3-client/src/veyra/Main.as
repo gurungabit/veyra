@@ -21,6 +21,7 @@ import flash.system.ApplicationDomain;
 import flash.system.LoaderContext;
 import flash.system.Security;
 import flash.text.TextField;
+import flash.text.TextFieldType;
 import flash.utils.Timer;
 import flash.utils.getQualifiedClassName;
 
@@ -91,10 +92,81 @@ public class Main extends MovieClip {
         }
     }
 
+    public static function setLoginCredentials(username:String, password:String):String {
+        if (!instance || !instance.game || !instance.game.mcLogin) return "false";
+        return instance.setLoginCredentialsInternal(username, password).toString();
+    }
+
+    public static function login(username:String, password:String):String {
+        if (!instance || !instance.game) return "false";
+        setLoginCredentials(username, password);
+        try {
+            var loginFunction:Function = instance.game["login"] as Function;
+            if (loginFunction != null) {
+                loginFunction.apply(instance.game, [username, password]);
+                return "true";
+            }
+        } catch (error:Error) {
+            instance.external.debug("Main::login failed " + error.name + " " + error.message);
+        }
+        return "false";
+    }
+
+    public static function logout():String {
+        if (!instance || !instance.game) return "false";
+        try {
+            if (instance.game.sfc && instance.game.sfc.isConnected) {
+                instance.game.sfc.disconnect();
+            }
+            instance.game.gotoAndPlay("Login");
+            return "true";
+        } catch (error:Error) {
+            instance.external.debug("Main::logout failed " + error.name + " " + error.message);
+        }
+        return "false";
+    }
+
     private function init(e:Event = null):void {
         removeEventListener(Event.ADDED_TO_STAGE, this.init);
         this.external = new Externalizer();
         this.external.init(this);
+    }
+
+    private function setLoginCredentialsInternal(username:String, password:String):Boolean {
+        var fields:Array = [];
+        collectInputTextFields(this.game.mcLogin, fields);
+        var usernameSet:Boolean = false;
+        var passwordSet:Boolean = false;
+
+        for each (var field:TextField in fields) {
+            if (!passwordSet && field.displayAsPassword) {
+                setTextFieldValue(field, password);
+                passwordSet = true;
+            } else if (!usernameSet && !field.displayAsPassword) {
+                setTextFieldValue(field, username);
+                usernameSet = true;
+            }
+        }
+
+        return usernameSet || passwordSet;
+    }
+
+    private function collectInputTextFields(root:DisplayObject, fields:Array):void {
+        if (root is TextField) {
+            var field:TextField = root as TextField;
+            if (field.type == TextFieldType.INPUT) fields.push(field);
+        }
+
+        if (!(root is DisplayObjectContainer)) return;
+        var container:DisplayObjectContainer = root as DisplayObjectContainer;
+        for (var index:int = 0; index < container.numChildren; index++) {
+            collectInputTextFields(container.getChildAt(index), fields);
+        }
+    }
+
+    private function setTextFieldValue(field:TextField, value:String):void {
+        field.text = value == null ? "" : value;
+        field.dispatchEvent(new Event(Event.CHANGE, true));
     }
 
     private function onAddedToStage():void {

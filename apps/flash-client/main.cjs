@@ -1,6 +1,8 @@
 const { app, BrowserWindow, dialog, ipcMain, shell } = require("electron");
 const { createServer: createHttpsServer, request: httpsRequest } = require("https");
+const { request: httpRequest } = require("http");
 const { execFileSync, spawn } = require("child_process");
+const { createCipheriv, createDecipheriv, randomBytes } = require("crypto");
 const { appendFileSync, copyFileSync, existsSync, mkdirSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } = require("fs");
 const { dirname, join, resolve } = require("path");
 
@@ -33,17 +35,53 @@ app.commandLine.appendSwitch("disable-site-isolation-trials");
 app.commandLine.appendSwitch("ignore-certificate-errors");
 app.commandLine.appendSwitch("host-rules", "MAP game.aq.com 127.0.0.1");
 
-let mainWindow;
+let launcherWindow;
+const clientWindows = new Map();
+const launchPayloads = new Map();
 let assetServer;
 let assetOrigin;
 
-function createWindow() {
-  mainWindow = new BrowserWindow({
+function createLauncherWindow() {
+  if (launcherWindow && !launcherWindow.isDestroyed()) {
+    launcherWindow.show();
+    launcherWindow.focus();
+    return launcherWindow;
+  }
+
+  launcherWindow = new BrowserWindow({
+    width: 880,
+    height: 620,
+    minWidth: 760,
+    minHeight: 520,
+    title: "Veyra Launcher",
+    show: true,
+    backgroundColor: "#101510",
+    autoHideMenuBar: true,
+    webPreferences: {
+      plugins: false,
+      preload: preloadPath,
+      nodeIntegration: false,
+      contextIsolation: false,
+      webSecurity: false
+    }
+  });
+  launcherWindow.setMenuBarVisibility(false);
+  launcherWindow.loadURL(`${assetOrigin}/src/launcher.html`);
+  launcherWindow.once("closed", () => {
+    launcherWindow = undefined;
+  });
+  return launcherWindow;
+}
+
+function createClientWindow(options = {}) {
+  const instanceId = options.instanceId || newInstanceId();
+  const accountLabel = options.accountLabel ? ` - ${options.accountLabel}` : "";
+  const clientWindow = new BrowserWindow({
     width: 1160,
     height: 760,
     minWidth: 960,
     minHeight: 620,
-    title: "Veyra",
+    title: `Veyra${accountLabel}`,
     show: true,
     backgroundColor: "#050505",
     autoHideMenuBar: true,
@@ -57,11 +95,11 @@ function createWindow() {
       allowRunningInsecureContent: true
     }
   });
-  mainWindow.setMenuBarVisibility(false);
-  mainWindow.webContents.on("new-window", (event, targetUrl, frameName, disposition, options) => {
+  clientWindow.setMenuBarVisibility(false);
+  clientWindow.webContents.on("new-window", (event, targetUrl, frameName, disposition, childOptions) => {
     const toolWindow = getToolWindowOptions(targetUrl);
     if (!toolWindow) return;
-    Object.assign(options, {
+    Object.assign(childOptions, {
       width: toolWindow.width,
       height: toolWindow.height,
       minWidth: Math.min(toolWindow.width, 360),
@@ -82,6 +120,8 @@ function createWindow() {
   });
 
   const url = new URL(`${assetOrigin}/src/index.html`);
+  url.searchParams.set("instanceId", instanceId);
+  if (options.launchId) url.searchParams.set("launchId", options.launchId);
   url.searchParams.set("swf", `${assetOrigin}/swf/client.swf`);
   url.searchParams.set("gameBase", `${assetOrigin}/game/`);
   if (flash.path) {
@@ -91,18 +131,20 @@ function createWindow() {
     url.searchParams.set("flashMissing", flash.reason);
   }
 
-  mainWindow.loadURL(url.toString());
-  mainWindow.show();
-  mainWindow.moveTop();
-  mainWindow.focus();
+  clientWindows.set(instanceId, clientWindow);
+  clientWindow.loadURL(url.toString());
+  clientWindow.show();
+  clientWindow.moveTop();
+  clientWindow.focus();
   app.focus({ steal: true });
-  mainWindow.once("closed", () => {
-    mainWindow = undefined;
+  clientWindow.once("closed", () => {
+    clientWindows.delete(instanceId);
+    if (options.launchId) launchPayloads.delete(options.launchId);
   });
 
   if (!flash.path) {
-    mainWindow.once("ready-to-show", () => {
-      dialog.showMessageBox(mainWindow, {
+    clientWindow.once("ready-to-show", () => {
+      dialog.showMessageBox(clientWindow, {
         type: "warning",
         title: "Pepper Flash not found",
         message: "Veyra needs a PPAPI Pepper Flash plugin.",
@@ -110,6 +152,12 @@ function createWindow() {
       });
     });
   }
+
+  return clientWindow;
+}
+
+function newInstanceId() {
+  return `client-${Date.now().toString(36)}-${randomBytes(4).toString("hex")}`;
 }
 
 function getToolWindowOptions(targetUrl) {
@@ -217,6 +265,271 @@ function writeJsonSetting(name, value) {
   mkdirSync(dirname(filePath), { recursive: true });
   writeFileSync(filePath, `${JSON.stringify(value, null, 2)}\n`, "utf8");
   return filePath;
+}
+
+function launcherDataDir() {
+  return join(app.getPath("userData"), "Launcher");
+}
+
+function accountVaultPath() {
+  return join(launcherDataDir(), "accounts.vault.json");
+}
+
+function accountKeyPath() {
+  return join(launcherDataDir(), "credential.key");
+}
+
+function readAccounts() {
+  const filePath = accountVaultPath();
+  if (!existsSync(filePath)) return [];
+  try {
+    const parsed = JSON.parse(readFileSync(filePath, "utf8"));
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
+function writeAccounts(accounts) {
+  mkdirSync(launcherDataDir(), { recursive: true });
+  writeFileSync(accountVaultPath(), `${JSON.stringify(accounts, null, 2)}\n`, { encoding: "utf8", mode: 0o600 });
+  return accounts.map(accountSummary);
+}
+
+function accountSummary(account) {
+  return {
+    id: String(account.id || ""),
+    username: String(account.username || ""),
+    label: String(account.label || account.username || ""),
+    group: String(account.group || "Default"),
+    createdAt: String(account.createdAt || ""),
+    updatedAt: String(account.updatedAt || "")
+  };
+}
+
+function accountKey() {
+  const filePath = accountKeyPath();
+  mkdirSync(dirname(filePath), { recursive: true });
+  if (existsSync(filePath)) return Buffer.from(readFileSync(filePath, "utf8"), "base64");
+  const key = randomBytes(32);
+  writeFileSync(filePath, key.toString("base64"), { encoding: "utf8", mode: 0o600 });
+  return key;
+}
+
+function encryptPassword(password) {
+  const iv = randomBytes(12);
+  const cipher = createCipheriv("aes-256-gcm", accountKey(), iv);
+  const encrypted = Buffer.concat([cipher.update(String(password || ""), "utf8"), cipher.final()]);
+  const tag = cipher.getAuthTag();
+  return `aesgcm:${iv.toString("base64")}:${tag.toString("base64")}:${encrypted.toString("base64")}`;
+}
+
+function decryptPassword(encryptedPassword) {
+  const text = String(encryptedPassword || "");
+  if (!text.startsWith("aesgcm:")) throw new Error("Account password is not in the Veyra launcher vault format. Re-save this account.");
+  const [, ivRaw, tagRaw, encryptedRaw] = text.split(":");
+  const decipher = createDecipheriv("aes-256-gcm", accountKey(), Buffer.from(ivRaw, "base64"));
+  decipher.setAuthTag(Buffer.from(tagRaw, "base64"));
+  return Buffer.concat([decipher.update(Buffer.from(encryptedRaw, "base64")), decipher.final()]).toString("utf8");
+}
+
+function saveLauncherAccount(input) {
+  const username = String(input?.username || "").trim();
+  const password = String(input?.password || "");
+  if (!username || !password) throw new Error("Username and password are required.");
+
+  const accounts = readAccounts();
+  const now = new Date().toISOString();
+  const existingIndex = accounts.findIndex((account) => String(account.username || "").toLowerCase() === username.toLowerCase());
+  const existing = existingIndex >= 0 ? accounts[existingIndex] : {};
+  const record = {
+    id: String(existing.id || newInstanceId()),
+    username,
+    label: String(input?.label || username).trim() || username,
+    group: String(input?.group || "Default").trim() || "Default",
+    encryptedPassword: encryptPassword(password),
+    createdAt: String(existing.createdAt || now),
+    updatedAt: now
+  };
+
+  if (existingIndex >= 0) accounts[existingIndex] = record;
+  else accounts.push(record);
+  return writeAccounts(accounts);
+}
+
+function deleteLauncherAccount(id) {
+  const accountId = String(id || "");
+  return writeAccounts(readAccounts().filter((account) => String(account.id || "") !== accountId));
+}
+
+function launcherAccountCredentials(id) {
+  const accountId = String(id || "");
+  const account = readAccounts().find((candidate) => String(candidate.id || "") === accountId);
+  if (!account) throw new Error("Account not found.");
+  return {
+    id: String(account.id || ""),
+    username: String(account.username || ""),
+    password: decryptPassword(account.encryptedPassword),
+    label: String(account.label || account.username || ""),
+    group: String(account.group || "Default")
+  };
+}
+
+async function launchAccounts(accountIds, serverName) {
+  const ids = Array.isArray(accountIds) ? accountIds.map((id) => String(id || "")).filter(Boolean) : [];
+  if (ids.length === 0) throw new Error("Select at least one account.");
+  const servers = await fetchGameServers().catch(() => []);
+  const server = pickServer(servers, serverName);
+  const launched = [];
+
+  for (const id of ids) {
+    const account = launcherAccountCredentials(id);
+    const launchId = newInstanceId();
+    launchPayloads.set(launchId, { ...account, server });
+    createClientWindow({ launchId, accountLabel: account.label || account.username });
+    launched.push({ id: account.id, username: account.username, label: account.label, server });
+  }
+
+  return launched;
+}
+
+function launchEmptyClient() {
+  createClientWindow();
+}
+
+function getLaunchPayload(launchId) {
+  return launchPayloads.get(String(launchId || "")) || null;
+}
+
+function pickServer(servers, serverName) {
+  const requested = String(serverName || "").trim().toLowerCase();
+  if (!requested) return servers[0] || null;
+  return servers.find((server) => String(server.name || "").toLowerCase() === requested) || servers[0] || null;
+}
+
+async function fetchGameServers() {
+  const endpoints = ["https://content.aq.com/game/api/data/servers", "http://content.aq.com/game/api/data/servers"];
+  let lastError;
+  for (const endpoint of endpoints) {
+    try {
+      const raw = await requestJson(`${endpoint}?_=${Date.now()}`);
+      const servers = normalizeGameServers(raw).filter((server) => server.online !== false);
+      if (servers.length > 0) return servers;
+      lastError = new Error("empty server list");
+    } catch (error) {
+      lastError = error;
+    }
+  }
+  throw lastError || new Error("Could not load AQW server list.");
+}
+
+function requestJson(url) {
+  return new Promise((resolveRequest, rejectRequest) => {
+    const requestFn = url.startsWith("http://") ? httpRequest : httpsRequest;
+    const request = requestFn(
+      url,
+      {
+        headers: {
+          Accept: "application/json",
+          "User-Agent": `Veyra/${app.getVersion()}`
+        }
+      },
+      (response) => {
+        let body = "";
+        response.setEncoding("utf8");
+        response.on("data", (chunk) => {
+          body += chunk;
+        });
+        response.on("end", () => {
+          if ((response.statusCode || 0) < 200 || (response.statusCode || 0) >= 300) {
+            rejectRequest(new Error(`Server list failed with ${response.statusCode} ${response.statusMessage || ""}`.trim()));
+            return;
+          }
+          try {
+            resolveRequest(JSON.parse(body));
+          } catch (error) {
+            rejectRequest(error);
+          }
+        });
+      }
+    );
+    request.on("error", rejectRequest);
+    request.end();
+  });
+}
+
+function normalizeGameServers(raw) {
+  const refreshedAt = new Date().toLocaleTimeString([], { hour12: false });
+  const entries = Array.isArray(raw) ? raw : Object.values(raw && typeof raw === "object" ? raw : {});
+  return entries
+    .map((entry) => normalizeGameServer(entry, refreshedAt))
+    .filter((server) => server.name);
+}
+
+function normalizeGameServer(entry, refreshedAt) {
+  const record = entry && typeof entry === "object" ? entry : {};
+  const name = cleanServerName(record.sName || record.name || record.Name || "");
+  const ip = String(record.sIP || record.ip || record.IP || "");
+  const port = numberValue(record.iPort || record.port || record.Port || 5588);
+  const playerCount = numberValue(record.iCount ?? record.playerCount ?? record.count ?? 0);
+  const maxPlayers = numberValue(record.iMax ?? record.maxPlayers ?? record.max ?? 0);
+  const online = booleanValue(record.bOnline ?? record.online ?? true);
+  const upgrade = booleanValue(record.bUpg ?? record.upgrade ?? false);
+  const language = String(record.sLang || record.language || "");
+  const chat = numberValue(record.iChat ?? record.chat ?? 0);
+  const level = numberValue(record.iLevel ?? record.level ?? 0);
+  const raw = {
+    ...record,
+    sName: name,
+    sIP: ip,
+    iPort: port,
+    iCount: playerCount,
+    iMax: maxPlayers,
+    bOnline: online ? 1 : 0,
+    bUpg: upgrade ? 1 : 0,
+    sLang: language,
+    iChat: chat,
+    iLevel: level
+  };
+  return {
+    name,
+    label: serverLabel(name, playerCount, maxPlayers, upgrade),
+    ip,
+    port,
+    playerCount,
+    maxPlayers,
+    count: playerCount,
+    max: maxPlayers,
+    online,
+    upgrade,
+    language,
+    chat,
+    level,
+    connectable: Boolean(ip) && port > 0,
+    raw,
+    refreshedAt
+  };
+}
+
+function serverLabel(name, playerCount, maxPlayers, upgrade) {
+  const count = playerCount > 0 || maxPlayers > 0 ? ` - ${playerCount}${maxPlayers > 0 ? `/${maxPlayers}` : ""}` : "";
+  return `${name}${count}${upgrade ? " - Member" : ""}`;
+}
+
+function cleanServerName(value) {
+  return String(value || "").replace(/\s+-\s+\d+(?:\/\d+)?\s*$/u, "").trim();
+}
+
+function numberValue(value) {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : 0;
+}
+
+function booleanValue(value) {
+  if (typeof value === "boolean") return value;
+  if (typeof value === "number") return value !== 0;
+  if (typeof value === "string") return !["false", "0", "no"].includes(value.toLowerCase());
+  return Boolean(value);
 }
 
 function builderScriptsDir() {
@@ -518,8 +831,16 @@ ipcMain.handle("write-builder-scripts", (_event, scripts) => writeBuilderScripts
 ipcMain.handle("delete-builder-script", (_event, id) => deleteBuilderScript(id));
 ipcMain.handle("open-builder-script-vscode", (_event, script) => openBuilderScriptInVsCode(script));
 ipcMain.handle("open-script-vscode", (_event, scriptId) => openScriptInVsCode(scriptId));
+ipcMain.handle("launcher-list-accounts", () => readAccounts().map(accountSummary));
+ipcMain.handle("launcher-save-account", (_event, account) => saveLauncherAccount(account));
+ipcMain.handle("launcher-delete-account", (_event, id) => deleteLauncherAccount(id));
+ipcMain.handle("launcher-list-servers", () => fetchGameServers());
+ipcMain.handle("launcher-start-accounts", (_event, accountIds, serverName) => launchAccounts(accountIds, serverName));
+ipcMain.handle("launcher-empty-client", () => launchEmptyClient());
+ipcMain.handle("launcher-show", () => createLauncherWindow());
+ipcMain.handle("launcher-get-payload", (_event, launchId) => getLaunchPayload(launchId));
 
-app.whenReady().then(() => startAssetServer().then(createWindow));
+app.whenReady().then(() => startAssetServer().then(createLauncherWindow));
 
 app.on("window-all-closed", () => {
   if (assetServer) assetServer.close();
@@ -527,7 +848,7 @@ app.on("window-all-closed", () => {
 });
 
 app.on("activate", () => {
-  if (BrowserWindow.getAllWindows().length === 0) createWindow();
+  if (BrowserWindow.getAllWindows().length === 0) createLauncherWindow();
 });
 
 function resolvePepperFlash() {

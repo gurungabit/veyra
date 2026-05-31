@@ -2378,6 +2378,167 @@ body.builder-dragging .builder-drop-zone {
   min-height: 84px;
 }
 
+.launcher-body {
+  overflow: auto;
+  background:
+    linear-gradient(var(--grid) 1px, transparent 1px),
+    linear-gradient(90deg, var(--grid) 1px, transparent 1px),
+    var(--bg);
+  background-size: 30px 30px;
+}
+
+.launcher-shell {
+  min-height: 100vh;
+  display: grid;
+  grid-template-rows: auto 1fr auto;
+  gap: 14px;
+  padding: 18px;
+}
+
+.launcher-header,
+.launcher-panel,
+.launcher-log-wrap {
+  border: 1px solid var(--line);
+  background: var(--panel);
+  box-shadow: var(--shadow);
+}
+
+.launcher-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 18px 22px;
+}
+
+.launcher-header h1,
+.launcher-panel h2 {
+  margin: 0;
+  color: var(--text);
+  letter-spacing: 0;
+}
+
+.launcher-header h1 {
+  font-size: 24px;
+  line-height: 1.1;
+}
+
+.launcher-header p,
+.launcher-note {
+  margin: 6px 0 0;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.launcher-actions,
+.launcher-footer {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.launcher-layout {
+  min-height: 0;
+  display: grid;
+  grid-template-columns: minmax(420px, 1fr) minmax(280px, 340px);
+  gap: 14px;
+}
+
+.launcher-panel {
+  min-width: 0;
+  padding: 16px;
+}
+
+.panel-heading {
+  display: grid;
+  grid-template-columns: 1fr minmax(220px, 300px);
+  align-items: end;
+  gap: 12px;
+}
+
+.server-field {
+  margin: 0;
+}
+
+.account-list {
+  display: grid;
+  gap: 8px;
+  margin: 12px 0;
+}
+
+.launcher-account-row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  gap: 10px;
+  padding: 10px;
+  border: 1px solid var(--line);
+  background: var(--panel-2);
+}
+
+.launcher-account-row label {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.launcher-account-row span {
+  display: grid;
+  min-width: 0;
+  gap: 2px;
+}
+
+.launcher-account-row strong,
+.launcher-account-row small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.launcher-account-row small {
+  color: var(--muted);
+}
+
+.account-editor {
+  align-self: start;
+  display: grid;
+  gap: 10px;
+}
+
+.account-editor h2 {
+  margin-bottom: 2px;
+}
+
+.launcher-footer {
+  justify-content: flex-end;
+  padding-top: 4px;
+}
+
+.launcher-log-wrap {
+  min-height: 120px;
+  max-height: 180px;
+  overflow: auto;
+  padding: 12px;
+}
+
+.launcher-log {
+  margin: 0;
+  color: var(--accent);
+  font-family: "SFMono-Regular", Consolas, monospace;
+  font-size: 12px;
+  line-height: 1.45;
+  white-space: pre-wrap;
+}
+
+.empty-state {
+  padding: 18px;
+  color: var(--muted);
+  border: 1px dashed var(--line);
+  background: rgba(0, 0, 0, 0.16);
+}
+
 @media (max-width: 980px) {
   .brand {
     width: 136px;
@@ -2392,5 +2553,15 @@ body.builder-dragging .builder-drop-zone {
 
   .drawer {
     width: min(360px, calc(100vw - 36px));
+  }
+
+  .launcher-layout,
+  .panel-heading {
+    grid-template-columns: 1fr;
+  }
+
+  .launcher-header {
+    align-items: stretch;
+    flex-direction: column;
   }
 }

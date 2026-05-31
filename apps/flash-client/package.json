@@ -41,6 +41,7 @@
       "client.swf",
       "certs/**/*",
       "src/index.html",
+      "src/launcher.html",
       "src/tool.html",
       "src/styles.css",
       "dist/**/*",

@@ -9,5 +9,13 @@ window.veyraNative = {
   writeBuilderScripts: (scripts) => ipcRenderer.invoke("write-builder-scripts", scripts),
   deleteBuilderScript: (id) => ipcRenderer.invoke("delete-builder-script", id),
   openBuilderScriptInVsCode: (script) => ipcRenderer.invoke("open-builder-script-vscode", script),
-  openScriptInVsCode: (scriptId) => ipcRenderer.invoke("open-script-vscode", scriptId)
+  openScriptInVsCode: (scriptId) => ipcRenderer.invoke("open-script-vscode", scriptId),
+  listLauncherAccounts: () => ipcRenderer.invoke("launcher-list-accounts"),
+  saveLauncherAccount: (account) => ipcRenderer.invoke("launcher-save-account", account),
+  deleteLauncherAccount: (id) => ipcRenderer.invoke("launcher-delete-account", id),
+  listServers: () => ipcRenderer.invoke("launcher-list-servers"),
+  startLauncherAccounts: (accountIds, serverName) => ipcRenderer.invoke("launcher-start-accounts", accountIds, serverName),
+  openEmptyClient: () => ipcRenderer.invoke("launcher-empty-client"),
+  showLauncher: () => ipcRenderer.invoke("launcher-show"),
+  getLaunchPayload: (launchId) => ipcRenderer.invoke("launcher-get-payload", launchId)
 };
