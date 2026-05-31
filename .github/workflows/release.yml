@@ -87,6 +87,7 @@ jobs:
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
           TAG_NAME: main-${{ github.run_number }}.${{ github.run_attempt }}
         run: |
           mapfile -t files < <(find release-assets -type f | sort)
