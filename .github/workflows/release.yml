@@ -22,7 +22,7 @@ jobs:
       matrix:
         include:
           - name: macOS
-            os: macos-13
+            os: macos-15-intel
             script: app:dist:mac
             artifact: veyra-macos
             paths: |
