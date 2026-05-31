@@ -983,6 +983,7 @@ function psQuote(value) {
 
 function resolveAssetPath(pathname) {
   if (pathname === "/" || pathname === "/src/index.html") return join(appDir, "src", "index.html");
+  if (pathname === "/src/launcher.html") return join(appDir, "src", "launcher.html");
   if (pathname === "/src/tool.html") return join(appDir, "src", "tool.html");
   if (pathname === "/src/styles.css") return join(appDir, "src", "styles.css");
   if (pathname === "/swf/client.swf") return swfPath;
