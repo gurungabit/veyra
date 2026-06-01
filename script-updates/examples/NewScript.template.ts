@@ -1,10 +1,10 @@
-import type { Bot } from "veyra:app/bot.js";
+import type { Bot } from "../bot.js";
 
 export const meta = {
   name: "My New Script",
   description: "Short description shown in Veyra's script list.",
   tags: ["example"],
-  version: "2026.06.01.1"
+  version: "2026.06.01.2"
 };
 
 export async function main(bot: Bot, options: { signal?: AbortSignal } = {}): Promise<void> {

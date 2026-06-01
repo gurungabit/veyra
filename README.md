@@ -89,7 +89,7 @@ Veyra can update official automation script packs separately from the app. Use `
 
 The built-in `Refresh List` button only rescans scripts that are already installed locally. It does not download from GitHub.
 
-Official update packs are authored as TypeScript in `script-updates/src`. The update build writes small package manifests that point at those readable `.ts` files; installed Veyra builds transpile the TypeScript at script-install time.
+Official update packs are authored as TypeScript in `apps/flash-client/src/scripts`. The update build writes package metadata that points at those readable `.ts` files; installed Veyra builds a script locally the first time the user runs it. The app does not ship fallback copies of official scripts.
 
 ```sh
 pnpm script-updates:build

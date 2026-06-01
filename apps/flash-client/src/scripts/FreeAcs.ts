@@ -1,5 +1,5 @@
-import type { Bot } from "veyra:app/bot.js";
-import { ZeroToHeroRuntime, type ZeroToHeroRuntimeOptions } from "veyra:app/scripts/ZeroToHeroKits/ZeroToHeroRuntime.js";
+import type { Bot } from "../bot.js";
+import { ZeroToHeroRuntime, type ZeroToHeroRuntimeOptions } from "./ZeroToHeroKits/ZeroToHeroRuntime.js";
 
 export const meta = {
   name: "Free ACs",

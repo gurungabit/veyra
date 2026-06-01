@@ -1,13 +1,13 @@
 # TypeScript Script Updates
 
-Official script updates are normal TypeScript files. The repo publishes readable `.ts` source plus tiny package metadata, and installed Veyra builds transpile the TypeScript when the user installs a script update. These are not Script Builder JSON scripts.
+Official script updates are normal TypeScript files from `apps/flash-client/src/scripts`. The repo publishes readable `.ts` source plus package metadata, and Veyra bundles a script only when the user runs it for the first time. These are not Script Builder JSON scripts.
 
 ## Add A New Script
 
 1. Copy the template:
 
 ```sh
-cp script-updates/examples/NewScript.template.ts script-updates/src/MyNewScript.ts
+cp script-updates/examples/NewScript.template.ts apps/flash-client/src/scripts/MyNewScript.ts
 ```
 
 2. Edit the copied file:
@@ -15,28 +15,21 @@ cp script-updates/examples/NewScript.template.ts script-updates/src/MyNewScript.
 - Keep `export const meta`.
 - Keep `export async function main(bot, options)`.
 - Use `options.signal` for waits/delays so Stop can cancel the script.
-- Import app APIs with the `veyra:app/` alias when needed, for example `veyra:app/scripts/ZeroToHeroKits/ZeroToHeroRuntime.js`.
+- Use normal relative imports from `apps/flash-client/src/scripts`. The script updater follows those imports from GitHub source when it bundles the script.
 
 3. Register the script in `script-updates/packages.json`.
 
-For a new standalone package:
+Most official scripts use the shared package:
 
 ```json
 {
-  "id": "my-new-script",
-  "name": "My New Script",
-  "scripts": [
-    {
-      "id": "other.my-new-script",
-      "category": "Official",
-      "map": "battleon",
-      "entry": "script-updates/src/MyNewScript.ts"
-    }
-  ]
+  "id": "official-scripts",
+  "name": "Official Scripts",
+  "includeOfficialScripts": true
 }
 ```
 
-For another script inside an existing package, add only another item to that package's `scripts` array.
+Top-level scripts also need an entry in `officialCoreScripts` inside `scripts/build-script-updates.mjs`. Generated story scripts are discovered from `apps/flash-client/src/scripts/Story/index.ts`.
 
 4. Build and check:
 
@@ -49,12 +42,12 @@ pnpm typecheck
 5. Commit script-only updates with a non-release message:
 
 ```sh
-git add script-updates
+git add apps/flash-client/src/scripts script-updates scripts/build-script-updates.mjs
 git commit -m "chore(scripts): add my new script"
 git push
 ```
 
-Users can then install it from `Veyra -> Check For Script Updates`. If automatic script updates are enabled, Veyra checks on app launch and shows a confirmation when it installs updates.
+Users can then install it from `Veyra -> Check For Script Updates`. On a fresh install, Veyra bootstraps the official script pack automatically because the app does not ship fallback script definitions.
 
 ## Versioning
 
@@ -63,10 +56,10 @@ Users can then install it from `Veyra -> Check For Script Updates`. If automatic
 The build command writes:
 
 - `script-updates/stable.json`
-- one small generated package JSON per package, for example `script-updates/free-acs-2026.06.01.0.json`
+- one generated package JSON per package, for example `script-updates/official-scripts-2026.06.01.2.json`
 
-The generated package JSON points to `.ts` files in `script-updates/src`; it does not contain bundled JavaScript.
+The generated package JSON points to `.ts` files in `apps/flash-client/src/scripts`; it does not contain bundled JavaScript.
 
 ## When An App Release Is Needed
 
-Script-only updates work when the script uses APIs that already exist in the installed Veyra app. If a script needs a new bot method, runtime helper, Flash bridge change, or loader behavior, ship an app release first with `feat:` or `fix:`.
+Script-only updates work for script files and script helper files under `apps/flash-client/src/scripts`. If a script needs a new bot method, renderer/main-process API, Flash bridge change, or loader behavior, ship an app release first with `feat:` or `fix:`.

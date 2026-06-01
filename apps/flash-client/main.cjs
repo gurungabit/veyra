@@ -5,7 +5,7 @@ const { execFileSync, spawn } = require("child_process");
 const { createCipheriv, createDecipheriv, createHash, randomBytes } = require("crypto");
 const { appendFileSync, copyFileSync, existsSync, mkdirSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } = require("fs");
 const { dirname, join, resolve } = require("path");
-const ts = require("typescript");
+const esbuild = require("esbuild-wasm");
 
 app.setName("Veyra");
 if (process.env.VEYRA_USER_DATA_DIR) app.setPath("userData", resolve(process.env.VEYRA_USER_DATA_DIR));
@@ -358,7 +358,7 @@ function sectionLabel(section) {
 function settingPath(name) {
   const safeName = String(name || "").replace(/[^a-z0-9_-]/gi, "");
   if (!safeName) throw new Error("Invalid settings name.");
-  return join(app.getPath("appData"), "Veyra", "Settings", `${safeName}.json`);
+  return join(app.getPath("userData"), "Settings", `${safeName}.json`);
 }
 
 function readJsonSetting(name) {
@@ -663,14 +663,14 @@ function booleanValue(value) {
 }
 
 function builderScriptsDir() {
-  return join(app.getPath("appData"), "Veyra", "BuilderScripts");
+  return join(app.getPath("userData"), "BuilderScripts");
 }
 
 function scriptPacksDir() {
-  return join(app.getPath("appData"), "Veyra", "ScriptPacks");
+  return join(app.getPath("userData"), "ScriptPacks");
 }
 
-const retiredBuilderScriptPackIds = new Set(["free-acs"]);
+const retiredScriptPackIds = new Set(["free-acs"]);
 
 function builderScriptPath(script) {
   const sourceName = String((script && (script.id || script.name)) || "builder-script");
@@ -695,8 +695,7 @@ function readScriptPackScripts() {
     try {
       const pack = JSON.parse(readFileSync(filePath, "utf8"));
       const packId = cleanId(pack && pack.id);
-      const packType = String((pack && pack.type) || "builder-scripts");
-      if (retiredBuilderScriptPackIds.has(packId) && packType === "builder-scripts") {
+      if (retiredScriptPackIds.has(packId)) {
         rmSync(filePath, { force: true });
         continue;
       }
@@ -766,8 +765,10 @@ function normalizeTypeScriptScriptPackScripts(scripts, pack) {
     const id = cleanId(value.id);
     const source = typeof value.source === "string" ? value.source : "";
     const sourceSha256 = typeof value.sourceSha256 === "string" ? value.sourceSha256.trim().toLowerCase() : "";
-    if (!id || !source) continue;
-    if (sourceSha256) {
+    const sourceUrl = typeof value.sourceUrl === "string" ? value.sourceUrl : "";
+    const sourceTsSha256 = typeof value.sourceTsSha256 === "string" ? value.sourceTsSha256.trim().toLowerCase() : "";
+    if (!id || (!source && !sourceUrl)) continue;
+    if (source && sourceSha256) {
       const digest = createHash("sha256").update(source, "utf8").digest("hex");
       if (digest !== sourceSha256) continue;
     }
@@ -786,6 +787,8 @@ function normalizeTypeScriptScriptPackScripts(scripts, pack) {
       },
       source,
       sourceSha256,
+      sourceUrl,
+      sourceTsSha256,
       packId: pack.id,
       packVersion: pack.version,
       mtimeMs: pack.mtimeMs
@@ -1130,6 +1133,7 @@ ipcMain.handle("write-json-setting", (_event, name, value) => {
   return result;
 });
 ipcMain.handle("read-script-pack-scripts", () => readScriptPackScripts());
+ipcMain.handle("compile-script-pack-script", (_event, scriptId) => compileInstalledScriptPackScript(scriptId));
 ipcMain.handle("read-builder-scripts", () => readBuilderScripts());
 ipcMain.handle("write-builder-script", (_event, script) => writeBuilderScript(script));
 ipcMain.handle("write-builder-scripts", (_event, scripts) => writeBuilderScripts(scripts));
@@ -1353,14 +1357,18 @@ function showUpdateDialog(parent, options) {
 
 function setupScriptUpdates() {
   updateScriptUpdatesMenuItems();
-  if (!readScriptUpdateSettings().autoDownload) return;
+  const settings = readScriptUpdateSettings();
+  const needsBootstrap = !installedScriptPackageVersions()["official-scripts"];
+  const shouldInstall = settings.autoDownload || needsBootstrap;
+  if (!shouldInstall) return;
+  const delayMs = needsBootstrap ? 1500 : 6500;
   setTimeout(() => {
     void checkScriptUpdates({ install: true, silent: true })
       .then((status) => {
         if (status.state === "installed") return showScriptUpdateResult(status, activeDialogWindow());
       })
       .catch(() => undefined);
-  }, 6500);
+  }, delayMs);
 }
 
 async function checkForScriptUpdatesFromMenu() {
@@ -1436,7 +1444,7 @@ async function checkScriptUpdates(options = {}) {
     const settings = readScriptUpdateSettings();
     const manifestUrl = scriptUpdatesManifestUrl(settings);
     const manifest = normalizeScriptUpdatesManifest(await fetchJsonUrl(manifestUrl), manifestUrl);
-    const installedPackages = { ...installedScriptPackageVersions(), ...settings.installedPackages };
+    const installedPackages = installedScriptPackageVersions();
     const available = manifest.packages.filter((entry) => isScriptPackageNewer(entry, installedPackages[entry.id]));
     const checkedSettings = writeScriptUpdateSettings({ ...settings, lastCheckedAt: new Date().toISOString(), installedPackages });
 
@@ -1559,13 +1567,7 @@ async function installTypeScriptScriptPackageScripts(scripts, pack) {
     const id = cleanId(script.id);
     const url = typeof script.url === "string" && script.url.trim() ? new URL(script.url.trim(), pack.packageUrl).toString() : "";
     if (!id || !url) continue;
-    const sourceTs = await fetchTextUrl(url);
     const expectedHash = typeof script.sha256 === "string" ? script.sha256.trim().toLowerCase() : "";
-    if (expectedHash) {
-      const digest = createHash("sha256").update(sourceTs, "utf8").digest("hex");
-      if (digest !== expectedHash) throw new Error(`Script ${id} checksum mismatch.`);
-    }
-    const source = compileTypeScriptScriptSource(sourceTs, url);
     const metaSource = script.meta && typeof script.meta === "object" ? script.meta : {};
     moduleScripts.push({
       id,
@@ -1577,8 +1579,8 @@ async function installTypeScriptScriptPackageScripts(scripts, pack) {
         tags: Array.isArray(metaSource.tags) ? metaSource.tags.map((tag) => String(tag || "").trim()).filter(Boolean) : [],
         version: cleanVersion(metaSource.version || script.version || pack.version)
       },
-      source,
-      sourceSha256: createHash("sha256").update(source, "utf8").digest("hex"),
+      source: "",
+      sourceSha256: "",
       sourceTsSha256: expectedHash,
       sourceUrl: url,
       packId: pack.id,
@@ -1588,26 +1590,132 @@ async function installTypeScriptScriptPackageScripts(scripts, pack) {
   return moduleScripts;
 }
 
-function compileTypeScriptScriptSource(source, fileName) {
-  const output = ts.transpileModule(source, {
-    fileName,
-    compilerOptions: {
-      target: ts.ScriptTarget.ES2020,
-      module: ts.ModuleKind.ES2020,
-      moduleResolution: ts.ModuleResolutionKind.Bundler,
-      importsNotUsedAsValues: ts.ImportsNotUsedAsValues.Remove,
-      isolatedModules: true,
-      sourceMap: false
-    },
-    reportDiagnostics: true
-  });
-  const diagnostics = output.diagnostics || [];
-  const errors = diagnostics.filter((diagnostic) => diagnostic.category === ts.DiagnosticCategory.Error);
-  if (errors.length > 0) {
-    const detail = errors.map((diagnostic) => ts.flattenDiagnosticMessageText(diagnostic.messageText, "\n")).join("\n");
-    throw new Error(`TypeScript compile failed for ${fileName}:\n${detail}`);
+async function compileInstalledScriptPackScript(scriptId) {
+  const id = cleanId(scriptId);
+  if (!id) throw new Error("Invalid script id.");
+
+  const dir = scriptPacksDir();
+  mkdirSync(dir, { recursive: true });
+  for (const entry of readdirSync(dir)) {
+    if (!entry.toLowerCase().endsWith(".json")) continue;
+    const filePath = join(dir, entry);
+    let pack;
+    try {
+      pack = JSON.parse(readFileSync(filePath, "utf8"));
+    } catch {
+      continue;
+    }
+
+    const moduleScripts = Array.isArray(pack && pack.moduleScripts) ? pack.moduleScripts : [];
+    const script = moduleScripts.find((candidate) => cleanId(candidate && candidate.id) === id);
+    if (!script) continue;
+
+    if (typeof script.source === "string" && script.source) return script;
+    const sourceUrl = typeof script.sourceUrl === "string" ? script.sourceUrl : "";
+    if (!sourceUrl) throw new Error(`No TypeScript source URL is registered for ${id}.`);
+
+    const sourceTs = await fetchTextUrl(sourceUrl);
+    const expectedHash = typeof script.sourceTsSha256 === "string" ? script.sourceTsSha256.trim().toLowerCase() : "";
+    if (expectedHash) {
+      const digest = createHash("sha256").update(sourceTs, "utf8").digest("hex");
+      if (digest !== expectedHash) throw new Error(`Script ${id} checksum mismatch.`);
+    }
+
+    const source = await bundleTypeScriptScriptSource(sourceTs, sourceUrl);
+    script.source = source;
+    script.sourceSha256 = createHash("sha256").update(source, "utf8").digest("hex");
+    writeFileSync(filePath, `${JSON.stringify(pack, null, 2)}\n`, "utf8");
+    return script;
   }
-  return rewriteVeyraAppImports(output.outputText);
+
+  throw new Error(`Script ${id} is not installed.`);
+}
+
+async function bundleTypeScriptScriptSource(source, entryUrl) {
+  const cache = new Map([[entryUrl, source]]);
+  const result = await esbuild.build({
+    entryPoints: [entryUrl],
+    bundle: true,
+    format: "esm",
+    platform: "browser",
+    target: "es2020",
+    write: false,
+    treeShaking: true,
+    legalComments: "none",
+    logLevel: "silent",
+    plugins: [remoteTypeScriptBundlePlugin(cache)]
+  });
+  const output = result.outputFiles && result.outputFiles[0] ? result.outputFiles[0].text : "";
+  if (!output) throw new Error(`TypeScript bundle failed for ${entryUrl}.`);
+  return rewriteVeyraAppImports(output);
+}
+
+function remoteTypeScriptBundlePlugin(cache) {
+  return {
+    name: "veyra-remote-typescript",
+    setup(build) {
+      build.onResolve({ filter: /.*/ }, (args) => {
+        if (args.kind === "entry-point") return { path: args.path, namespace: "veyra-remote" };
+        if (args.path.startsWith("veyra:app/")) return { path: resolveVeyraAppSourceUrl(args.path, args.importer), namespace: "veyra-remote" };
+        if (/^https?:\/\//i.test(args.path)) return { path: args.path, namespace: "veyra-remote" };
+        if (args.path.startsWith(".") && args.importer) return { path: new URL(args.path, args.importer).toString(), namespace: "veyra-remote" };
+        return { path: args.path, external: true };
+      });
+
+      build.onLoad({ filter: /.*/, namespace: "veyra-remote" }, async (args) => {
+        return {
+          contents: await fetchTypeScriptModuleSource(args.path, cache),
+          loader: "ts"
+        };
+      });
+    }
+  };
+}
+
+async function fetchTypeScriptModuleSource(url, cache) {
+  if (cache.has(url)) return cache.get(url);
+
+  const candidates = sourceCandidatesForUrl(url);
+  let lastError;
+  for (const candidate of candidates) {
+    try {
+      const source = await fetchTextUrl(candidate);
+      cache.set(url, source);
+      cache.set(candidate, source);
+      return source;
+    } catch (error) {
+      lastError = error;
+    }
+  }
+  throw lastError || new Error(`Unable to fetch ${url}.`);
+}
+
+function sourceCandidatesForUrl(url) {
+  const candidates = [];
+  const target = new URL(url);
+  if (target.pathname.endsWith(".js")) {
+    const tsTarget = new URL(url);
+    tsTarget.pathname = tsTarget.pathname.slice(0, -3) + ".ts";
+    candidates.push(tsTarget.toString());
+  }
+  candidates.push(target.toString());
+  return Array.from(new Set(candidates));
+}
+
+function resolveVeyraAppSourceUrl(specifier, importer) {
+  const importPath = specifier.slice("veyra:app/".length).replace(/\.js$/i, ".ts");
+  const base = rawRepositoryBaseUrl(importer);
+  return `${base}/apps/flash-client/src/${importPath}`;
+}
+
+function rawRepositoryBaseUrl(url) {
+  const target = new URL(url);
+  const markers = ["/script-updates/", "/apps/flash-client/src/"];
+  for (const marker of markers) {
+    const markerIndex = target.pathname.indexOf(marker);
+    if (markerIndex >= 0) return `${target.origin}${target.pathname.slice(0, markerIndex)}`;
+  }
+  return `${target.origin}${target.pathname.replace(/\/[^/]*$/u, "")}`;
 }
 
 function rewriteVeyraAppImports(source) {

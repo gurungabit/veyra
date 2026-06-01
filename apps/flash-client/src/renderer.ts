@@ -9,14 +9,6 @@ import {
   type GameOptionsState
 } from "./gameOptions.js";
 import { normalizeBuilderScript, normalizeBuilderScripts, runBuilderScript, type BuilderScript } from "./builderScripts.js";
-import { main as runEmberseaRep, meta as emberseaRepMeta } from "./scripts/EmberseaRep.js";
-import { main as runAllStories, meta as allStoriesMeta } from "./scripts/AllStories.js";
-import { main as runFireIslandEmberseaStory, meta as fireIslandEmberseaStoryMeta } from "./scripts/FireIslandEmberseaStory.js";
-import { main as runFireIslandPyrewatchStory, meta as fireIslandPyrewatchStoryMeta } from "./scripts/FireIslandPyrewatchStory.js";
-import { main as runClassXP, meta as classXpMeta } from "./scripts/ClassXP.js";
-import { main as runZeroToHeroDoAll, meta as zeroToHeroDoAllMeta } from "./scripts/ZeroToHeroKits/ZeroToHeroKit0DoAll.js";
-import { main as runHighLevelXP, meta as highLevelXpMeta } from "./scripts/HighLevelXP.js";
-import { generatedStoryDefinitions } from "./scripts/Story/index.js";
 
 type FlashEmbed = HTMLObjectElement & Record<string, (...args: unknown[]) => unknown>;
 type LogKind = "script" | "debug" | "packet" | "event";
@@ -48,6 +40,8 @@ interface DownloadedTypeScriptScript {
   };
   source: string;
   sourceSha256: string;
+  sourceUrl: string;
+  sourceTsSha256: string;
   packId: string;
   packVersion: string;
   mtimeMs: number;
@@ -154,63 +148,11 @@ const flashVersion = params.get("flashVersion") ?? "";
 const flashMissing = params.get("flashMissing") ?? "";
 const toolWindows = new Map<string, ToolWindowRecord>();
 
-const builtInScripts: ScriptDefinition[] = [
-  {
-    id: "leveling.high-level-xp",
-    category: "Leveling",
-    map: "icestormunder",
-    meta: highLevelXpMeta,
-    run: (bot, options) => runHighLevelXP(bot, withSignal({ targetLevel: 100 }, options.signal))
-  },
-  {
-    id: "leveling.class-xp",
-    category: "Leveling",
-    map: "icestormunder",
-    meta: classXpMeta,
-    run: (bot, options) => runClassXP(bot, withSignal({ targetRank: 10 }, options.signal))
-  },
-  {
-    id: "reputation.embersea",
-    category: "Reputation",
-    map: "fireforge / pyrewatch",
-    meta: emberseaRepMeta,
-    run: (bot, options) => runEmberseaRep(bot, withSignal({ targetRank: 10 }, options.signal))
-  },
-  {
-    id: "story.complete-all-stories",
-    category: "Story",
-    map: "all",
-    meta: allStoriesMeta,
-    run: (bot, options) => runAllStories(bot, withSignal({}, options.signal))
-  },
-  {
-    id: "story.fire-island-embersea",
-    category: "Story",
-    map: "embersea",
-    meta: fireIslandEmberseaStoryMeta,
-    run: (bot, options) => runFireIslandEmberseaStory(bot, withSignal({}, options.signal))
-  },
-  {
-    id: "story.fire-island-pyrewatch",
-    category: "Story",
-    map: "embersea / pyrewatch",
-    meta: fireIslandPyrewatchStoryMeta,
-    run: (bot, options) => runFireIslandPyrewatchStory(bot, withSignal({}, options.signal))
-  },
-  {
-    id: "zero-to-hero.do-all",
-    category: "ZeroToHeroKits",
-    map: "icestormunder",
-    meta: zeroToHeroDoAllMeta,
-    run: (bot, options) => runZeroToHeroDoAll(bot, withSignal({}, options.signal))
-  },
-  ...generatedStoryDefinitions
-];
 let builderScripts: BuilderScript[] = [];
 let scriptPackScripts: BuilderScript[] = [];
 let downloadedTypeScriptScripts: DownloadedTypeScriptScript[] = [];
 const downloadedTypeScriptModuleCache = new Map<string, Promise<DownloadedTypeScriptModule>>();
-let scripts: ScriptDefinition[] = [...builtInScripts];
+let scripts: ScriptDefinition[] = [];
 
 const statusEl = byId<HTMLElement>("status");
 const logEl = byId<HTMLPreElement>("log");
@@ -804,17 +746,28 @@ async function deleteBuilderScript(id: string): Promise<void> {
 }
 
 function syncScriptCatalog(): void {
-  scripts = [
-    ...builtInScripts,
+  scripts = mergeScriptDefinitions([
     ...downloadedTypeScriptScripts.map(typeScriptScriptPackDefinition),
     ...scriptPackScripts.map(scriptPackScriptDefinition),
     ...builderScripts.map(builderScriptDefinition)
-  ];
+  ]);
   if (!scripts.some((script) => script.id === selectedScriptId)) selectedScriptId = scripts[0]?.id ?? "";
   if (!scripts.some((script) => script.id === loadedScriptId)) loadedScriptId = selectedScriptId;
+  if (!scriptAbort) {
+    startScriptButton.disabled = scripts.length === 0;
+    stopScriptButton.disabled = true;
+  }
+  const loaded = currentScript();
+  scriptStatus.textContent = loaded ? `${loaded.meta.name} loaded` : "No script loaded";
   hydrateScripts();
   renderScriptList();
   publishState();
+}
+
+function mergeScriptDefinitions(definitions: ScriptDefinition[]): ScriptDefinition[] {
+  const byId = new Map<string, ScriptDefinition>();
+  for (const definition of definitions) byId.set(definition.id, definition);
+  return Array.from(byId.values());
 }
 
 function scriptPackScriptDefinition(script: BuilderScript): ScriptDefinition {
@@ -863,7 +816,7 @@ function builderScriptDefinition(script: BuilderScript): ScriptDefinition {
 function normalizeDownloadedTypeScriptScripts(value: unknown): DownloadedTypeScriptScript[] {
   const source = value && typeof value === "object" && !Array.isArray(value) ? (value as { moduleScripts?: unknown }) : {};
   const scripts = Array.isArray(source.moduleScripts) ? source.moduleScripts : [];
-  return scripts.map(normalizeDownloadedTypeScriptScript).filter((script) => script.source);
+  return scripts.map(normalizeDownloadedTypeScriptScript).filter((script) => script.source || script.sourceUrl);
 }
 
 function normalizeDownloadedTypeScriptScript(value: unknown): DownloadedTypeScriptScript {
@@ -881,6 +834,8 @@ function normalizeDownloadedTypeScriptScript(value: unknown): DownloadedTypeScri
     },
     source: typeof source.source === "string" ? source.source : "",
     sourceSha256: typeof source.sourceSha256 === "string" ? source.sourceSha256 : "",
+    sourceUrl: typeof source.sourceUrl === "string" ? source.sourceUrl : "",
+    sourceTsSha256: typeof source.sourceTsSha256 === "string" ? source.sourceTsSha256 : "",
     packId: cleanScriptId(source.packId, "official"),
     packVersion: cleanText(source.packVersion, "0.0.0"),
     mtimeMs: Number.isFinite(Number(source.mtimeMs)) ? Number(source.mtimeMs) : 0
@@ -894,7 +849,7 @@ async function runDownloadedTypeScriptScript(script: DownloadedTypeScriptScript,
 }
 
 async function loadDownloadedTypeScriptModule(script: DownloadedTypeScriptScript): Promise<DownloadedTypeScriptModule> {
-  const cacheKey = `${script.id}:${script.packVersion}:${script.sourceSha256 || script.mtimeMs}`;
+  const cacheKey = `${script.id}:${script.packVersion}:${script.sourceSha256 || script.sourceTsSha256 || script.sourceUrl || script.mtimeMs}`;
   const cached = downloadedTypeScriptModuleCache.get(cacheKey);
   if (cached) return cached;
 
@@ -907,8 +862,9 @@ async function loadDownloadedTypeScriptModule(script: DownloadedTypeScriptScript
 }
 
 async function importDownloadedTypeScriptModule(script: DownloadedTypeScriptScript): Promise<DownloadedTypeScriptModule> {
-  const sourceUrl = `veyra-script-pack://${script.packId}/${script.id}.js`;
-  const source = script.source.replace(/__VEYRA_APP_ORIGIN__/g, window.location.origin);
+  const compiled = await ensureDownloadedTypeScriptScriptCompiled(script);
+  const sourceUrl = `veyra-script-pack://${compiled.packId}/${compiled.id}.js`;
+  const source = compiled.source.replace(/__VEYRA_APP_ORIGIN__/g, window.location.origin);
   const blob = new Blob([`${source}\n//# sourceURL=${sourceUrl}\n`], { type: "text/javascript" });
   const url = URL.createObjectURL(blob);
   try {
@@ -920,6 +876,17 @@ async function importDownloadedTypeScriptModule(script: DownloadedTypeScriptScri
   } finally {
     URL.revokeObjectURL(url);
   }
+}
+
+async function ensureDownloadedTypeScriptScriptCompiled(script: DownloadedTypeScriptScript): Promise<DownloadedTypeScriptScript> {
+  if (script.source) return script;
+  const native = nativeApi();
+  if (!native?.compileScriptPackScript) throw new Error("Script compiler is unavailable.");
+  const compiled = normalizeDownloadedTypeScriptScript(await native.compileScriptPackScript(script.id));
+  if (!compiled.source) throw new Error(`${script.meta.name} did not compile.`);
+  const existingIndex = downloadedTypeScriptScripts.findIndex((candidate) => candidate.id === compiled.id);
+  if (existingIndex >= 0) downloadedTypeScriptScripts[existingIndex] = compiled;
+  return compiled;
 }
 
 function isBuilderScriptId(scriptId: string): boolean {
@@ -939,6 +906,12 @@ async function loadScriptById(scriptId: string): Promise<void> {
 function setLoadedScript(scriptId: string): void {
   loadedScriptId = scriptId;
   const script = currentScript();
+  if (!script) {
+    scriptStatus.textContent = "No script loaded";
+    log("script", "No scripts are installed yet. Use Veyra -> Check For Script Updates.");
+    publishState();
+    return;
+  }
   scriptStatus.textContent = `${script.meta.name} loaded`;
   log("script", `Loaded ${script.meta.name} ${script.meta.version}.`);
   publishState();
@@ -961,6 +934,12 @@ async function startLoadedScript(): Promise<void> {
   }
 
   const script = currentScript();
+  if (!script) {
+    log("event", "No scripts are installed yet. Use Veyra -> Check For Script Updates.");
+    setStatus("No scripts installed.");
+    publishState();
+    return;
+  }
   const bot = createBot(script.meta.name);
   scriptAbort = new AbortController();
   setScriptRunning(true);
@@ -994,13 +973,13 @@ function stopRunningScript(): void {
 }
 
 function setScriptRunning(running: boolean): void {
-  startScriptButton.disabled = running;
+  startScriptButton.disabled = running || scripts.length === 0;
   stopScriptButton.disabled = !running;
   publishState();
 }
 
-function currentScript(): ScriptDefinition {
-  return scripts.find((script) => script.id === loadedScriptId) ?? scripts[0]!;
+function currentScript(): ScriptDefinition | undefined {
+  return scripts.find((script) => script.id === loadedScriptId) ?? scripts[0];
 }
 
 function openPanel(name: string): void {
@@ -1068,10 +1047,11 @@ function panelHtml(name: string): string {
     case "script-options": {
       const privateRooms = gameOptionsState.values["private-rooms"] === true;
       const privateNumber = Number(gameOptionsState.values["private-number"] || 100000);
+      const loadedName = currentScript()?.meta.name || "No script loaded";
       return `
         <section class="tool-card">
           <h2>Script Options</h2>
-          <label class="field"><span>Loaded</span><input class="input" value="${escapeAttr(currentScript().meta.name)}" readonly /></label>
+          <label class="field"><span>Loaded</span><input class="input" value="${escapeAttr(loadedName)}" readonly /></label>
           <label class="check"><input id="panel-private-rooms" type="checkbox"${privateRooms ? " checked" : ""} /> Private rooms</label>
           <label class="field"><span>Private Number</span><input id="panel-private-number" class="input" type="number" min="1" value="${Number.isFinite(privateNumber) && privateNumber > 0 ? privateNumber : 100000}" /></label>
           <p class="muted">These are saved to the same file as Game Options and are read by script joins.</p>
@@ -2988,6 +2968,10 @@ async function deleteBuilderScriptSetting(id: string): Promise<unknown> {
 
 async function openCurrentScriptInVsCode(): Promise<void> {
   const script = currentScript();
+  if (!script) {
+    log("event", "No script is loaded.");
+    return;
+  }
   const native = nativeApi();
   try {
     let result: unknown;
@@ -2996,7 +2980,7 @@ async function openCurrentScriptInVsCode(): Promise<void> {
       if (!builderScript) throw new Error(`Builder source is not loaded for ${script.meta.name}.`);
       if (!native?.openBuilderScriptInVsCode) throw new Error("Builder VS Code opener is unavailable.");
       result = await native.openBuilderScriptInVsCode(builderScript);
-    } else if (script.category === "Official") {
+    } else if (isScriptPackScriptId(script.id)) {
       throw new Error("Official downloaded script packs are read-only.");
     } else {
       if (!native?.openScriptInVsCode) throw new Error("VS Code opener is unavailable.");
@@ -3014,6 +2998,7 @@ function nativeApi(): {
   readJsonSetting?: (name: string) => Promise<unknown>;
   writeJsonSetting?: (name: string, value: unknown) => Promise<unknown>;
   readBuilderScripts?: () => Promise<unknown>;
+  compileScriptPackScript?: (scriptId: string) => Promise<unknown>;
   writeBuilderScript?: (script: unknown) => Promise<unknown>;
   writeBuilderScripts?: (scripts: unknown[]) => Promise<unknown>;
   deleteBuilderScript?: (id: string) => Promise<unknown>;
@@ -3032,6 +3017,7 @@ function nativeApi(): {
       readJsonSetting?: (name: string) => Promise<unknown>;
       writeJsonSetting?: (name: string, value: unknown) => Promise<unknown>;
       readBuilderScripts?: () => Promise<unknown>;
+      compileScriptPackScript?: (scriptId: string) => Promise<unknown>;
       writeBuilderScript?: (script: unknown) => Promise<unknown>;
       writeBuilderScripts?: (scripts: unknown[]) => Promise<unknown>;
       deleteBuilderScript?: (id: string) => Promise<unknown>;

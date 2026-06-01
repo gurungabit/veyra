@@ -1,17 +1,10 @@
 {
-  "channelVersion": "2026.06.01.1",
+  "channelVersion": "2026.06.01.2",
   "packages": [
     {
-      "id": "free-acs",
-      "name": "Free ACs",
-      "scripts": [
-        {
-          "id": "other.free-acs",
-          "category": "Official",
-          "map": "borgars",
-          "entry": "script-updates/src/FreeAcs.ts"
-        }
-      ]
+      "id": "official-scripts",
+      "name": "Official Scripts",
+      "includeOfficialScripts": true
     }
   ]
 }

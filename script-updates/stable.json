@@ -1,15 +1,15 @@
 {
   "schema": 1,
   "channel": "stable",
-  "version": "2026.06.01.1",
+  "version": "2026.06.01.2",
   "packages": [
     {
-      "id": "free-acs",
-      "name": "Free ACs",
-      "version": "2026.06.01.1",
+      "id": "official-scripts",
+      "name": "Official Scripts",
+      "version": "2026.06.01.2",
       "type": "typescript-scripts",
-      "url": "free-acs-2026.06.01.1.json",
-      "sha256": "b32b1771d714a8e5716352217ec6867f83f7b585595e22c42ed8a288f41c6604"
+      "url": "official-scripts-2026.06.01.2.json",
+      "sha256": "8bd17ecba444c191f98f1fa042ddfede5c8261a7f241ed826c3d6be3853e0737"
     }
   ]
 }

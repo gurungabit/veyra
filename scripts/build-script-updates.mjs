@@ -6,6 +6,59 @@ import { fileURLToPath } from "node:url";
 const repoRoot = resolve(fileURLToPath(new URL("..", import.meta.url)));
 const outputDir = resolve(repoRoot, "script-updates");
 const configPath = resolve(outputDir, "packages.json");
+const storyIndexPath = resolve(repoRoot, "apps/flash-client/src/scripts/Story/index.ts");
+let officialScriptCache;
+
+const officialCoreScripts = [
+  {
+    id: "leveling.high-level-xp",
+    category: "Leveling",
+    map: "icestormunder",
+    entry: "apps/flash-client/src/scripts/HighLevelXP.ts"
+  },
+  {
+    id: "leveling.class-xp",
+    category: "Leveling",
+    map: "icestormunder",
+    entry: "apps/flash-client/src/scripts/ClassXP.ts"
+  },
+  {
+    id: "reputation.embersea",
+    category: "Reputation",
+    map: "fireforge / pyrewatch",
+    entry: "apps/flash-client/src/scripts/EmberseaRep.ts"
+  },
+  {
+    id: "story.complete-all-stories",
+    category: "Story",
+    map: "all",
+    entry: "apps/flash-client/src/scripts/AllStories.ts"
+  },
+  {
+    id: "story.fire-island-embersea",
+    category: "Story",
+    map: "embersea",
+    entry: "apps/flash-client/src/scripts/FireIslandEmberseaStory.ts"
+  },
+  {
+    id: "story.fire-island-pyrewatch",
+    category: "Story",
+    map: "embersea / pyrewatch",
+    entry: "apps/flash-client/src/scripts/FireIslandPyrewatchStory.ts"
+  },
+  {
+    id: "zero-to-hero.do-all",
+    category: "ZeroToHeroKits",
+    map: "icestormunder",
+    entry: "apps/flash-client/src/scripts/ZeroToHeroKits/ZeroToHeroKit0DoAll.ts"
+  },
+  {
+    id: "other.free-acs",
+    category: "Official",
+    map: "borgars",
+    entry: "apps/flash-client/src/scripts/FreeAcs.ts"
+  }
+];
 
 const config = await readPackageConfig();
 const channelVersion = config.channelVersion;
@@ -69,11 +122,11 @@ function parseMeta(source, pack) {
 }
 
 function readStringProperty(source, key) {
-  return source.match(new RegExp(`${key}\\s*:\\s*["'\`]([^"'\`]+)["'\`]`))?.[1];
+  return source.match(new RegExp(`["'\`]?${escapeRegExp(key)}["'\`]?\\s*:\\s*["'\`]([^"'\`]+)["'\`]`))?.[1];
 }
 
 function readArrayProperty(source, key) {
-  const array = source.match(new RegExp(`${key}\\s*:\\s*\\[([\\s\\S]*?)\\]`))?.[1];
+  const array = source.match(new RegExp(`["'\`]?${escapeRegExp(key)}["'\`]?\\s*:\\s*\\[([\\s\\S]*?)\\]`))?.[1];
   if (!array) return [];
   return [...array.matchAll(/["'`]([^"'`]+)["'`]/g)].map((match) => match[1]).filter(Boolean);
 }
@@ -84,9 +137,9 @@ function sha256(value) {
 
 function relativeScriptUpdateUrl(entry) {
   const normalized = String(entry || "").replace(/\\/g, "/");
-  const prefix = "script-updates/";
-  if (!normalized.startsWith(prefix)) throw new Error(`Script entry must live under ${prefix}: ${entry}`);
-  return normalized.slice(prefix.length);
+  if (normalized.startsWith("script-updates/")) return normalized.slice("script-updates/".length);
+  if (normalized.startsWith("apps/flash-client/src/scripts/")) return `../${normalized}`;
+  throw new Error(`Script entry must live under script-updates/ or apps/flash-client/src/scripts/: ${entry}`);
 }
 
 async function removeOldGeneratedPackages() {
@@ -104,19 +157,21 @@ async function readPackageConfig() {
   if (!channelVersion) throw new Error("script-updates/packages.json must define channelVersion.");
 
   const rawPackages = Array.isArray(raw.packages) ? raw.packages : [];
-  const packages = rawPackages.map((pack) => normalizePackageConfig(pack, channelVersion));
+  const packages = [];
+  for (const pack of rawPackages) packages.push(await normalizePackageConfig(pack, channelVersion));
   if (packages.length === 0) throw new Error("script-updates/packages.json must define at least one package.");
 
   return { channelVersion, packages };
 }
 
-function normalizePackageConfig(value, channelVersion) {
+async function normalizePackageConfig(value, channelVersion) {
   if (!value || typeof value !== "object") throw new Error("Script package entries must be objects.");
 
   const id = cleanId(value.id);
   if (!id) throw new Error("Script package entries need an id.");
   const version = cleanVersion(value.version) || channelVersion;
-  const scripts = Array.isArray(value.scripts) ? value.scripts.map(normalizeScriptConfig) : [];
+  const configuredScripts = Array.isArray(value.scripts) ? value.scripts.map(normalizeScriptConfig) : [];
+  const scripts = mergeScriptConfigs(value.includeOfficialScripts ? [...configuredScripts, ...(await officialScriptConfigs())] : configuredScripts);
   if (scripts.length === 0) throw new Error(`Script package ${id} must list at least one script.`);
 
   return {
@@ -140,6 +195,43 @@ function normalizeScriptConfig(value) {
     map: String(value.map || ""),
     entry
   };
+}
+
+async function officialScriptConfigs() {
+  if (officialScriptCache) return officialScriptCache;
+  officialScriptCache = mergeScriptConfigs([...officialCoreScripts, ...(await generatedStoryScriptConfigs())]);
+  return officialScriptCache;
+}
+
+async function generatedStoryScriptConfigs() {
+  const indexSource = await readFile(storyIndexPath, "utf8");
+  const imports = [...indexSource.matchAll(/import\s+story\d+\s+from\s+["']\.\/(.+?)\.js["'];/g)];
+  const scripts = [];
+  for (const match of imports) {
+    const storyPath = match[1];
+    const entry = `apps/flash-client/src/scripts/Story/${storyPath}.ts`;
+    const source = await readFile(resolve(repoRoot, entry), "utf8");
+    const definition = definitionBlock(source);
+    const id = cleanId(readStringProperty(definition, "id"));
+    if (!id) continue;
+    scripts.push({
+      id,
+      category: readStringProperty(definition, "category") || "Story",
+      map: readStringProperty(definition, "map") || "",
+      entry
+    });
+  }
+  return scripts;
+}
+
+function definitionBlock(source) {
+  return source.match(/defineGeneratedStory\(\s*\{([\s\S]*?)\}\s*,\s*steps\s*\)/)?.[1] || source;
+}
+
+function mergeScriptConfigs(scripts) {
+  const byId = new Map();
+  for (const script of scripts) byId.set(script.id, script);
+  return Array.from(byId.values());
 }
 
 function cleanId(value) {

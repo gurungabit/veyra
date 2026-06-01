@@ -5,6 +5,7 @@ window.veyraNative = {
   readJsonSetting: (name) => ipcRenderer.invoke("read-json-setting", name),
   writeJsonSetting: (name, value) => ipcRenderer.invoke("write-json-setting", name, value),
   readScriptPackScripts: () => ipcRenderer.invoke("read-script-pack-scripts"),
+  compileScriptPackScript: (scriptId) => ipcRenderer.invoke("compile-script-pack-script", scriptId),
   readBuilderScripts: () => ipcRenderer.invoke("read-builder-scripts"),
   writeBuilderScript: (script) => ipcRenderer.invoke("write-builder-script", script),
   writeBuilderScripts: (scripts) => ipcRenderer.invoke("write-builder-scripts", scripts),
