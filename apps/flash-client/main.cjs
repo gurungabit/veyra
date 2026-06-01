@@ -669,6 +669,8 @@ function scriptPacksDir() {
   return join(app.getPath("appData"), "Veyra", "ScriptPacks");
 }
 
+const retiredScriptPackIds = new Set(["free-acs"]);
+
 function builderScriptPath(script) {
   const sourceName = String((script && (script.id || script.name)) || "builder-script");
   const safeName = sourceName
@@ -690,6 +692,11 @@ function readScriptPackScripts() {
     const filePath = join(dir, entry);
     try {
       const pack = JSON.parse(readFileSync(filePath, "utf8"));
+      const packId = cleanId(pack && pack.id);
+      if (retiredScriptPackIds.has(packId)) {
+        rmSync(filePath, { force: true });
+        continue;
+      }
       const normalizedPack = normalizeInstalledScriptPack(pack, statSync(filePath).mtimeMs);
       if (!normalizedPack) continue;
       packs.push(normalizedPack.summary);
@@ -1015,6 +1022,7 @@ function scriptSourcePath(scriptId) {
   const paths = {
     "leveling.high-level-xp": join(scriptsDir, "HighLevelXP.ts"),
     "leveling.class-xp": join(scriptsDir, "ClassXP.ts"),
+    "other.free-acs": join(scriptsDir, "FreeAcs.ts"),
     "zero-to-hero.do-all": join(scriptsDir, "ZeroToHeroKits", "ZeroToHeroKit0DoAll.ts"),
     "zero-to-hero.core": join(scriptsDir, "ZeroToHeroKits", "CoreZeroToHero.ts"),
     "zero-to-hero.member-farms": join(scriptsDir, "ZeroToHeroKits", "MemberFarmsKit.ts"),

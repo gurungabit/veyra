@@ -48,6 +48,12 @@ interface CombatLocation {
   pad?: string;
 }
 
+interface MonsterPosition {
+  id?: number | undefined;
+  cell: string;
+  pad: string;
+}
+
 export type VeyraQuestAction =
   | { kind: "accept"; questId?: number }
   | { kind: "complete"; questId?: number; rewardId?: number; turnIns?: number }
@@ -989,8 +995,8 @@ export class ZeroToHeroRuntime {
     if (item) this.log(`Farming ${item}${quantity > 1 ? ` x${quantity}` : ""} from ${monster}.`);
     if (!item) {
       await this.recoverIfDead(location);
-      if (location?.map && !location.cell) await this.jumpToMonsterCell(monster, `fighting ${monster}`);
-      await this.bot.attack(monster);
+      const target = location?.map && !location.cell ? await this.jumpToMonsterCell(monster, `fighting ${monster}`) : undefined;
+      await this.bot.attack(target?.id ?? monster);
       await this.bot.useAvailableSkills();
       await this.bot.delay(650, this.signal);
       return;
@@ -1017,30 +1023,32 @@ export class ZeroToHeroRuntime {
       }
       loops += 1;
       await this.recoverIfDead(location);
+      let target: MonsterPosition | undefined;
       if (location?.map && !location.cell) {
-        await this.jumpToMonsterCell(monster, item ? `farming ${item}` : `fighting ${monster}`);
+        target = await this.jumpToMonsterCell(monster, item ? `farming ${item}` : `fighting ${monster}`);
       }
-      await this.bot.attack(monster);
+      await this.bot.attack(target?.id ?? monster);
       await this.bot.useAvailableSkills();
       if (acceptedDrops.length > 0) await this.acceptDrops(acceptedDrops);
       await this.bot.delay(650, this.signal);
     }
   }
 
-  private async jumpToMonsterCell(monster: string | number, context: string): Promise<void> {
+  private async jumpToMonsterCell(monster: string | number, context: string): Promise<MonsterPosition | undefined> {
     const position = await this.findMonsterPosition(monster).catch(() => undefined);
-    if (!position?.cell) return;
+    if (!position?.cell) return undefined;
 
     const snapshot = await this.snapshot().catch(() => undefined);
     if (snapshot?.cell === position.cell && (!position.pad || position.pad === "Auto" || snapshot.pad === position.pad))
-      return;
+      return position;
 
     this.log(`Jumping to ${position.cell}/${position.pad || "Auto"} before ${context}.`);
     await this.jump(position.cell, position.pad || "Auto");
     await this.bot.delay(300, this.signal);
+    return position;
   }
 
-  private async findMonsterPosition(monster: string | number): Promise<{ cell: string; pad: string } | undefined> {
+  private async findMonsterPosition(monster: string | number): Promise<MonsterPosition | undefined> {
     const monsters = recordsFrom(await this.bot.call<unknown>("getMonsters").catch(() => []));
     const targetId = typeof monster === "number" ? monster : 0;
     const targetName = typeof monster === "number" ? "" : monster.trim().toLowerCase();
@@ -1064,7 +1072,8 @@ export class ZeroToHeroRuntime {
 
     const cell = stringFrom(firstFrom(best, ["strFrame", "frame", "Frame", "cell", "Cell"])).trim();
     const pad = stringFrom(firstFrom(best, ["strPad", "pad", "Pad"])).trim() || "Auto";
-    return cell ? { cell, pad } : undefined;
+    const id = optionalNumberFrom(best, ["MonMapID", "MapID", "monMapId"]);
+    return cell ? { id, cell, pad } : undefined;
   }
 
   private async isDropVisible(item: string | number): Promise<boolean> {

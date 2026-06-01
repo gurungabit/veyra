@@ -14,6 +14,7 @@ import { main as runAllStories, meta as allStoriesMeta } from "./scripts/AllStor
 import { main as runFireIslandEmberseaStory, meta as fireIslandEmberseaStoryMeta } from "./scripts/FireIslandEmberseaStory.js";
 import { main as runFireIslandPyrewatchStory, meta as fireIslandPyrewatchStoryMeta } from "./scripts/FireIslandPyrewatchStory.js";
 import { main as runClassXP, meta as classXpMeta } from "./scripts/ClassXP.js";
+import { main as runFreeAcs, meta as freeAcsMeta } from "./scripts/FreeAcs.js";
 import { main as runZeroToHeroDoAll, meta as zeroToHeroDoAllMeta } from "./scripts/ZeroToHeroKits/ZeroToHeroKit0DoAll.js";
 import { main as runHighLevelXP, meta as highLevelXpMeta } from "./scripts/HighLevelXP.js";
 import { generatedStoryDefinitions } from "./scripts/Story/index.js";
@@ -146,6 +147,13 @@ const builtInScripts: ScriptDefinition[] = [
     map: "icestormunder",
     meta: classXpMeta,
     run: (bot, options) => runClassXP(bot, withSignal({ targetRank: 10 }, options.signal))
+  },
+  {
+    id: "other.free-acs",
+    category: "Other",
+    map: "borgars",
+    meta: freeAcsMeta,
+    run: (bot, options) => runFreeAcs(bot, withSignal({}, options.signal))
   },
   {
     id: "reputation.embersea",
