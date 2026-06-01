@@ -1,6 +1,6 @@
-# TypeScript Script Updates
+# Script Updates
 
-Official script updates are normal TypeScript files from `apps/flash-client/src/scripts`. The repo publishes readable `.ts` source plus package metadata, and Veyra bundles a script only when the user runs it for the first time. These are not Script Builder JSON scripts.
+Official script updates are authored as normal TypeScript files from `apps/flash-client/src/scripts`. The repo builds those files into JavaScript module packs before publishing, and Veyra imports the downloaded modules directly. These are not Script Builder JSON scripts, and the installed app does not compile TypeScript at runtime.
 
 ## Add A New Script
 
@@ -15,7 +15,7 @@ cp script-updates/examples/NewScript.template.ts apps/flash-client/src/scripts/M
 - Keep `export const meta`.
 - Keep `export async function main(bot, options)`.
 - Use `options.signal` for waits/delays so Stop can cancel the script.
-- Use normal relative imports from `apps/flash-client/src/scripts`. The script updater follows those imports from GitHub source when it bundles the script.
+- Use normal relative imports from `apps/flash-client/src/scripts`. The script update build compiles those files into the published module pack.
 
 3. Register the script in `script-updates/packages.json`.
 
@@ -56,9 +56,9 @@ Users can then install it from `Veyra -> Check For Script Updates`. On a fresh i
 The build command writes:
 
 - `script-updates/stable.json`
-- one generated package JSON per package, for example `script-updates/official-scripts-2026.06.01.2.json`
+- one generated package JSON per package, for example `script-updates/official-scripts-2026.06.01.3.json`
 
-The generated package JSON points to `.ts` files in `apps/flash-client/src/scripts`; it does not contain bundled JavaScript.
+The generated package JSON contains prebuilt JavaScript modules plus script metadata. Source TypeScript stays in `apps/flash-client/src/scripts` for development.
 
 ## When An App Release Is Needed
 

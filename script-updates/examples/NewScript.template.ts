@@ -4,7 +4,7 @@ export const meta = {
   name: "My New Script",
   description: "Short description shown in Veyra's script list.",
   tags: ["example"],
-  version: "2026.06.01.2"
+  version: "2026.06.01.3"
 };
 
 export async function main(bot: Bot, options: { signal?: AbortSignal } = {}): Promise<void> {

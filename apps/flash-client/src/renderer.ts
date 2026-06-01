@@ -38,10 +38,7 @@ interface DownloadedTypeScriptScript {
     tags: string[];
     version: string;
   };
-  source: string;
-  sourceSha256: string;
-  sourceUrl: string;
-  sourceTsSha256: string;
+  modulePath: string;
   packId: string;
   packVersion: string;
   mtimeMs: number;
@@ -816,7 +813,7 @@ function builderScriptDefinition(script: BuilderScript): ScriptDefinition {
 function normalizeDownloadedTypeScriptScripts(value: unknown): DownloadedTypeScriptScript[] {
   const source = value && typeof value === "object" && !Array.isArray(value) ? (value as { moduleScripts?: unknown }) : {};
   const scripts = Array.isArray(source.moduleScripts) ? source.moduleScripts : [];
-  return scripts.map(normalizeDownloadedTypeScriptScript).filter((script) => script.source || script.sourceUrl);
+  return scripts.map(normalizeDownloadedTypeScriptScript).filter((script) => script.modulePath);
 }
 
 function normalizeDownloadedTypeScriptScript(value: unknown): DownloadedTypeScriptScript {
@@ -828,14 +825,11 @@ function normalizeDownloadedTypeScriptScript(value: unknown): DownloadedTypeScri
     map: cleanText(source.map, ""),
     meta: {
       name: cleanText(metaSource.name, "Downloaded Script"),
-      description: cleanText(metaSource.description, "Downloaded TypeScript script."),
+      description: cleanText(metaSource.description, "Downloaded script."),
       tags: Array.isArray(metaSource.tags) ? uniqueStrings(metaSource.tags.map((tag) => String(tag))) : [],
       version: cleanText(metaSource.version, "0.0.0")
     },
-    source: typeof source.source === "string" ? source.source : "",
-    sourceSha256: typeof source.sourceSha256 === "string" ? source.sourceSha256 : "",
-    sourceUrl: typeof source.sourceUrl === "string" ? source.sourceUrl : "",
-    sourceTsSha256: typeof source.sourceTsSha256 === "string" ? source.sourceTsSha256 : "",
+    modulePath: cleanModulePath(source.modulePath),
     packId: cleanScriptId(source.packId, "official"),
     packVersion: cleanText(source.packVersion, "0.0.0"),
     mtimeMs: Number.isFinite(Number(source.mtimeMs)) ? Number(source.mtimeMs) : 0
@@ -849,7 +843,7 @@ async function runDownloadedTypeScriptScript(script: DownloadedTypeScriptScript,
 }
 
 async function loadDownloadedTypeScriptModule(script: DownloadedTypeScriptScript): Promise<DownloadedTypeScriptModule> {
-  const cacheKey = `${script.id}:${script.packVersion}:${script.sourceSha256 || script.sourceTsSha256 || script.sourceUrl || script.mtimeMs}`;
+  const cacheKey = `${script.id}:${script.packVersion}:${script.modulePath}:${script.mtimeMs}`;
   const cached = downloadedTypeScriptModuleCache.get(cacheKey);
   if (cached) return cached;
 
@@ -862,31 +856,23 @@ async function loadDownloadedTypeScriptModule(script: DownloadedTypeScriptScript
 }
 
 async function importDownloadedTypeScriptModule(script: DownloadedTypeScriptScript): Promise<DownloadedTypeScriptModule> {
-  const compiled = await ensureDownloadedTypeScriptScriptCompiled(script);
-  const sourceUrl = `veyra-script-pack://${compiled.packId}/${compiled.id}.js`;
-  const source = compiled.source.replace(/__VEYRA_APP_ORIGIN__/g, window.location.origin);
-  const blob = new Blob([`${source}\n//# sourceURL=${sourceUrl}\n`], { type: "text/javascript" });
-  const url = URL.createObjectURL(blob);
-  try {
-    const module = (await import(url)) as DownloadedTypeScriptModule;
-    if (!module || typeof module !== "object" || typeof module.main !== "function") {
-      throw new Error(`${script.meta.name} did not load as a TypeScript script module.`);
-    }
-    return module;
-  } finally {
-    URL.revokeObjectURL(url);
+  const url = downloadedModuleUrl(script);
+  const module = (await import(url)) as DownloadedTypeScriptModule;
+  if (!module || typeof module !== "object" || typeof module.main !== "function") {
+    throw new Error(`${script.meta.name} did not load as a script module.`);
   }
+  return module;
 }
 
-async function ensureDownloadedTypeScriptScriptCompiled(script: DownloadedTypeScriptScript): Promise<DownloadedTypeScriptScript> {
-  if (script.source) return script;
-  const native = nativeApi();
-  if (!native?.compileScriptPackScript) throw new Error("Script compiler is unavailable.");
-  const compiled = normalizeDownloadedTypeScriptScript(await native.compileScriptPackScript(script.id));
-  if (!compiled.source) throw new Error(`${script.meta.name} did not compile.`);
-  const existingIndex = downloadedTypeScriptScripts.findIndex((candidate) => candidate.id === compiled.id);
-  if (existingIndex >= 0) downloadedTypeScriptScripts[existingIndex] = compiled;
-  return compiled;
+function downloadedModuleUrl(script: DownloadedTypeScriptScript): string {
+  const path = script.modulePath.split("/").map(encodeURIComponent).join("/");
+  return `${window.location.origin}/script-packs/${encodeURIComponent(script.packId)}/${encodeURIComponent(script.packVersion)}/${path}?v=${encodeURIComponent(String(script.mtimeMs))}`;
+}
+
+function cleanModulePath(value: unknown): string {
+  const normalized = String(value || "").trim().replace(/\\/g, "/").replace(/^\/+/, "");
+  if (!normalized || normalized.includes("..") || !normalized.endsWith(".js")) return "";
+  return normalized;
 }
 
 function isBuilderScriptId(scriptId: string): boolean {
@@ -2998,7 +2984,6 @@ function nativeApi(): {
   readJsonSetting?: (name: string) => Promise<unknown>;
   writeJsonSetting?: (name: string, value: unknown) => Promise<unknown>;
   readBuilderScripts?: () => Promise<unknown>;
-  compileScriptPackScript?: (scriptId: string) => Promise<unknown>;
   writeBuilderScript?: (script: unknown) => Promise<unknown>;
   writeBuilderScripts?: (scripts: unknown[]) => Promise<unknown>;
   deleteBuilderScript?: (id: string) => Promise<unknown>;
@@ -3017,7 +3002,6 @@ function nativeApi(): {
       readJsonSetting?: (name: string) => Promise<unknown>;
       writeJsonSetting?: (name: string, value: unknown) => Promise<unknown>;
       readBuilderScripts?: () => Promise<unknown>;
-      compileScriptPackScript?: (scriptId: string) => Promise<unknown>;
       writeBuilderScript?: (script: unknown) => Promise<unknown>;
       writeBuilderScripts?: (scripts: unknown[]) => Promise<unknown>;
       deleteBuilderScript?: (id: string) => Promise<unknown>;

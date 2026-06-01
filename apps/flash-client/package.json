@@ -77,8 +77,5 @@
   "devDependencies": {
     "electron": "8.1.0",
     "electron-builder": "^26.8.1"
-  },
-  "dependencies": {
-    "esbuild-wasm": "^0.27.0"
   }
 }

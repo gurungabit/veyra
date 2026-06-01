@@ -1,11 +1,13 @@
 import { createHash } from "node:crypto";
 import { readdir, readFile, rm, writeFile } from "node:fs/promises";
-import { basename, resolve } from "node:path";
+import { basename, dirname, extname, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { build } from "esbuild";
 
 const repoRoot = resolve(fileURLToPath(new URL("..", import.meta.url)));
 const outputDir = resolve(repoRoot, "script-updates");
 const configPath = resolve(outputDir, "packages.json");
+const scriptsRoot = resolve(repoRoot, "apps/flash-client/src/scripts");
 const storyIndexPath = resolve(repoRoot, "apps/flash-client/src/scripts/Story/index.ts");
 let officialScriptCache;
 
@@ -68,18 +70,18 @@ await removeOldGeneratedPackages(packages);
 
 const manifestPackages = [];
 for (const pack of packages) {
-  const scripts = [];
+  const modules = await buildModuleSources();
+  const moduleScripts = [];
   for (const script of pack.scripts) {
     const entry = resolve(repoRoot, script.entry);
-    const source = await readFile(entry, "utf8");
-    const meta = parseMeta(source, pack);
-    scripts.push({
+    const typeScriptSource = await readFile(entry, "utf8");
+    const meta = parseMeta(typeScriptSource, pack);
+    moduleScripts.push({
       id: script.id,
       category: script.category,
       map: script.map,
       meta,
-      url: relativeScriptUpdateUrl(script.entry),
-      sha256: sha256(source)
+      modulePath: modulePathForEntry(script.entry)
     });
   }
 
@@ -88,8 +90,9 @@ for (const pack of packages) {
     id: pack.id,
     name: pack.name,
     version: pack.version,
-    type: "typescript-scripts",
-    scripts
+    type: "module-scripts",
+    modules,
+    moduleScripts
   };
   const packageJson = `${JSON.stringify(packageBody, null, 2)}\n`;
   await writeFile(resolve(outputDir, pack.outputFile), packageJson, "utf8");
@@ -97,7 +100,7 @@ for (const pack of packages) {
     id: pack.id,
     name: pack.name,
     version: pack.version,
-    type: "typescript-scripts",
+    type: "module-scripts",
     url: pack.outputFile,
     sha256: sha256(packageJson)
   });
@@ -115,10 +118,60 @@ function parseMeta(source, pack) {
   const meta = source.match(/export\s+const\s+meta\s*=\s*({[\s\S]*?});/)?.[1] || "";
   return {
     name: readStringProperty(meta, "name") || pack.name,
-    description: readStringProperty(meta, "description") || "Downloaded TypeScript script.",
+    description: readStringProperty(meta, "description") || "Downloaded script.",
     tags: readArrayProperty(meta, "tags"),
     version: readStringProperty(meta, "version") || pack.version
   };
+}
+
+async function buildModuleSources() {
+  const outdir = resolve(repoRoot, ".script-update-build");
+  const entryPoints = await allTypeScriptFiles(scriptsRoot);
+  const result = await build({
+    absWorkingDir: repoRoot,
+    entryPoints,
+    bundle: false,
+    format: "esm",
+    platform: "browser",
+    target: "es2020",
+    outbase: scriptsRoot,
+    outdir,
+    entryNames: "[dir]/[name]",
+    write: false,
+    treeShaking: true,
+    legalComments: "none",
+    logLevel: "silent"
+  });
+  const modules = [];
+  for (const file of result.outputFiles || []) {
+    const path = normalizePath(relative(outdir, file.path));
+    if (!path || !path.endsWith(".js")) continue;
+    const source = file.text;
+    modules.push({ path, source, sourceSha256: sha256(source) });
+  }
+  modules.sort((left, right) => left.path.localeCompare(right.path));
+  if (modules.length === 0) throw new Error("Script module build did not produce modules.");
+  return modules;
+}
+
+async function allTypeScriptFiles(dir) {
+  const files = [];
+  for (const entry of await readdir(dir, { withFileTypes: true })) {
+    const fullPath = resolve(dir, entry.name);
+    if (entry.isDirectory()) files.push(...(await allTypeScriptFiles(fullPath)));
+    else if (entry.isFile() && extname(entry.name) === ".ts") files.push(fullPath);
+  }
+  return files;
+}
+
+function modulePathForEntry(entry) {
+  const absolute = resolve(repoRoot, entry);
+  if (!absolute.startsWith(`${scriptsRoot}/`)) throw new Error(`Script entry must live under apps/flash-client/src/scripts/: ${entry}`);
+  return normalizePath(relative(scriptsRoot, resolve(dirname(absolute), `${basename(absolute, ".ts")}.js`)));
+}
+
+function normalizePath(value) {
+  return String(value || "").replace(/\\/g, "/");
 }
 
 function readStringProperty(source, key) {
@@ -133,13 +186,6 @@ function readArrayProperty(source, key) {
 
 function sha256(value) {
   return createHash("sha256").update(value, "utf8").digest("hex");
-}
-
-function relativeScriptUpdateUrl(entry) {
-  const normalized = String(entry || "").replace(/\\/g, "/");
-  if (normalized.startsWith("script-updates/")) return normalized.slice("script-updates/".length);
-  if (normalized.startsWith("apps/flash-client/src/scripts/")) return `../${normalized}`;
-  throw new Error(`Script entry must live under script-updates/ or apps/flash-client/src/scripts/: ${entry}`);
 }
 
 async function removeOldGeneratedPackages() {
