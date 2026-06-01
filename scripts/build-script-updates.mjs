@@ -2,47 +2,31 @@ import { createHash } from "node:crypto";
 import { readdir, readFile, rm, writeFile } from "node:fs/promises";
 import { basename, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { build } from "esbuild";
 
 const repoRoot = resolve(fileURLToPath(new URL("..", import.meta.url)));
 const outputDir = resolve(repoRoot, "script-updates");
-const channelVersion = "2026.06.01.0";
+const configPath = resolve(outputDir, "packages.json");
 
-const packages = [
-  {
-    id: "free-acs",
-    name: "Free ACs",
-    version: channelVersion,
-    outputFile: `free-acs-${channelVersion}.json`,
-    scripts: [
-      {
-        id: "other.free-acs",
-        category: "Official",
-        map: "borgars",
-        entry: "script-updates/src/FreeAcs.ts"
-      }
-    ]
-  }
-];
+const config = await readPackageConfig();
+const channelVersion = config.channelVersion;
+const packages = config.packages;
 
-await removeOldGeneratedPackages();
+await removeOldGeneratedPackages(packages);
 
 const manifestPackages = [];
 for (const pack of packages) {
-  const moduleScripts = [];
+  const scripts = [];
   for (const script of pack.scripts) {
     const entry = resolve(repoRoot, script.entry);
     const source = await readFile(entry, "utf8");
     const meta = parseMeta(source, pack);
-    const bundled = await bundleScript(entry);
-    const sourceSha256 = sha256(bundled);
-    moduleScripts.push({
+    scripts.push({
       id: script.id,
       category: script.category,
       map: script.map,
       meta,
-      source: bundled,
-      sourceSha256
+      url: relativeScriptUpdateUrl(script.entry),
+      sha256: sha256(source)
     });
   }
 
@@ -52,7 +36,7 @@ for (const pack of packages) {
     name: pack.name,
     version: pack.version,
     type: "typescript-scripts",
-    moduleScripts
+    scripts
   };
   const packageJson = `${JSON.stringify(packageBody, null, 2)}\n`;
   await writeFile(resolve(outputDir, pack.outputFile), packageJson, "utf8");
@@ -73,25 +57,6 @@ const manifest = {
   packages: manifestPackages
 };
 await writeFile(resolve(outputDir, "stable.json"), `${JSON.stringify(manifest, null, 2)}\n`, "utf8");
-
-async function bundleScript(entry) {
-  const result = await build({
-    entryPoints: [entry],
-    absWorkingDir: repoRoot,
-    bundle: true,
-    format: "esm",
-    platform: "browser",
-    target: "es2020",
-    sourcemap: false,
-    write: false,
-    treeShaking: true,
-    legalComments: "none",
-    logLevel: "silent"
-  });
-  const output = result.outputFiles[0]?.text;
-  if (!output) throw new Error(`esbuild did not produce output for ${entry}`);
-  return output;
-}
 
 function parseMeta(source, pack) {
   const meta = source.match(/export\s+const\s+meta\s*=\s*({[\s\S]*?});/)?.[1] || "";
@@ -117,8 +82,78 @@ function sha256(value) {
   return createHash("sha256").update(value, "utf8").digest("hex");
 }
 
+function relativeScriptUpdateUrl(entry) {
+  const normalized = String(entry || "").replace(/\\/g, "/");
+  const prefix = "script-updates/";
+  if (!normalized.startsWith(prefix)) throw new Error(`Script entry must live under ${prefix}: ${entry}`);
+  return normalized.slice(prefix.length);
+}
+
 async function removeOldGeneratedPackages() {
   for (const entry of await readdir(outputDir)) {
-    if (/^free-acs-.+\.json$/u.test(basename(entry))) await rm(resolve(outputDir, entry), { force: true });
+    const name = basename(entry);
+    if (packages.some((pack) => pack.generatedFilePattern.test(name) && name !== pack.outputFile)) {
+      await rm(resolve(outputDir, entry), { force: true });
+    }
   }
+}
+
+async function readPackageConfig() {
+  const raw = JSON.parse(await readFile(configPath, "utf8"));
+  const channelVersion = cleanVersion(raw.channelVersion);
+  if (!channelVersion) throw new Error("script-updates/packages.json must define channelVersion.");
+
+  const rawPackages = Array.isArray(raw.packages) ? raw.packages : [];
+  const packages = rawPackages.map((pack) => normalizePackageConfig(pack, channelVersion));
+  if (packages.length === 0) throw new Error("script-updates/packages.json must define at least one package.");
+
+  return { channelVersion, packages };
+}
+
+function normalizePackageConfig(value, channelVersion) {
+  if (!value || typeof value !== "object") throw new Error("Script package entries must be objects.");
+
+  const id = cleanId(value.id);
+  if (!id) throw new Error("Script package entries need an id.");
+  const version = cleanVersion(value.version) || channelVersion;
+  const scripts = Array.isArray(value.scripts) ? value.scripts.map(normalizeScriptConfig) : [];
+  if (scripts.length === 0) throw new Error(`Script package ${id} must list at least one script.`);
+
+  return {
+    id,
+    name: String(value.name || id),
+    version,
+    outputFile: String(value.outputFile || `${id}-${version}.json`),
+    generatedFilePattern: new RegExp(`^${escapeRegExp(id)}-.+\\.json$`, "u"),
+    scripts
+  };
+}
+
+function normalizeScriptConfig(value) {
+  if (!value || typeof value !== "object") throw new Error("Script entries must be objects.");
+  const id = cleanId(value.id);
+  const entry = String(value.entry || "").trim();
+  if (!id || !entry) throw new Error("Script entries need id and entry.");
+  return {
+    id,
+    category: String(value.category || "Official"),
+    map: String(value.map || ""),
+    entry
+  };
+}
+
+function cleanId(value) {
+  return String(value || "")
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9_.-]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+}
+
+function cleanVersion(value) {
+  return String(value || "").trim().replace(/^v/iu, "");
+}
+
+function escapeRegExp(value) {
+  return String(value).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }

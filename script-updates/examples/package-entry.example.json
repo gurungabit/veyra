@@ -1,0 +1,12 @@
+{
+  "id": "my-new-script",
+  "name": "My New Script",
+  "scripts": [
+    {
+      "id": "other.my-new-script",
+      "category": "Official",
+      "map": "battleon",
+      "entry": "script-updates/src/MyNewScript.ts"
+    }
+  ]
+}

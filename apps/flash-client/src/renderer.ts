@@ -908,7 +908,8 @@ async function loadDownloadedTypeScriptModule(script: DownloadedTypeScriptScript
 
 async function importDownloadedTypeScriptModule(script: DownloadedTypeScriptScript): Promise<DownloadedTypeScriptModule> {
   const sourceUrl = `veyra-script-pack://${script.packId}/${script.id}.js`;
-  const blob = new Blob([`${script.source}\n//# sourceURL=${sourceUrl}\n`], { type: "text/javascript" });
+  const source = script.source.replace(/__VEYRA_APP_ORIGIN__/g, window.location.origin);
+  const blob = new Blob([`${source}\n//# sourceURL=${sourceUrl}\n`], { type: "text/javascript" });
   const url = URL.createObjectURL(blob);
   try {
     const module = (await import(url)) as DownloadedTypeScriptModule;

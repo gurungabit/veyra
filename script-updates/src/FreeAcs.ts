@@ -1,11 +1,11 @@
-import type { Bot } from "../../apps/flash-client/src/bot.js";
-import { ZeroToHeroRuntime, type ZeroToHeroRuntimeOptions } from "../../apps/flash-client/src/scripts/ZeroToHeroKits/ZeroToHeroRuntime.js";
+import type { Bot } from "veyra:app/bot.js";
+import { ZeroToHeroRuntime, type ZeroToHeroRuntimeOptions } from "veyra:app/scripts/ZeroToHeroKits/ZeroToHeroRuntime.js";
 
 export const meta = {
   name: "Free ACs",
   description: "Runs the yearly Free ACs quest and completes Borgars first when needed.",
   tags: ["acs", "free acs", "borgars", "quest"],
-  version: "2026.06.01.0"
+  version: "2026.06.01.1"
 };
 
 export async function main(bot: Bot, options: ZeroToHeroRuntimeOptions = {}): Promise<void> {

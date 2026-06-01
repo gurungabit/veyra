@@ -6,6 +6,9 @@
     "moduleResolution": "Bundler",
     "lib": ["ES2020", "DOM"],
     "types": [],
+    "paths": {
+      "veyra:app/*": ["apps/flash-client/src/*"]
+    },
     "declaration": false,
     "sourceMap": false,
     "composite": false,

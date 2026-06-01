@@ -5,6 +5,7 @@ const { execFileSync, spawn } = require("child_process");
 const { createCipheriv, createDecipheriv, createHash, randomBytes } = require("crypto");
 const { appendFileSync, copyFileSync, existsSync, mkdirSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } = require("fs");
 const { dirname, join, resolve } = require("path");
+const ts = require("typescript");
 
 app.setName("Veyra");
 if (process.env.VEYRA_USER_DATA_DIR) app.setPath("userData", resolve(process.env.VEYRA_USER_DATA_DIR));
@@ -1527,8 +1528,11 @@ async function installScriptPackage(entry, manifestUrl) {
   const id = cleanId(pack.id || entry.id);
   const version = cleanVersion(pack.version || entry.version);
   const type = normalizeScriptPackageType(pack.type || entry.type);
-  const scripts = normalizeScriptPackScripts(pack.scripts);
-  const moduleScripts = normalizeTypeScriptScriptPackScripts(pack.moduleScripts || pack.modules, { id, version, mtimeMs: Date.now() });
+  const scripts = type === "builder-scripts" ? normalizeScriptPackScripts(pack.scripts) : [];
+  const moduleScripts =
+    type === "typescript-scripts"
+      ? await installTypeScriptScriptPackageScripts(pack.scripts, { id, version, packageUrl })
+      : normalizeTypeScriptScriptPackScripts(pack.moduleScripts || pack.modules, { id, version, mtimeMs: Date.now() });
   if (!id || !version || (scripts.length === 0 && moduleScripts.length === 0)) throw new Error(`Script pack ${entry.id} did not contain runnable scripts.`);
   const installedPack = {
     schema: Number(pack.schema || 1),
@@ -1544,7 +1548,72 @@ async function installScriptPackage(entry, manifestUrl) {
   const filePath = scriptPackPath(id);
   mkdirSync(dirname(filePath), { recursive: true });
   writeFileSync(filePath, `${JSON.stringify(installedPack, null, 2)}\n`, "utf8");
-  return { id, name: installedPack.name, version, count: scripts.length, filePath };
+  return { id, name: installedPack.name, version, count: scripts.length + moduleScripts.length, filePath };
+}
+
+async function installTypeScriptScriptPackageScripts(scripts, pack) {
+  if (!Array.isArray(scripts)) return [];
+  const moduleScripts = [];
+  for (const script of scripts) {
+    if (!script || typeof script !== "object") continue;
+    const id = cleanId(script.id);
+    const url = typeof script.url === "string" && script.url.trim() ? new URL(script.url.trim(), pack.packageUrl).toString() : "";
+    if (!id || !url) continue;
+    const sourceTs = await fetchTextUrl(url);
+    const expectedHash = typeof script.sha256 === "string" ? script.sha256.trim().toLowerCase() : "";
+    if (expectedHash) {
+      const digest = createHash("sha256").update(sourceTs, "utf8").digest("hex");
+      if (digest !== expectedHash) throw new Error(`Script ${id} checksum mismatch.`);
+    }
+    const source = compileTypeScriptScriptSource(sourceTs, url);
+    const metaSource = script.meta && typeof script.meta === "object" ? script.meta : {};
+    moduleScripts.push({
+      id,
+      category: String(script.category || "Official"),
+      map: String(script.map || ""),
+      meta: {
+        name: String(metaSource.name || script.name || id),
+        description: String(metaSource.description || script.description || "Downloaded TypeScript script."),
+        tags: Array.isArray(metaSource.tags) ? metaSource.tags.map((tag) => String(tag || "").trim()).filter(Boolean) : [],
+        version: cleanVersion(metaSource.version || script.version || pack.version)
+      },
+      source,
+      sourceSha256: createHash("sha256").update(source, "utf8").digest("hex"),
+      sourceTsSha256: expectedHash,
+      sourceUrl: url,
+      packId: pack.id,
+      packVersion: pack.version
+    });
+  }
+  return moduleScripts;
+}
+
+function compileTypeScriptScriptSource(source, fileName) {
+  const output = ts.transpileModule(source, {
+    fileName,
+    compilerOptions: {
+      target: ts.ScriptTarget.ES2020,
+      module: ts.ModuleKind.ES2020,
+      moduleResolution: ts.ModuleResolutionKind.Bundler,
+      importsNotUsedAsValues: ts.ImportsNotUsedAsValues.Remove,
+      isolatedModules: true,
+      sourceMap: false
+    },
+    reportDiagnostics: true
+  });
+  const diagnostics = output.diagnostics || [];
+  const errors = diagnostics.filter((diagnostic) => diagnostic.category === ts.DiagnosticCategory.Error);
+  if (errors.length > 0) {
+    const detail = errors.map((diagnostic) => ts.flattenDiagnosticMessageText(diagnostic.messageText, "\n")).join("\n");
+    throw new Error(`TypeScript compile failed for ${fileName}:\n${detail}`);
+  }
+  return rewriteVeyraAppImports(output.outputText);
+}
+
+function rewriteVeyraAppImports(source) {
+  return source.replace(/((?:from\s*|import\s*\(\s*)["'])veyra:app\/([^"']+)(["'])/g, (_match, prefix, importPath, suffix) => {
+    return `${prefix}__VEYRA_APP_ORIGIN__/dist/${importPath}${suffix}`;
+  });
 }
 
 function installedScriptPackageVersions() {
