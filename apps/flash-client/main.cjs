@@ -2,10 +2,20 @@ const { app, BrowserWindow, dialog, ipcMain, Menu, shell } = require("electron")
 const { createServer: createHttpsServer, request: httpsRequest } = require("https");
 const { request: httpRequest } = require("http");
 const { execFileSync, spawn } = require("child_process");
-const { createCipheriv, createDecipheriv, createHash, randomBytes } = require("crypto");
+const { createCipheriv, createDecipheriv, createHash, randomBytes, randomFillSync } = require("crypto");
 const { appendFileSync, copyFileSync, existsSync, mkdirSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } = require("fs");
 const { dirname, join, resolve } = require("path");
 if (typeof globalThis.self === "undefined") globalThis.self = globalThis;
+if (!globalThis.crypto || typeof globalThis.crypto.getRandomValues !== "function") {
+  Object.defineProperty(globalThis, "crypto", {
+    value: {
+      ...(globalThis.crypto || {}),
+      getRandomValues: (typedArray) => randomFillSync(typedArray)
+    },
+    configurable: true,
+    writable: true
+  });
+}
 const esbuild = require("esbuild-wasm/lib/browser");
 
 app.setName("Veyra");
