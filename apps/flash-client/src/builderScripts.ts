@@ -724,35 +724,45 @@ async function huntForItem(bot: Bot, action: BuilderAction, signal?: AbortSignal
   bot.log(`${item} reached ${current}/${targetQuantity}.`);
 }
 
+interface MonsterPosition {
+  id?: number | undefined;
+  cell: string;
+  pad: string;
+}
+
 async function jumpToMonsterCell(bot: Bot, monster: string | number, signal: AbortSignal | undefined, context: string): Promise<void> {
   const position = await findMonsterPosition(bot, monster).catch(() => undefined);
   if (!position?.cell) return;
   await jumpIfNeeded(bot, position.cell, position.pad || "Auto", signal, context);
 }
 
-async function findMonsterPosition(bot: Bot, monster: string | number): Promise<{ cell: string; pad: string } | undefined> {
+async function findMonsterPosition(bot: Bot, monster: string | number, aliveOnly = false): Promise<MonsterPosition | undefined> {
   const raw = await bot.call<unknown>("getMonsters").catch(() => []);
-  const monsters = parseMaybeJson<Record<string, unknown>[]>(raw) ?? [];
+  const monsters = recordsFrom(raw);
   const targetId = typeof monster === "number" ? monster : 0;
   const targetName = typeof monster === "number" ? "" : (monster || "*").trim().toLowerCase();
-  const candidates = monsters.filter((entry) => {
+  let candidates = monsters.filter((entry) => {
     if (typeof monster === "number") {
       return optionalNumberFrom(entry, ["MonMapID", "MapID", "monMapId", "MonID", "MonsterID", "id", "ID"]) === targetId;
     }
     const name = stringFrom(firstFrom(entry, ["strMonName", "sName", "Name", "name"])).toLowerCase();
     return targetName === "*" || name.includes(targetName);
   });
+  if (aliveOnly) candidates = candidates.filter((entry) => monsterHp(entry) > 0);
   if (candidates.length === 0) return undefined;
-  candidates.sort((a, b) => (optionalNumberFrom(a, ["intHP", "HP", "hp"]) ?? 0) - (optionalNumberFrom(b, ["intHP", "HP", "hp"]) ?? 0));
-  const best = candidates[0];
+
+  const aliveCandidates = candidates.filter((entry) => monsterHp(entry) > 0);
+  const sorted = (aliveCandidates.length > 0 ? aliveCandidates : candidates).sort((a, b) => monsterHp(a) - monsterHp(b));
+  const best = sorted[0];
   if (!best) return undefined;
   const cell = stringFrom(firstFrom(best, ["strFrame", "frame", "Frame", "cell", "Cell"])).trim();
   const pad = stringFrom(firstFrom(best, ["strPad", "pad", "Pad"]), "Auto").trim() || "Auto";
-  return cell ? { cell, pad } : undefined;
+  const id = optionalNumberFrom(best, ["MonMapID", "MapID", "monMapId"]);
+  return cell ? { id, cell, pad } : undefined;
 }
 
 async function defeatOneMonster(bot: Bot, monster: string | number, signal?: AbortSignal): Promise<void> {
-  const deadline = Date.now() + 75000;
+  const deadline = Date.now() + 90000;
   let engaged = false;
   while (Date.now() < deadline) {
     if (signal?.aborted) throw signal.reason instanceof Error ? signal.reason : new Error("Cancelled.");
@@ -762,20 +772,59 @@ async function defeatOneMonster(bot: Bot, monster: string | number, signal?: Abo
       engaged = false;
       continue;
     }
-    await bot.attack(monster).catch(() => undefined);
+
+    let parsed = currentTargetRecord(await bot.call<unknown>("getTargetMonster").catch(() => undefined));
+    let hasTarget = Object.keys(parsed).length > 0 && monsterRecordMatches(parsed, monster);
+    let hp = hasTarget ? monsterHp(parsed) : 0;
+    if (!hasTarget || hp <= 0) {
+      if (engaged) {
+        await bot.delay(550, signal);
+        return;
+      }
+
+      const position = await findMonsterPosition(bot, monster, true).catch(() => undefined);
+      if (!position) {
+        await bot.delay(650, signal);
+        continue;
+      }
+      await jumpIfNeeded(bot, position.cell, position.pad || "Auto", signal, `hunting ${typeof monster === "number" ? `monster ID ${monster}` : monster}`);
+      await bot.attack(position.id !== undefined && typeof monster !== "number" ? position.id : monster).catch(() => undefined);
+      await bot.delay(250, signal);
+      parsed = currentTargetRecord(await bot.call<unknown>("getTargetMonster").catch(() => undefined));
+      hasTarget = Object.keys(parsed).length > 0 && monsterRecordMatches(parsed, monster);
+      hp = hasTarget ? monsterHp(parsed) : 0;
+    }
+
+    if (hasTarget && hp > 0) engaged = true;
     await bot.useAvailableSkills().catch(() => undefined);
-    const target = await bot.call<unknown>("getTargetMonster").catch(() => undefined);
-    const parsed = parseMaybeJson<Record<string, unknown>>(target) ?? {};
-    const hasTarget = Object.keys(parsed).length > 0;
-    const hp = Number(parsed.intHP ?? parsed.HP ?? 0);
-    engaged = engaged || hasTarget;
-    if (engaged && (!hasTarget || hp <= 0)) {
+    await bot.delay(450, signal);
+
+    const updatedTarget = currentTargetRecord(await bot.call<unknown>("getTargetMonster").catch(() => undefined));
+    if (engaged && (!monsterRecordMatches(updatedTarget, monster) || monsterHp(updatedTarget) <= 0)) {
       await bot.delay(550, signal);
       return;
     }
-    await bot.delay(350, signal);
   }
   throw new Error(`Timed out hunting ${monster}.`);
+}
+
+function currentTargetRecord(value: unknown): Record<string, unknown> {
+  const record = asRecord(value);
+  return Object.keys(record).length > 0 ? record : {};
+}
+
+function monsterRecordMatches(record: Record<string, unknown>, monster: string | number): boolean {
+  if (Object.keys(record).length === 0) return false;
+  if (typeof monster === "number") {
+    return optionalNumberFrom(record, ["MonMapID", "MapID", "monMapId", "MonID", "MonsterID", "id", "ID"]) === monster;
+  }
+  const targetName = (monster || "*").trim().toLowerCase();
+  const name = stringFrom(firstFrom(record, ["strMonName", "sName", "Name", "name"])).toLowerCase();
+  return targetName === "*" || name.includes(targetName);
+}
+
+function monsterHp(record: Record<string, unknown>): number {
+  return optionalNumberFrom(record, ["intHP", "HP", "hp"]) ?? 0;
 }
 
 async function getMapItem(bot: Bot, action: BuilderAction, signal?: AbortSignal): Promise<void> {
