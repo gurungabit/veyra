@@ -5,7 +5,8 @@ const { execFileSync, spawn } = require("child_process");
 const { createCipheriv, createDecipheriv, createHash, randomBytes } = require("crypto");
 const { appendFileSync, copyFileSync, existsSync, mkdirSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } = require("fs");
 const { dirname, join, resolve } = require("path");
-const esbuild = require("esbuild-wasm");
+if (typeof globalThis.self === "undefined") globalThis.self = globalThis;
+const esbuild = require("esbuild-wasm/lib/browser");
 
 app.setName("Veyra");
 if (process.env.VEYRA_USER_DATA_DIR) app.setPath("userData", resolve(process.env.VEYRA_USER_DATA_DIR));
@@ -54,6 +55,7 @@ let checkForScriptUpdatesMenuItem;
 let autoDownloadScriptUpdatesMenuItem;
 let scriptUpdateChecking = false;
 let latestUpdateRelease;
+let esbuildInitializePromise;
 let updateStatus = {
   state: "idle",
   message: "",
@@ -1632,6 +1634,7 @@ async function compileInstalledScriptPackScript(scriptId) {
 }
 
 async function bundleTypeScriptScriptSource(source, entryUrl) {
+  await ensureTypeScriptBundlerReady();
   const cache = new Map([[entryUrl, source]]);
   const result = await esbuild.build({
     entryPoints: [entryUrl],
@@ -1648,6 +1651,20 @@ async function bundleTypeScriptScriptSource(source, entryUrl) {
   const output = result.outputFiles && result.outputFiles[0] ? result.outputFiles[0].text : "";
   if (!output) throw new Error(`TypeScript bundle failed for ${entryUrl}.`);
   return rewriteVeyraAppImports(output);
+}
+
+async function ensureTypeScriptBundlerReady() {
+  if (!esbuildInitializePromise) {
+    esbuildInitializePromise = (async () => {
+      const wasmPath = require.resolve("esbuild-wasm/esbuild.wasm");
+      const wasmModule = new WebAssembly.Module(readFileSync(wasmPath));
+      await esbuild.initialize({ wasmModule, worker: false });
+    })().catch((error) => {
+      esbuildInitializePromise = undefined;
+      throw error;
+    });
+  }
+  await esbuildInitializePromise;
 }
 
 function remoteTypeScriptBundlePlugin(cache) {
