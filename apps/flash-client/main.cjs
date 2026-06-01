@@ -1295,7 +1295,11 @@ function setupScriptUpdates() {
   updateScriptUpdatesMenuItems();
   if (!readScriptUpdateSettings().autoDownload) return;
   setTimeout(() => {
-    void checkScriptUpdates({ install: true, silent: true }).catch(() => undefined);
+    void checkScriptUpdates({ install: true, silent: true })
+      .then((status) => {
+        if (status.state === "installed") return showScriptUpdateResult(status, activeDialogWindow());
+      })
+      .catch(() => undefined);
   }, 6500);
 }
 
