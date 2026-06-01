@@ -669,7 +669,7 @@ function scriptPacksDir() {
   return join(app.getPath("appData"), "Veyra", "ScriptPacks");
 }
 
-const retiredScriptPackIds = new Set(["free-acs"]);
+const retiredBuilderScriptPackIds = new Set(["free-acs"]);
 
 function builderScriptPath(script) {
   const sourceName = String((script && (script.id || script.name)) || "builder-script");
@@ -687,13 +687,15 @@ function readScriptPackScripts() {
   mkdirSync(dir, { recursive: true });
   const packs = [];
   const scriptsById = new Map();
+  const moduleScriptsById = new Map();
   for (const entry of readdirSync(dir)) {
     if (!entry.toLowerCase().endsWith(".json")) continue;
     const filePath = join(dir, entry);
     try {
       const pack = JSON.parse(readFileSync(filePath, "utf8"));
       const packId = cleanId(pack && pack.id);
-      if (retiredScriptPackIds.has(packId)) {
+      const packType = String((pack && pack.type) || "builder-scripts");
+      if (retiredBuilderScriptPackIds.has(packId) && packType === "builder-scripts") {
         rmSync(filePath, { force: true });
         continue;
       }
@@ -708,37 +710,87 @@ function readScriptPackScripts() {
           scriptsById.set(id, { script, packVersion: normalizedPack.summary.version, mtimeMs: normalizedPack.summary.mtimeMs });
         }
       }
+      for (const script of normalizedPack.moduleScripts) {
+        const id = String(script.id || "");
+        if (!id) continue;
+        const existing = moduleScriptsById.get(id);
+        if (!existing || compareScriptVersions(normalizedPack.summary.version, existing.packVersion) >= 0) {
+          moduleScriptsById.set(id, { script, packVersion: normalizedPack.summary.version, mtimeMs: normalizedPack.summary.mtimeMs });
+        }
+      }
     } catch {
       // One malformed downloaded pack should not hide the rest of the script catalog.
     }
   }
   const scripts = Array.from(scriptsById.values()).map((entry) => entry.script);
+  const moduleScripts = Array.from(moduleScriptsById.values()).map((entry) => entry.script);
   scripts.sort((left, right) => String(left.name || left.id || "").localeCompare(String(right.name || right.id || "")));
+  moduleScripts.sort((left, right) => String(left.meta?.name || left.id || "").localeCompare(String(right.meta?.name || right.id || "")));
   packs.sort((left, right) => String(left.id).localeCompare(String(right.id)));
-  return { scripts, packs };
+  return { scripts, moduleScripts, packs };
 }
 
 function normalizeInstalledScriptPack(pack, mtimeMs) {
   if (!pack || typeof pack !== "object") return undefined;
   const id = cleanId(pack.id || "official");
   const version = cleanVersion(pack.version);
+  const type = normalizeScriptPackageType(pack.type);
   const scripts = normalizeScriptPackScripts(pack.scripts);
-  if (!id || !version || scripts.length === 0) return undefined;
+  const moduleScripts = normalizeTypeScriptScriptPackScripts(pack.moduleScripts || pack.modules, { id, version, mtimeMs });
+  if (!id || !version || (scripts.length === 0 && moduleScripts.length === 0)) return undefined;
   return {
     summary: {
       id,
       version,
       name: String(pack.name || id),
+      type,
       installedAt: typeof pack.installedAt === "string" ? pack.installedAt : "",
       mtimeMs
     },
-    scripts
+    scripts,
+    moduleScripts
   };
 }
 
 function normalizeScriptPackScripts(scripts) {
   if (!Array.isArray(scripts)) return [];
   return scripts.filter((script) => script && typeof script === "object" && Array.isArray(script.actions));
+}
+
+function normalizeTypeScriptScriptPackScripts(scripts, pack) {
+  if (!Array.isArray(scripts)) return [];
+  const normalized = [];
+  for (const value of scripts) {
+    if (!value || typeof value !== "object") continue;
+    const id = cleanId(value.id);
+    const source = typeof value.source === "string" ? value.source : "";
+    const sourceSha256 = typeof value.sourceSha256 === "string" ? value.sourceSha256.trim().toLowerCase() : "";
+    if (!id || !source) continue;
+    if (sourceSha256) {
+      const digest = createHash("sha256").update(source, "utf8").digest("hex");
+      if (digest !== sourceSha256) continue;
+    }
+    const metaSource = value.meta && typeof value.meta === "object" ? value.meta : {};
+    const name = String(metaSource.name || value.name || id);
+    const tags = Array.isArray(metaSource.tags) ? metaSource.tags.map((tag) => String(tag || "").trim()).filter(Boolean) : [];
+    normalized.push({
+      id,
+      category: String(value.category || "Official"),
+      map: String(value.map || ""),
+      meta: {
+        name,
+        description: String(metaSource.description || value.description || "Downloaded TypeScript script."),
+        tags,
+        version: cleanVersion(metaSource.version || value.version || pack.version)
+      },
+      source,
+      sourceSha256,
+      packId: pack.id,
+      packVersion: pack.version,
+      mtimeMs: pack.mtimeMs
+    });
+  }
+  return normalized;
 }
 
 function readBuilderScripts() {
@@ -1022,7 +1074,6 @@ function scriptSourcePath(scriptId) {
   const paths = {
     "leveling.high-level-xp": join(scriptsDir, "HighLevelXP.ts"),
     "leveling.class-xp": join(scriptsDir, "ClassXP.ts"),
-    "other.free-acs": join(scriptsDir, "FreeAcs.ts"),
     "zero-to-hero.do-all": join(scriptsDir, "ZeroToHeroKits", "ZeroToHeroKit0DoAll.ts"),
     "zero-to-hero.core": join(scriptsDir, "ZeroToHeroKits", "CoreZeroToHero.ts"),
     "zero-to-hero.member-farms": join(scriptsDir, "ZeroToHeroKits", "MemberFarmsKit.ts"),
@@ -1434,9 +1485,9 @@ function normalizeScriptPackageEntry(value, manifestUrl) {
   const source = value && typeof value === "object" ? value : {};
   const id = cleanId(source.id || "official");
   const version = cleanVersion(source.version);
-  const type = String(source.type || "builder-scripts");
+  const type = normalizeScriptPackageType(source.type);
   const url = typeof source.url === "string" && source.url.trim() ? new URL(source.url.trim(), manifestUrl).toString() : "";
-  if (!id || !version || !url || type !== "builder-scripts") return undefined;
+  if (!id || !version || !url || !isSupportedScriptPackageType(type)) return undefined;
   const minAppVersion = cleanVersion(source.minAppVersion || "");
   if (minAppVersion && compareVersions(app.getVersion(), minAppVersion) < 0) return undefined;
   return {
@@ -1448,6 +1499,16 @@ function normalizeScriptPackageEntry(value, manifestUrl) {
     sha256: typeof source.sha256 === "string" ? source.sha256.trim().toLowerCase() : "",
     currentVersion: ""
   };
+}
+
+function normalizeScriptPackageType(value) {
+  const type = String(value || "builder-scripts").trim().toLowerCase();
+  if (["typescript-scripts", "typescript-module", "compiled-typescript"].includes(type)) return "typescript-scripts";
+  return "builder-scripts";
+}
+
+function isSupportedScriptPackageType(type) {
+  return type === "builder-scripts" || type === "typescript-scripts";
 }
 
 function isScriptPackageNewer(entry, installedVersion) {
@@ -1465,16 +1526,20 @@ async function installScriptPackage(entry, manifestUrl) {
   const pack = JSON.parse(body);
   const id = cleanId(pack.id || entry.id);
   const version = cleanVersion(pack.version || entry.version);
+  const type = normalizeScriptPackageType(pack.type || entry.type);
   const scripts = normalizeScriptPackScripts(pack.scripts);
-  if (!id || !version || scripts.length === 0) throw new Error(`Script pack ${entry.id} did not contain runnable scripts.`);
+  const moduleScripts = normalizeTypeScriptScriptPackScripts(pack.moduleScripts || pack.modules, { id, version, mtimeMs: Date.now() });
+  if (!id || !version || (scripts.length === 0 && moduleScripts.length === 0)) throw new Error(`Script pack ${entry.id} did not contain runnable scripts.`);
   const installedPack = {
     schema: Number(pack.schema || 1),
     id,
     name: String(pack.name || entry.name || id),
     version,
+    type,
     installedAt: new Date().toISOString(),
     sourceUrl: packageUrl,
-    scripts
+    scripts,
+    moduleScripts
   };
   const filePath = scriptPackPath(id);
   mkdirSync(dirname(filePath), { recursive: true });

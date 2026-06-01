@@ -99,7 +99,7 @@ jobs:
         run: pnpm release:set-version ${{ needs.version.outputs.version }}
 
       - name: Typecheck
-        run: pnpm --filter @veyra/flash-client typecheck
+        run: pnpm --filter @veyra/flash-client typecheck && pnpm script-updates:typecheck
 
       - name: Package app
         run: pnpm ${{ matrix.script }}

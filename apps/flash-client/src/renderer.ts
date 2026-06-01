@@ -14,7 +14,6 @@ import { main as runAllStories, meta as allStoriesMeta } from "./scripts/AllStor
 import { main as runFireIslandEmberseaStory, meta as fireIslandEmberseaStoryMeta } from "./scripts/FireIslandEmberseaStory.js";
 import { main as runFireIslandPyrewatchStory, meta as fireIslandPyrewatchStoryMeta } from "./scripts/FireIslandPyrewatchStory.js";
 import { main as runClassXP, meta as classXpMeta } from "./scripts/ClassXP.js";
-import { main as runFreeAcs, meta as freeAcsMeta } from "./scripts/FreeAcs.js";
 import { main as runZeroToHeroDoAll, meta as zeroToHeroDoAllMeta } from "./scripts/ZeroToHeroKits/ZeroToHeroKit0DoAll.js";
 import { main as runHighLevelXP, meta as highLevelXpMeta } from "./scripts/HighLevelXP.js";
 import { generatedStoryDefinitions } from "./scripts/Story/index.js";
@@ -35,6 +34,28 @@ interface ScriptDefinition {
     version: string;
   };
   run: ScriptRunner;
+}
+
+interface DownloadedTypeScriptScript {
+  id: string;
+  category: string;
+  map: string;
+  meta: {
+    name: string;
+    description: string;
+    tags: string[];
+    version: string;
+  };
+  source: string;
+  sourceSha256: string;
+  packId: string;
+  packVersion: string;
+  mtimeMs: number;
+}
+
+interface DownloadedTypeScriptModule {
+  meta?: Partial<ScriptDefinition["meta"]>;
+  main?: (bot: Bot, options?: { signal?: AbortSignal }) => Promise<void> | void;
 }
 
 type PickerId = "auto-class" | "auto-mode" | "jump-cell" | "jump-pad";
@@ -149,13 +170,6 @@ const builtInScripts: ScriptDefinition[] = [
     run: (bot, options) => runClassXP(bot, withSignal({ targetRank: 10 }, options.signal))
   },
   {
-    id: "other.free-acs",
-    category: "Other",
-    map: "borgars",
-    meta: freeAcsMeta,
-    run: (bot, options) => runFreeAcs(bot, withSignal({}, options.signal))
-  },
-  {
     id: "reputation.embersea",
     category: "Reputation",
     map: "fireforge / pyrewatch",
@@ -194,6 +208,8 @@ const builtInScripts: ScriptDefinition[] = [
 ];
 let builderScripts: BuilderScript[] = [];
 let scriptPackScripts: BuilderScript[] = [];
+let downloadedTypeScriptScripts: DownloadedTypeScriptScript[] = [];
+const downloadedTypeScriptModuleCache = new Map<string, Promise<DownloadedTypeScriptModule>>();
 let scripts: ScriptDefinition[] = [...builtInScripts];
 
 const statusEl = byId<HTMLElement>("status");
@@ -759,6 +775,7 @@ async function hydrateBuilderScriptsFromFile(): Promise<void> {
 async function hydrateScriptPackScriptsFromFile(): Promise<void> {
   const value = await readScriptPackScriptsSetting().catch(() => undefined);
   scriptPackScripts = normalizeBuilderScripts(value);
+  downloadedTypeScriptScripts = normalizeDownloadedTypeScriptScripts(value);
   syncScriptCatalog();
 }
 
@@ -787,7 +804,12 @@ async function deleteBuilderScript(id: string): Promise<void> {
 }
 
 function syncScriptCatalog(): void {
-  scripts = [...builtInScripts, ...scriptPackScripts.map(scriptPackScriptDefinition), ...builderScripts.map(builderScriptDefinition)];
+  scripts = [
+    ...builtInScripts,
+    ...downloadedTypeScriptScripts.map(typeScriptScriptPackDefinition),
+    ...scriptPackScripts.map(scriptPackScriptDefinition),
+    ...builderScripts.map(builderScriptDefinition)
+  ];
   if (!scripts.some((script) => script.id === selectedScriptId)) selectedScriptId = scripts[0]?.id ?? "";
   if (!scripts.some((script) => script.id === loadedScriptId)) loadedScriptId = selectedScriptId;
   hydrateScripts();
@@ -811,6 +833,17 @@ function scriptPackScriptDefinition(script: BuilderScript): ScriptDefinition {
   };
 }
 
+function typeScriptScriptPackDefinition(script: DownloadedTypeScriptScript): ScriptDefinition {
+  const normalized = normalizeDownloadedTypeScriptScript(script);
+  return {
+    id: normalized.id,
+    category: normalized.category,
+    map: normalized.map,
+    meta: normalized.meta,
+    run: (bot, options) => runDownloadedTypeScriptScript(normalized, bot, options)
+  };
+}
+
 function builderScriptDefinition(script: BuilderScript): ScriptDefinition {
   const normalized = normalizeBuilderScript(script);
   return {
@@ -827,12 +860,73 @@ function builderScriptDefinition(script: BuilderScript): ScriptDefinition {
   };
 }
 
+function normalizeDownloadedTypeScriptScripts(value: unknown): DownloadedTypeScriptScript[] {
+  const source = value && typeof value === "object" && !Array.isArray(value) ? (value as { moduleScripts?: unknown }) : {};
+  const scripts = Array.isArray(source.moduleScripts) ? source.moduleScripts : [];
+  return scripts.map(normalizeDownloadedTypeScriptScript).filter((script) => script.source);
+}
+
+function normalizeDownloadedTypeScriptScript(value: unknown): DownloadedTypeScriptScript {
+  const source = value && typeof value === "object" && !Array.isArray(value) ? (value as Partial<DownloadedTypeScriptScript>) : {};
+  const metaSource: Partial<DownloadedTypeScriptScript["meta"]> = source.meta && typeof source.meta === "object" ? source.meta : {};
+  return {
+    id: cleanScriptId(source.id, "official.script"),
+    category: cleanText(source.category, "Official"),
+    map: cleanText(source.map, ""),
+    meta: {
+      name: cleanText(metaSource.name, "Downloaded Script"),
+      description: cleanText(metaSource.description, "Downloaded TypeScript script."),
+      tags: Array.isArray(metaSource.tags) ? uniqueStrings(metaSource.tags.map((tag) => String(tag))) : [],
+      version: cleanText(metaSource.version, "0.0.0")
+    },
+    source: typeof source.source === "string" ? source.source : "",
+    sourceSha256: typeof source.sourceSha256 === "string" ? source.sourceSha256 : "",
+    packId: cleanScriptId(source.packId, "official"),
+    packVersion: cleanText(source.packVersion, "0.0.0"),
+    mtimeMs: Number.isFinite(Number(source.mtimeMs)) ? Number(source.mtimeMs) : 0
+  };
+}
+
+async function runDownloadedTypeScriptScript(script: DownloadedTypeScriptScript, bot: Bot, options: { signal?: AbortSignal }): Promise<void> {
+  const module = await loadDownloadedTypeScriptModule(script);
+  if (typeof module.main !== "function") throw new Error(`${script.meta.name} does not export main(bot, options).`);
+  await module.main(bot, withSignal({}, options.signal));
+}
+
+async function loadDownloadedTypeScriptModule(script: DownloadedTypeScriptScript): Promise<DownloadedTypeScriptModule> {
+  const cacheKey = `${script.id}:${script.packVersion}:${script.sourceSha256 || script.mtimeMs}`;
+  const cached = downloadedTypeScriptModuleCache.get(cacheKey);
+  if (cached) return cached;
+
+  const promise = importDownloadedTypeScriptModule(script).catch((error) => {
+    downloadedTypeScriptModuleCache.delete(cacheKey);
+    throw error;
+  });
+  downloadedTypeScriptModuleCache.set(cacheKey, promise);
+  return promise;
+}
+
+async function importDownloadedTypeScriptModule(script: DownloadedTypeScriptScript): Promise<DownloadedTypeScriptModule> {
+  const sourceUrl = `veyra-script-pack://${script.packId}/${script.id}.js`;
+  const blob = new Blob([`${script.source}\n//# sourceURL=${sourceUrl}\n`], { type: "text/javascript" });
+  const url = URL.createObjectURL(blob);
+  try {
+    const module = (await import(url)) as DownloadedTypeScriptModule;
+    if (!module || typeof module !== "object" || typeof module.main !== "function") {
+      throw new Error(`${script.meta.name} did not load as a TypeScript script module.`);
+    }
+    return module;
+  } finally {
+    URL.revokeObjectURL(url);
+  }
+}
+
 function isBuilderScriptId(scriptId: string): boolean {
   return scriptId.startsWith("builder.") || builderScripts.some((script) => script.id === scriptId);
 }
 
 function isScriptPackScriptId(scriptId: string): boolean {
-  return scriptPackScripts.some((script) => script.id === scriptId);
+  return scriptPackScripts.some((script) => script.id === scriptId) || downloadedTypeScriptScripts.some((script) => script.id === scriptId);
 }
 
 async function loadScriptById(scriptId: string): Promise<void> {
@@ -2251,6 +2345,20 @@ function stringFrom(value: unknown, fallback = ""): string {
   if (typeof value === "string") return value;
   if (typeof value === "number" || typeof value === "boolean" || typeof value === "bigint") return String(value);
   return fallback;
+}
+
+function cleanText(value: unknown, fallback: string): string {
+  const text = stringFrom(value, fallback).trim();
+  return text || fallback;
+}
+
+function cleanScriptId(value: unknown, fallback: string): string {
+  const id = stringFrom(value, fallback)
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9_.-]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+  return id || fallback;
 }
 
 function booleanValue(value: unknown, fallback: boolean): boolean {

@@ -89,6 +89,12 @@ Veyra can update official automation script packs separately from the app. Use `
 
 The built-in `Refresh List` button only rescans scripts that are already installed locally. It does not download from GitHub.
 
+Official update packs are authored as TypeScript in `script-updates/src`, then compiled into downloadable module packs with:
+
+```sh
+pnpm script-updates:build
+```
+
 The default script update manifest lives at `script-updates/stable.json`. Publish script-only updates with a non-release commit, for example `chore(scripts): publish script pack`, so semantic-release skips app packaging.
 
 ## Release Versioning
