@@ -302,12 +302,12 @@ export class BrowserFlashBot implements Bot {
 
     const currentCell = (snapshot.cell || "").trim();
     const normalizedCell = currentCell.toLowerCase();
-    if (!currentCell || normalizedCell === "blank" || (!force && normalizedCell === "enter")) return;
+    if (!currentCell || normalizedCell === "enter" || (!force && normalizedCell === "enter")) return;
 
     this.log(`Leaving ${currentCell || "current"} cell before map join.`);
     await this.call("untargetSelf").catch(() => undefined);
-    await this.call("jumpCorrectRoom", "Blank", "Spawn", false, true).catch(() => undefined);
-    await this.callGameFunction("world.moveToCell", "Blank", "Spawn", true).catch(() => undefined);
+    await this.call("jumpCorrectRoom", "Enter", "Spawn", false, true).catch(() => undefined);
+    await this.callGameFunction("world.moveToCell", "Enter", "Spawn", true).catch(() => undefined);
     await this.delay(300);
   }
 
