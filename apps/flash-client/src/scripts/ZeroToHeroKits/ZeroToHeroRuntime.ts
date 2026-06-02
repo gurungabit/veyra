@@ -783,15 +783,11 @@ export class ZeroToHeroRuntime {
     const actionDelay = clamp(Number(settings?.values["action-delay"] ?? 700), 250, 3000);
     let lastError: unknown;
 
-    const quest = await this.ensureQuestLoaded(questId).catch(() => undefined);
+    const quest = await this.ensureQuestLoaded(questId, { allowFallback: false }).catch(() => undefined);
     if (!quest) throw new Error(`Quest ${questId} did not load; refusing to accept it.`);
-    const usingCachedQuestData = quest === questDataFallbacks[questId];
-    if (usingCachedQuestData)
-      this.log(`Quest ${questId} did not load from Flash; using cached Skua quest data.`);
     await this.bot.delay(actionDelay * 2, this.signal);
 
-    const acceptTries = usingCachedQuestData ? Math.min(tries, 2) : tries;
-    for (let attempt = 1; attempt <= acceptTries; attempt += 1) {
+    for (let attempt = 1; attempt <= tries; attempt += 1) {
       this.throwIfAborted();
       await this.ensureLoggedIn();
       if (await this.isQuestCompleted(questId).catch(() => false)) {
@@ -802,14 +798,10 @@ export class ZeroToHeroRuntime {
 
       await this.throttleServerAction();
       this.log(`Accepting quest ${questId}${attempt > 1 ? ` (retry ${attempt})` : ""}.`);
-      if (usingCachedQuestData) {
+      await this.bot.callGameFunction("world.acceptQuest", questId).catch(async (error) => {
+        lastError = error;
         await this.sendAcceptQuestPacket(questId);
-      } else {
-        await this.bot.callGameFunction("world.acceptQuest", questId).catch(async (error) => {
-          lastError = error;
-          await this.sendAcceptQuestPacket(questId);
-        });
-      }
+      });
 
       const afterAccept = await this.bot.snapshot().catch(() => undefined);
       if (afterAccept && !afterAccept.loggedIn) {
@@ -818,7 +810,13 @@ export class ZeroToHeroRuntime {
         );
       }
 
-      if (await this.waitForQuestInProgress(questId, true, Math.max(5000, actionDelay * 4))) {
+      const acceptResult = await this.waitForQuestAcceptResult(questId, Math.max(5000, actionDelay * 4));
+      if (acceptResult === "disconnected") {
+        throw new Error(
+          `Accepting quest ${questId} disconnected the client. The live server rejected the quest accept; the quest may not be available to this account yet.`
+        );
+      }
+      if (acceptResult === "accepted") {
         await this.bot.delay(actionDelay, this.signal);
         return;
       }
@@ -828,7 +826,7 @@ export class ZeroToHeroRuntime {
     }
 
     const suffix = lastError instanceof Error ? ` Last Flash error: ${lastError.message.split("\n")[0]}` : "";
-    throw new Error(`Quest ${questId} was not accepted after ${acceptTries} tries.${suffix}`);
+    throw new Error(`Quest ${questId} was not accepted after ${tries} tries.${suffix}`);
   }
 
   async completeQuest(questId: number, rewardId = -1, turnIns = 1): Promise<void> {
@@ -892,6 +890,33 @@ export class ZeroToHeroRuntime {
       await this.bot.delay(250, this.signal);
     }
     return false;
+  }
+
+  private async waitForQuestAcceptResult(
+    questId: number,
+    timeoutMs: number
+  ): Promise<"accepted" | "disconnected" | "timeout"> {
+    const deadline = Date.now() + timeoutMs;
+    while (!this.signal?.aborted && Date.now() < deadline) {
+      const snapshot = await this.bot.snapshot().catch(() => undefined);
+      if (snapshot && !snapshot.loggedIn) return "disconnected";
+      const direct = await this.bot
+        .callGameFunction<unknown>("world.isQuestInProgress", questId)
+        .catch(() => undefined);
+      if (direct !== undefined && toBoolean(direct)) return "accepted";
+      const quest = await this.findQuestInTree(questId).catch(() => undefined);
+      if (quest) {
+        const status = stringFrom(firstFrom(quest, ["sStatus", "Status", "status"])).toLowerCase();
+        if (
+          status === "p" ||
+          status === "active" ||
+          toBoolean(firstFrom(quest, ["bAccepted", "Active", "active", "inProgress", "isInProgress"]))
+        )
+          return "accepted";
+      }
+      await this.bot.delay(250, this.signal);
+    }
+    return "timeout";
   }
 
   async getMapItem(map: string | undefined, mapItemId: number, quantity = 1): Promise<void> {
@@ -6581,16 +6606,18 @@ export class ZeroToHeroRuntime {
     return { ready: missing.length === 0, summary: missing.join(", ") };
   }
 
-  private async ensureQuestLoaded(questId: number): Promise<Record<string, unknown> | undefined> {
+  private async ensureQuestLoaded(
+    questId: number,
+    options: { allowFallback?: boolean } = {}
+  ): Promise<Record<string, unknown> | undefined> {
     const existing = await this.findQuestInTree(questId);
     if (existing) return existing;
-    const fallback = questDataFallbacks[questId];
+    const fallback = options.allowFallback === false ? undefined : questDataFallbacks[questId];
     const startedAt = Date.now();
-    const timeoutMs = fallback ? 2000 : 8000;
+    const timeoutMs = options.allowFallback === false ? 12000 : fallback ? 4000 : 8000;
     while (!this.signal?.aborted && Date.now() - startedAt < timeoutMs) {
       await this.throttleServerAction();
       await this.bot.callGameFunction("world.showQuests", String(questId), "q").catch(() => undefined);
-      await this.sendGetQuestPacket(questId).catch(() => undefined);
       await this.bot.delay(500, this.signal);
       const quest = await this.findQuestInTree(questId);
       if (quest) return quest;
@@ -6890,12 +6917,11 @@ function recordsFrom(value: unknown): Record<string, unknown>[] {
   const parsed = parseMaybeJson<unknown>(value);
   if (Array.isArray(parsed)) return parsed.map(asRecord).filter((record) => Object.keys(record).length > 0);
   if (parsed && typeof parsed === "object") {
-    const entries: unknown[] = Object.values(parsed as Record<string, unknown>).flatMap((entry: unknown) =>
-      Array.isArray(entry) ? unknownArrayFrom(entry) : [entry]
-    );
-    return entries
-      .map(asRecord)
-      .filter((record) => Object.keys(record).length > 0);
+    return Object.entries(parsed as Record<string, unknown>).flatMap(([key, entry]) => {
+      if (Array.isArray(entry)) return unknownArrayFrom(entry).map(asRecord);
+      if (entry && typeof entry === "object") return [{ ID: key, ...(entry as Record<string, unknown>) }];
+      return [{ ID: key, value: entry }];
+    }).filter((record) => Object.keys(record).length > 0);
   }
   return [];
 }
