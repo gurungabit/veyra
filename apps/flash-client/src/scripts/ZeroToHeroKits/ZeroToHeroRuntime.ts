@@ -756,10 +756,12 @@ export class ZeroToHeroRuntime {
 
     const settings = await this.bot.gameOptions().catch(() => undefined);
     const tries = clamp(Number(settings?.values["quest-accept-and-complete-tries"] ?? 8), 1, 30);
+    const actionDelay = clamp(Number(settings?.values["action-delay"] ?? 700), 250, 3000);
     let lastError: unknown;
 
-    await this.sendGetQuestPacket(questId).catch(() => undefined);
-    await this.bot.delay(350, this.signal);
+    const quest = await this.ensureQuestLoaded(questId).catch(() => undefined);
+    if (!quest) throw new Error(`Quest ${questId} did not load; refusing to accept it.`);
+    await this.bot.delay(actionDelay * 2, this.signal);
 
     for (let attempt = 1; attempt <= tries; attempt += 1) {
       this.throwIfAborted();
@@ -774,18 +776,18 @@ export class ZeroToHeroRuntime {
       this.log(`Accepting quest ${questId}${attempt > 1 ? ` (retry ${attempt})` : ""}.`);
       await this.bot.callGameFunction("world.acceptQuest", questId).catch(async (error) => {
         lastError = error;
-        const room = (await this.snapshot()).room || 1;
+        const room = (await this.bot.snapshot().catch(() => undefined))?.room || 1;
         await this.throttleServerAction();
         await this.bot.sendPacket(`%xt%zm%acceptQuest%${room}%${questId}%`);
       });
 
-      if (await this.waitForQuestInProgress(questId, true, 5000)) {
-        await this.bot.delay(650, this.signal);
+      if (await this.waitForQuestInProgress(questId, true, Math.max(5000, actionDelay * 4))) {
+        await this.bot.delay(actionDelay, this.signal);
         return;
       }
 
       await this.sendGetQuestPacket(questId).catch(() => undefined);
-      await this.bot.delay(650, this.signal);
+      await this.bot.delay(actionDelay, this.signal);
     }
 
     const suffix = lastError instanceof Error ? ` Last Flash error: ${lastError.message.split("\n")[0]}` : "";
