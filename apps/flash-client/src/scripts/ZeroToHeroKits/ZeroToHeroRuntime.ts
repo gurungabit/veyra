@@ -785,11 +785,13 @@ export class ZeroToHeroRuntime {
 
     const quest = await this.ensureQuestLoaded(questId).catch(() => undefined);
     if (!quest) throw new Error(`Quest ${questId} did not load; refusing to accept it.`);
-    if (quest === questDataFallbacks[questId])
+    const usingCachedQuestData = quest === questDataFallbacks[questId];
+    if (usingCachedQuestData)
       this.log(`Quest ${questId} did not load from Flash; using cached Skua quest data.`);
     await this.bot.delay(actionDelay * 2, this.signal);
 
-    for (let attempt = 1; attempt <= tries; attempt += 1) {
+    const acceptTries = usingCachedQuestData ? Math.min(tries, 2) : tries;
+    for (let attempt = 1; attempt <= acceptTries; attempt += 1) {
       this.throwIfAborted();
       await this.ensureLoggedIn();
       if (await this.isQuestCompleted(questId).catch(() => false)) {
@@ -800,12 +802,21 @@ export class ZeroToHeroRuntime {
 
       await this.throttleServerAction();
       this.log(`Accepting quest ${questId}${attempt > 1 ? ` (retry ${attempt})` : ""}.`);
-      await this.bot.callGameFunction("world.acceptQuest", questId).catch(async (error) => {
-        lastError = error;
-        const room = (await this.bot.snapshot().catch(() => undefined))?.room || 1;
-        await this.throttleServerAction();
-        await this.bot.sendPacket(`%xt%zm%acceptQuest%${room}%${questId}%`);
-      });
+      if (usingCachedQuestData) {
+        await this.sendAcceptQuestPacket(questId);
+      } else {
+        await this.bot.callGameFunction("world.acceptQuest", questId).catch(async (error) => {
+          lastError = error;
+          await this.sendAcceptQuestPacket(questId);
+        });
+      }
+
+      const afterAccept = await this.bot.snapshot().catch(() => undefined);
+      if (afterAccept && !afterAccept.loggedIn) {
+        throw new Error(
+          `Accepting quest ${questId} disconnected the client. The live server rejected the quest accept; the quest may not be available to this account yet.`
+        );
+      }
 
       if (await this.waitForQuestInProgress(questId, true, Math.max(5000, actionDelay * 4))) {
         await this.bot.delay(actionDelay, this.signal);
@@ -817,7 +828,7 @@ export class ZeroToHeroRuntime {
     }
 
     const suffix = lastError instanceof Error ? ` Last Flash error: ${lastError.message.split("\n")[0]}` : "";
-    throw new Error(`Quest ${questId} was not accepted after ${tries} tries.${suffix}`);
+    throw new Error(`Quest ${questId} was not accepted after ${acceptTries} tries.${suffix}`);
   }
 
   async completeQuest(questId: number, rewardId = -1, turnIns = 1): Promise<void> {
@@ -6630,6 +6641,13 @@ export class ZeroToHeroRuntime {
     const room = (await this.snapshot()).room || 1;
     await this.throttleServerAction();
     await this.bot.sendPacket(`%xt%zm%getQuest%${room}%${questId}%`);
+  }
+
+  private async sendAcceptQuestPacket(questId: number): Promise<void> {
+    if (questId <= 0) return;
+    const room = (await this.snapshot()).room || 1;
+    await this.throttleServerAction();
+    await this.bot.sendPacket(`%xt%zm%acceptQuest%${room}%${questId}%`);
   }
 
   private throwMissingTask(name: string, detail?: string): never {
