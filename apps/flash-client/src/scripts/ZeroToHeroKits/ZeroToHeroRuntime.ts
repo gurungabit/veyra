@@ -784,7 +784,10 @@ export class ZeroToHeroRuntime {
     let lastError: unknown;
 
     const quest = await this.ensureQuestLoaded(questId, { allowFallback: false }).catch(() => undefined);
-    if (!quest) throw new Error(`Quest ${questId} did not load; refusing to accept it.`);
+    if (!quest) {
+      const detail = await this.questTreeSummary(questId).catch(() => "");
+      throw new Error(`Quest ${questId} did not load${detail ? ` (${detail})` : ""}; refusing to accept it.`);
+    }
     await this.bot.delay(actionDelay * 2, this.signal);
 
     for (let attempt = 1; attempt <= tries; attempt += 1) {
@@ -6657,10 +6660,45 @@ export class ZeroToHeroRuntime {
   }
 
   private async findQuestInTree(questId: number): Promise<Record<string, unknown> | undefined> {
+    const direct = await this.findQuestByTreeKey(questId);
+    if (direct) return direct;
+
     const tree = await this.bot.getGameObject<unknown>("world.questTree").catch(() => undefined);
     return recordsFrom(tree).find(
       (quest) => numberFrom(quest, ["QuestID", "ID", "id", "questId"]) === questId
     );
+  }
+
+  private async findQuestByTreeKey(questId: number): Promise<Record<string, unknown> | undefined> {
+    for (const key of [String(questId), `q${questId}`]) {
+      const raw = await this.bot.call<unknown>("getGameObjectKey", "world.questTree", key).catch(() => undefined);
+      const parsed = parseMaybeJson<unknown>(raw);
+      const record = asRecord(parsed);
+      if (Object.keys(record).length === 0) continue;
+      return { ID: questId, ...record };
+    }
+    return undefined;
+  }
+
+  private async questTreeSummary(questId: number): Promise<string> {
+    const tree = await this.bot.getGameObject<unknown>("world.questTree").catch(() => undefined);
+    const parsed = parseMaybeJson<unknown>(tree);
+    const keys = parsed && typeof parsed === "object" && !Array.isArray(parsed)
+      ? Object.keys(parsed as Record<string, unknown>).slice(0, 8)
+      : [];
+    const ids = recordsFrom(parsed)
+      .map((quest) => numberFrom(quest, ["QuestID", "ID", "id", "questId"]))
+      .filter((id) => id > 0)
+      .slice(0, 8);
+    const direct = await this.bot.call<unknown>("getGameObjectKey", "world.questTree", String(questId)).catch(() => undefined);
+    const directRecord = asRecord(parseMaybeJson<unknown>(direct));
+    const directKeys = Object.keys(directRecord).slice(0, 8);
+    const parts = [
+      `questTree keys=${keys.length > 0 ? keys.join(",") : "none"}`,
+      `ids=${ids.length > 0 ? ids.join(",") : "none"}`,
+      `directKeys=${directKeys.length > 0 ? directKeys.join(",") : "none"}`
+    ];
+    return parts.join("; ");
   }
 
   private async sendGetQuestPacket(questId: number): Promise<void> {
