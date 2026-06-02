@@ -89,6 +89,30 @@ const HORC_FACTION_ID = 19;
 const EMBERSEA_FACTION_ID = 43;
 const GLACERA_FACTION_ID = 52;
 
+const questDataFallbacks: Record<number, Record<string, unknown>> = {
+  10584: {
+    ID: 10584,
+    Slot: 629,
+    Value: 1,
+    Name: "Forge Your Free AC Gift",
+    Once: true,
+    Level: 20,
+    RequiredFactionId: 1,
+    Requirements: [
+      {
+        ItemID: 83719,
+        sName: "Cookie Dough",
+        iQty: 1,
+        iStk: 1,
+        bTemp: "1",
+        sType: "Quest Item"
+      }
+    ],
+    Rewards: [],
+    SimpleRewards: []
+  }
+};
+
 const experienceRoutes: FarmRoute[] = [
   {
     minLevel: 1,
@@ -761,6 +785,8 @@ export class ZeroToHeroRuntime {
 
     const quest = await this.ensureQuestLoaded(questId).catch(() => undefined);
     if (!quest) throw new Error(`Quest ${questId} did not load; refusing to accept it.`);
+    if (quest === questDataFallbacks[questId])
+      this.log(`Quest ${questId} did not load from Flash; using cached Skua quest data.`);
     await this.bot.delay(actionDelay * 2, this.signal);
 
     for (let attempt = 1; attempt <= tries; attempt += 1) {
@@ -6447,7 +6473,7 @@ export class ZeroToHeroRuntime {
   }
 
   private async acceptQuestDrops(questId: number): Promise<void> {
-    const quest = await this.findQuestInTree(questId).catch(() => undefined);
+    const quest = (await this.findQuestInTree(questId).catch(() => undefined)) ?? questDataFallbacks[questId];
     const names = quest
       ? questRequirementRecords(quest)
           .map((record) => stringFrom(firstFrom(record, ["sName", "Name", "name", "strName"])).trim())
@@ -6495,7 +6521,7 @@ export class ZeroToHeroRuntime {
       if (direct !== undefined) return { ready: toBoolean(direct), summary: "" };
     }
 
-    const quest = await this.findQuestInTree(questId);
+    const quest = (await this.findQuestInTree(questId)) ?? questDataFallbacks[questId];
     if (!quest) return undefined;
     const directFlag = booleanFromRecord(quest, [
       "bCanComplete",
@@ -6547,8 +6573,10 @@ export class ZeroToHeroRuntime {
   private async ensureQuestLoaded(questId: number): Promise<Record<string, unknown> | undefined> {
     const existing = await this.findQuestInTree(questId);
     if (existing) return existing;
+    const fallback = questDataFallbacks[questId];
     const startedAt = Date.now();
-    while (!this.signal?.aborted && Date.now() - startedAt < 8000) {
+    const timeoutMs = fallback ? 2000 : 8000;
+    while (!this.signal?.aborted && Date.now() - startedAt < timeoutMs) {
       await this.throttleServerAction();
       await this.bot.callGameFunction("world.showQuests", String(questId), "q").catch(() => undefined);
       await this.sendGetQuestPacket(questId).catch(() => undefined);
@@ -6556,7 +6584,7 @@ export class ZeroToHeroRuntime {
       const quest = await this.findQuestInTree(questId);
       if (quest) return quest;
     }
-    return undefined;
+    return fallback;
   }
 
   private async isQuestUnlocked(questId: number): Promise<boolean> {

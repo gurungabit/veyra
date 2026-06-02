@@ -5,7 +5,7 @@ export const meta = {
   name: "Free ACs",
   description: "Runs the yearly Free ACs quest and completes Borgars first when needed.",
   tags: ["acs", "free acs", "borgars", "quest"],
-  version: "2026.06.02.2"
+  version: "2026.06.02.3"
 };
 
 export async function main(bot: Bot, options: ZeroToHeroRuntimeOptions = {}): Promise<void> {
@@ -31,6 +31,7 @@ export async function main(bot: Bot, options: ZeroToHeroRuntimeOptions = {}): Pr
 
   runtime.log("Free ACs is a one-time quest per account.");
   await runBorgarsStory(runtime);
+  await runtime.join("borgars", "Enter", "Spawn");
   await runtime.completeQuestPlan(
     10584,
     [{ kind: "hunt", map: "borgars", monster: "Burglinster", item: "Cookie Dough", quantity: 1, isTemp: true }],
