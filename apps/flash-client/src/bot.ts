@@ -42,6 +42,8 @@ export interface Bot {
   call<T>(name: string, ...args: unknown[]): Promise<T>;
 }
 
+export type ReloginHandler = (signal?: AbortSignal) => Promise<PlayerSnapshot | boolean | void>;
+
 type FlashObject = HTMLElement & Record<string, (...args: unknown[]) => unknown>;
 
 const publicOnlyMaps = new Set<string>();
@@ -50,7 +52,8 @@ export class BrowserFlashBot implements Bot {
   constructor(
     private readonly flash: () => FlashObject,
     private readonly logger: (message: string) => void,
-    private readonly readOptions: () => Promise<GameOptionsState> = () => Promise.resolve(createDefaultGameOptionsState())
+    private readonly readOptions: () => Promise<GameOptionsState> = () => Promise.resolve(createDefaultGameOptionsState()),
+    private readonly relogin: ReloginHandler | undefined = undefined
   ) {}
 
   log(message: string): void {
@@ -76,9 +79,21 @@ export class BrowserFlashBot implements Bot {
   }
 
   async waitForLogin(signal?: AbortSignal): Promise<PlayerSnapshot> {
+    let reloginTried = false;
     for (;;) {
       const snapshot = await this.snapshot();
       if (snapshot.loggedIn) return snapshot;
+      if (!reloginTried && this.relogin) {
+        reloginTried = true;
+        this.log("Auto relogin triggered.");
+        const result = await this.relogin(signal).catch((error) => {
+          this.log(`Auto relogin failed: ${describeUnknownError(error)}`);
+          return false;
+        });
+        if (isPlayerSnapshot(result) && result.loggedIn) return result;
+        const afterRelogin = await this.snapshot().catch(() => undefined);
+        if (afterRelogin?.loggedIn) return afterRelogin;
+      }
       this.log("Waiting for login.");
       await this.delay(1000, signal);
     }
@@ -392,6 +407,10 @@ export class BrowserFlashBot implements Bot {
       return Promise.reject(new Error(`Flash callback ${name} failed: ${describeUnknownError(error)}`));
     }
   }
+}
+
+function isPlayerSnapshot(value: unknown): value is PlayerSnapshot {
+  return Boolean(value && typeof value === "object" && "loggedIn" in value);
 }
 
 function toBoolean(value: unknown): boolean {

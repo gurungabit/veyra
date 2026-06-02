@@ -744,14 +744,52 @@ export class ZeroToHeroRuntime {
   }
 
   async acceptQuest(questId: number): Promise<void> {
+    if (questId <= 0) throw new Error("acceptQuest needs a valid quest ID.");
+    if (await this.isQuestCompleted(questId).catch(() => false)) {
+      this.log(`Quest ${questId} is already completed; skipping accept.`);
+      return;
+    }
+    if (await this.isQuestInProgress(questId).catch(() => false)) {
+      this.log(`Quest ${questId} is already accepted.`);
+      return;
+    }
+
+    const settings = await this.bot.gameOptions().catch(() => undefined);
+    const tries = clamp(Number(settings?.values["quest-accept-and-complete-tries"] ?? 8), 1, 30);
+    let lastError: unknown;
+
     await this.sendGetQuestPacket(questId).catch(() => undefined);
-    await this.throttleServerAction();
-    this.log(`Accepting quest ${questId}.`);
-    await this.bot.callGameFunction("world.acceptQuest", questId).catch(async () => {
-      const room = (await this.snapshot()).room || 1;
-      await this.bot.sendPacket(`%xt%zm%acceptQuest%${room}%${questId}%`);
-    });
-    await this.bot.delay(650, this.signal);
+    await this.bot.delay(350, this.signal);
+
+    for (let attempt = 1; attempt <= tries; attempt += 1) {
+      this.throwIfAborted();
+      await this.ensureLoggedIn();
+      if (await this.isQuestCompleted(questId).catch(() => false)) {
+        this.log(`Quest ${questId} is already completed; skipping accept.`);
+        return;
+      }
+      if (await this.isQuestInProgress(questId).catch(() => false)) return;
+
+      await this.throttleServerAction();
+      this.log(`Accepting quest ${questId}${attempt > 1 ? ` (retry ${attempt})` : ""}.`);
+      await this.bot.callGameFunction("world.acceptQuest", questId).catch(async (error) => {
+        lastError = error;
+        const room = (await this.snapshot()).room || 1;
+        await this.throttleServerAction();
+        await this.bot.sendPacket(`%xt%zm%acceptQuest%${room}%${questId}%`);
+      });
+
+      if (await this.waitForQuestInProgress(questId, true, 5000)) {
+        await this.bot.delay(650, this.signal);
+        return;
+      }
+
+      await this.sendGetQuestPacket(questId).catch(() => undefined);
+      await this.bot.delay(650, this.signal);
+    }
+
+    const suffix = lastError instanceof Error ? ` Last Flash error: ${lastError.message.split("\n")[0]}` : "";
+    throw new Error(`Quest ${questId} was not accepted after ${tries} tries.${suffix}`);
   }
 
   async completeQuest(questId: number, rewardId = -1, turnIns = 1): Promise<void> {
@@ -788,6 +826,33 @@ export class ZeroToHeroRuntime {
       await this.bot.callGameFunction<unknown>("world.getQuestValue", slot).catch(() => 0)
     );
     return currentValue >= value;
+  }
+
+  async isQuestInProgress(questId: number): Promise<boolean> {
+    if (questId <= 0) return false;
+    const snapshot = await this.bot.snapshot().catch(() => undefined);
+    if (snapshot && !snapshot.loggedIn) await this.ensureLoggedIn();
+
+    const direct = await this.bot.callGameFunction<unknown>("world.isQuestInProgress", questId).catch(() => undefined);
+    if (direct !== undefined) return toBoolean(direct);
+
+    const quest = await this.ensureQuestLoaded(questId).catch(() => undefined);
+    if (!quest) return false;
+    const status = stringFrom(firstFrom(quest, ["sStatus", "Status", "status"])).toLowerCase();
+    return (
+      status === "p" ||
+      status === "active" ||
+      toBoolean(firstFrom(quest, ["bAccepted", "Active", "active", "inProgress", "isInProgress"]))
+    );
+  }
+
+  private async waitForQuestInProgress(questId: number, expected: boolean, timeoutMs: number): Promise<boolean> {
+    const deadline = Date.now() + timeoutMs;
+    while (!this.signal?.aborted && Date.now() < deadline) {
+      if ((await this.isQuestInProgress(questId).catch(() => false)) === expected) return true;
+      await this.bot.delay(250, this.signal);
+    }
+    return false;
   }
 
   async getMapItem(map: string | undefined, mapItemId: number, quantity = 1): Promise<void> {

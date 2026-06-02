@@ -2,6 +2,7 @@ import { BrowserFlashBot, type Bot, type PlayerSnapshot } from "./bot.js";
 import { createDefaultArmySettings, isArmyRole, normalizeArmySettings, type ArmyRole, type ArmySettings } from "./armySettings.js";
 import {
   GAME_OPTION_DEFS,
+  RELOGIN_SERVERS,
   normalizeGameOptionsState,
   readGameOptionsState,
   writeGameOptionsState,
@@ -209,6 +210,7 @@ let gameOptionsState: GameOptionsState = readGameOptionsState();
 let launchAccount: LaunchAccountPayload | undefined;
 let launchLoginStarted = false;
 let launchLoginTimer: number | undefined;
+let reloginPromise: Promise<boolean> | undefined;
 const toolBus = new BroadcastChannel(`veyra-tools-${instanceId}`);
 const themeBus = new BroadcastChannel("veyra-theme");
 const armyBus = new BroadcastChannel("veyra-army");
@@ -3018,7 +3020,7 @@ function nativeApi(): {
 }
 
 function createBot(label: string): BrowserFlashBot {
-  return new BrowserFlashBot(getFlash, (message) => log("script", `[${label}] ${message}`), readPersistedGameOptions);
+  return new BrowserFlashBot(getFlash, (message) => log("script", `[${label}] ${message}`), readPersistedGameOptions, ensureLauncherRelogin);
 }
 
 function installFlashCallbacks(): void {
@@ -3138,6 +3140,133 @@ function queueLaunchLogin(delayMs: number): void {
     launchLoginTimer = undefined;
     void loginLaunchAccount();
   }, delayMs);
+}
+
+async function ensureLauncherRelogin(signal?: AbortSignal): Promise<boolean> {
+  const settings = await readPersistedGameOptions().catch(() => gameOptionsState);
+  const autoReloginEnabled = settings.values["auto-relogin"] === true || Boolean(scriptAbort);
+  if (!autoReloginEnabled) return false;
+  if (!launchAccount) {
+    log("script", "[Relogin] Auto relogin needs a launcher account.");
+    return false;
+  }
+  if (reloginPromise) return reloginPromise;
+  reloginPromise = reloginLaunchAccount(settings, signal).finally(() => {
+    reloginPromise = undefined;
+  });
+  return reloginPromise;
+}
+
+async function reloginLaunchAccount(settings: GameOptionsState, signal?: AbortSignal): Promise<boolean> {
+  const account = launchAccount;
+  if (!account) return false;
+
+  const bot = new BrowserFlashBot(getFlash, (message) => log("script", `[Relogin] ${message}`), readPersistedGameOptions);
+  const tries = clampInteger(settings.values["relogin-tries"], 1, 10, 5);
+  const reloginDelay = clampInteger(settings.values["relogin-try-delay"], 0, 30000, 800);
+  const loginTimeout = clampInteger(settings.values["login-timeout"], 5000, 120000, 30000);
+  const preferredServerName = cleanServerName(String(settings.values["relogin-server"] || account.server?.name || RELOGIN_SERVERS[0] || ""));
+  const allowAnyServer = settings.values["auto-relogin-any"] === true || settings.values["retry-relogin"] !== false;
+  const attemptedServers = new Set<string>();
+
+  for (let attempt = 1; attempt <= tries; attempt += 1) {
+    throwIfAborted(signal);
+    const current = await bot.snapshot().catch(() => undefined);
+    if (current?.loggedIn) return true;
+
+    const servers = await fetchLivePacketServers().catch(() => []);
+    const server = selectReloginServer(servers, preferredServerName, account.server ?? undefined, attemptedServers, allowAnyServer);
+    const serverName = server?.name || preferredServerName || account.server?.name || "";
+    if (server?.name) attemptedServers.add(server.name.toLowerCase());
+    log("script", `[Relogin] Attempt ${attempt}/${tries}${serverName ? ` -> ${serverName}` : ""}.`);
+
+    await bot.call("logout").catch(() => undefined);
+    await abortableDelay(650, signal);
+    await bot.call("setLoginCredentials", account.username, account.password).catch(() => undefined);
+    await submitLaunchLogin(bot, account);
+
+    const serverListReady = await waitForLaunchServerList(bot, Math.min(loginTimeout, 20000));
+    if (serverListReady && serverName) {
+      const clicked = await bot.call<unknown>("clickServer", serverName).catch(() => false);
+      if (!booleanFrom(clicked) && server?.connectable) await bot.call("connectToServer", JSON.stringify(toFlashServer(server))).catch(() => undefined);
+    } else if (server?.connectable) {
+      await bot.call("connectToServer", JSON.stringify(toFlashServer(server))).catch(() => undefined);
+    }
+
+    if (await waitForReloginComplete(bot, loginTimeout, signal)) {
+      log("script", `[Relogin] Connected${serverName ? ` to ${serverName}` : ""}.`);
+      void applySavedGameOptions().catch((error) => log("debug", `Apply game options after relogin: ${describeUnknownError(error)}`));
+      return true;
+    }
+
+    log("script", `[Relogin] Attempt ${attempt}/${tries} failed.`);
+    if (attempt < tries && reloginDelay > 0) await abortableDelay(reloginDelay, signal);
+  }
+
+  log("script", "[Relogin] Unable to reconnect within configured retries.");
+  return false;
+}
+
+function selectReloginServer(
+  servers: GameServerInfo[],
+  preferredName: string,
+  accountServer: GameServerInfo | undefined,
+  attemptedServers: Set<string>,
+  allowAnyServer: boolean
+): GameServerInfo | undefined {
+  const eligible = servers.filter((server) => {
+    if (server.online === false) return false;
+    if (/class test realm/i.test(server.name)) return false;
+    if (server.max && server.count && server.count >= server.max) return false;
+    return true;
+  });
+  const findServer = (name: string): GameServerInfo | undefined => {
+    const cleaned = cleanServerName(name);
+    if (!cleaned) return undefined;
+    return eligible.find((server) => sameServerName(server.name, cleaned) && !attemptedServers.has(server.name.toLowerCase()));
+  };
+
+  return (
+    findServer(preferredName) ||
+    findServer(accountServer?.name || "") ||
+    (allowAnyServer ? eligible.find((server) => !attemptedServers.has(server.name.toLowerCase())) : undefined) ||
+    accountServer
+  );
+}
+
+async function waitForReloginComplete(bot: BrowserFlashBot, timeoutMs: number, signal?: AbortSignal): Promise<boolean> {
+  const deadline = Date.now() + timeoutMs;
+  while (Date.now() < deadline) {
+    throwIfAborted(signal);
+    const snapshot = await bot.snapshot().catch(() => undefined);
+    if (snapshot?.loggedIn && snapshot.mapLoaded !== false && snapshot.mapLoading !== true) return true;
+    await abortableDelay(750, signal);
+  }
+  return false;
+}
+
+async function abortableDelay(ms: number, signal?: AbortSignal): Promise<void> {
+  await new Promise<void>((resolve, reject) => {
+    const timeout = window.setTimeout(resolve, ms);
+    signal?.addEventListener(
+      "abort",
+      () => {
+        window.clearTimeout(timeout);
+        reject(signal.reason instanceof Error ? signal.reason : new Error(String(signal.reason ?? "Cancelled.")));
+      },
+      { once: true }
+    );
+  });
+}
+
+function throwIfAborted(signal?: AbortSignal): void {
+  if (signal?.aborted) throw signal.reason instanceof Error ? signal.reason : new Error(String(signal.reason ?? "Cancelled."));
+}
+
+function clampInteger(value: unknown, min: number, max: number, fallback: number): number {
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed)) return fallback;
+  return Math.min(max, Math.max(min, Math.floor(parsed)));
 }
 
 async function loginLaunchAccount(): Promise<void> {
