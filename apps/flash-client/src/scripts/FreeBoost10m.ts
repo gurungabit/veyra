@@ -5,7 +5,7 @@ export const meta = {
   name: "FreeBoost10m",
   description: "Farms Reagents for Zifwin for random 10-minute Gold, Class, and Reputation boosts.",
   tags: ["boost", "free boost", "gold", "class", "reputation", "zifwin"],
-  version: "2026.06.02.9"
+  version: "2026.06.03.1"
 };
 
 export interface FreeBoost10mOptions extends ZeroToHeroRuntimeOptions {
@@ -48,7 +48,7 @@ export async function main(bot: Bot, options: FreeBoost10mOptions = {}): Promise
   const runtime = new ZeroToHeroRuntime(bot, options);
   await runtime.ensureLoggedIn();
 
-  const choice = resolveBoostChoice(options.boost);
+  const choice = await resolveBoostChoice(options.boost, options.signal);
   if (!choice) {
     runtime.log("No boost selected; stopping FreeBoost10m.");
     return;
@@ -114,23 +114,11 @@ async function logProgress(
   runtime.log(`Turn-in ${turnIns}: ${parts.join(", ")}.`);
 }
 
-function resolveBoostChoice(optionValue?: string): BoostChoice | undefined {
+async function resolveBoostChoice(optionValue?: string, signal?: AbortSignal): Promise<BoostChoice | undefined> {
   const optionChoice = normalizeBoostChoice(optionValue);
   if (optionChoice) return optionChoice;
 
-  if (typeof globalThis.prompt !== "function") return undefined;
-
-  for (let attempt = 0; attempt < 3; attempt += 1) {
-    const answer = globalThis.prompt(
-      "Which 10-minute boost should FreeBoost10m farm to max?\n\nEnter: Gold, Class, Reputation, or All",
-      attempt === 0 ? "Class" : ""
-    );
-    if (answer === null) return undefined;
-    const choice = normalizeBoostChoice(answer);
-    if (choice) return choice;
-  }
-
-  return undefined;
+  return requestBoostChoice(signal);
 }
 
 function normalizeBoostChoice(value: unknown): BoostChoice | undefined {
@@ -144,4 +132,123 @@ function normalizeMaxTurnIns(value: number | undefined): number {
   if (value === undefined || value === null) return Number.POSITIVE_INFINITY;
   if (!Number.isFinite(value) || value <= 0) return Number.POSITIVE_INFINITY;
   return Math.floor(value);
+}
+
+function requestBoostChoice(signal?: AbortSignal): Promise<BoostChoice | undefined> {
+  if (typeof document === "undefined") return Promise.resolve(undefined);
+  if (signal?.aborted) return Promise.resolve(undefined);
+
+  return new Promise((resolve) => {
+    document.getElementById("veyra-freeboost10m-dialog")?.remove();
+
+    const overlay = document.createElement("div");
+    overlay.id = "veyra-freeboost10m-dialog";
+    overlay.setAttribute("role", "dialog");
+    overlay.setAttribute("aria-modal", "true");
+    overlay.setAttribute("aria-label", "Choose FreeBoost10m boost");
+    Object.assign(overlay.style, {
+      position: "fixed",
+      inset: "0",
+      zIndex: "2147483647",
+      display: "grid",
+      placeItems: "center",
+      background: "rgba(0, 0, 0, 0.62)",
+      fontFamily: "Bahnschrift, Segoe UI, sans-serif"
+    });
+
+    const card = document.createElement("section");
+    Object.assign(card.style, {
+      width: "min(420px, calc(100vw - 40px))",
+      border: "1px solid #4a405d",
+      borderRadius: "8px",
+      background: "#171824",
+      color: "#f2edff",
+      boxShadow: "0 18px 48px rgba(0, 0, 0, 0.55)",
+      padding: "22px"
+    });
+
+    const title = document.createElement("h2");
+    title.textContent = "Choose Boost";
+    Object.assign(title.style, {
+      margin: "0 0 10px",
+      color: "#d6b6ff",
+      fontSize: "28px",
+      lineHeight: "1.1"
+    });
+
+    const body = document.createElement("p");
+    body.textContent = "FreeBoost10m will farm the selected 10-minute boost until it reaches 99.";
+    Object.assign(body.style, {
+      margin: "0 0 18px",
+      color: "#c7c8df",
+      fontSize: "15px",
+      lineHeight: "1.4"
+    });
+
+    const grid = document.createElement("div");
+    Object.assign(grid.style, {
+      display: "grid",
+      gridTemplateColumns: "1fr 1fr",
+      gap: "10px"
+    });
+
+    const choices: Array<{ label: string; value: BoostChoice }> = [
+      { label: "Class", value: "class" },
+      { label: "Gold", value: "gold" },
+      { label: "Reputation", value: "reputation" },
+      { label: "All", value: "all" }
+    ];
+
+    const cleanup = (choice: BoostChoice | undefined): void => {
+      signal?.removeEventListener("abort", onAbort);
+      document.removeEventListener("keydown", onKeyDown);
+      overlay.remove();
+      resolve(choice);
+    };
+
+    const onAbort = (): void => cleanup(undefined);
+    const onKeyDown = (event: KeyboardEvent): void => {
+      if (event.key === "Escape") cleanup(undefined);
+    };
+
+    for (const choice of choices) {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.textContent = choice.label;
+      Object.assign(button.style, {
+        minHeight: "44px",
+        border: "1px solid #6d5f83",
+        borderRadius: "6px",
+        background: choice.value === "class" ? "#c9a5ff" : "#2f3045",
+        color: choice.value === "class" ? "#161421" : "#f2edff",
+        fontSize: "18px",
+        cursor: "pointer"
+      });
+      button.addEventListener("click", () => cleanup(choice.value));
+      grid.appendChild(button);
+    }
+
+    const cancel = document.createElement("button");
+    cancel.type = "button";
+    cancel.textContent = "Cancel";
+    Object.assign(cancel.style, {
+      width: "100%",
+      marginTop: "12px",
+      minHeight: "38px",
+      border: "1px solid #4a405d",
+      borderRadius: "6px",
+      background: "transparent",
+      color: "#c7c8df",
+      fontSize: "15px",
+      cursor: "pointer"
+    });
+    cancel.addEventListener("click", () => cleanup(undefined));
+
+    card.append(title, body, grid, cancel);
+    overlay.appendChild(card);
+    document.body.appendChild(overlay);
+    document.addEventListener("keydown", onKeyDown);
+    signal?.addEventListener("abort", onAbort, { once: true });
+    (grid.querySelector("button") as HTMLButtonElement | null)?.focus();
+  });
 }
