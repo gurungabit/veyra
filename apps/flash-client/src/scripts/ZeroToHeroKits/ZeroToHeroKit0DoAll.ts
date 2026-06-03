@@ -6,7 +6,7 @@ export const meta = {
   name: "ZeroToHeroKit0DoAll",
   description: "Runs the full Veyra ZeroToHero progression kit.",
   tags: ["zero-to-hero", "do all", "progression"],
-  version: "0.1.0"
+  version: "2026.06.03.4"
 };
 
 export async function main(bot: Bot, options: ZeroToHeroRuntimeOptions = {}): Promise<void> {

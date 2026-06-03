@@ -6064,15 +6064,25 @@ export class ZeroToHeroRuntime {
   }): Promise<void> {
     if (await this.isQuestCompleted(options.questId)) return;
     await this.acceptQuest(options.questId);
-    await this.killMonster(
-      options.map,
-      options.cell ?? "Enter",
-      options.pad ?? "Spawn",
-      options.monster,
-      options.item,
-      options.quantity ?? 1,
-      options.isTemp ?? true
-    );
+    if (options.cell) {
+      await this.killMonster(
+        options.map,
+        options.cell,
+        options.pad ?? "Spawn",
+        options.monster,
+        options.item,
+        options.quantity ?? 1,
+        options.isTemp ?? true
+      );
+    } else {
+      await this.hunt(
+        options.map,
+        options.monster,
+        options.item,
+        options.quantity ?? 1,
+        options.isTemp ?? true
+      );
+    }
     await this.completeQuest(options.questId);
     if (options.reward) await this.acceptDrops(options.reward);
   }
