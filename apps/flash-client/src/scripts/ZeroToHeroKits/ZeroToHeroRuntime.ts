@@ -788,13 +788,11 @@ export class ZeroToHeroRuntime {
       allowFallback: false,
       clearStaleTree: Boolean(fallback)
     }).catch(() => undefined);
-    const quest = liveQuest ?? fallback;
-    const loadedLive = Boolean(liveQuest);
-    if (!quest) {
+    if (!liveQuest) {
       const detail = await this.questTreeSummary(questId).catch(() => "");
-      throw new Error(`Quest ${questId} did not load${detail ? ` (${detail})` : ""}; refusing to accept it.`);
+      const cacheNote = fallback ? " Cached quest metadata exists, but the live client is not offering this quest." : "";
+      throw new Error(`Quest ${questId} did not load${detail ? ` (${detail})` : ""}; refusing to accept it.${cacheNote}`);
     }
-    if (!loadedLive && fallback) this.log(`Quest ${questId} did not load from Flash; using cached quest data for metadata.`);
     await this.bot.delay(actionDelay * 2, this.signal);
 
     for (let attempt = 1; attempt <= tries; attempt += 1) {
@@ -808,16 +806,10 @@ export class ZeroToHeroRuntime {
 
       await this.throttleServerAction();
       this.log(`Accepting quest ${questId}${attempt > 1 ? ` (retry ${attempt})` : ""}.`);
-      if (loadedLive) {
-        await this.bot.callGameFunction("world.acceptQuest", questId).catch(async (error) => {
-          lastError = error;
-          await this.sendAcceptQuestPacket(questId);
-        });
-      } else {
-        await this.acceptQuestThroughClientOnly(questId).catch((error) => {
-          lastError = error;
-        });
-      }
+      await this.bot.callGameFunction("world.acceptQuest", questId).catch(async (error) => {
+        lastError = error;
+        await this.sendAcceptQuestPacket(questId);
+      });
 
       const afterAccept = await this.bot.snapshot().catch(() => undefined);
       if (afterAccept && !afterAccept.loggedIn) {
@@ -837,7 +829,7 @@ export class ZeroToHeroRuntime {
         return;
       }
 
-      if (loadedLive) await this.sendGetQuestPacket(questId).catch(() => undefined);
+      await this.sendGetQuestPacket(questId).catch(() => undefined);
       await this.bot.delay(actionDelay, this.signal);
     }
 
@@ -6701,10 +6693,6 @@ export class ZeroToHeroRuntime {
   private async clearQuestTree(): Promise<void> {
     await this.bot.call("setGameObject", "world.questTree", {});
     await this.bot.delay(250, this.signal);
-  }
-
-  private async acceptQuestThroughClientOnly(questId: number): Promise<void> {
-    await this.bot.call<unknown>("callGameFunction", "world.acceptQuest", questId);
   }
 
   private async questTreeSummary(questId: number): Promise<string> {
