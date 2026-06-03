@@ -55,10 +55,10 @@ const officialCoreScripts = [
     entry: "apps/flash-client/src/scripts/ZeroToHeroKits/ZeroToHeroKit0DoAll.ts"
   },
   {
-    id: "other.free-acs",
+    id: "other.free-boost-10m",
     category: "Official",
-    map: "borgars",
-    entry: "apps/flash-client/src/scripts/FreeAcs.ts"
+    map: "bloodtusk / cloister / nibbleon",
+    entry: "apps/flash-client/src/scripts/FreeBoost10m.ts"
   }
 ];
 
