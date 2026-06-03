@@ -783,11 +783,18 @@ export class ZeroToHeroRuntime {
     const actionDelay = clamp(Number(settings?.values["action-delay"] ?? 700), 250, 3000);
     let lastError: unknown;
 
-    const quest = await this.ensureQuestLoaded(questId, { allowFallback: false }).catch(() => undefined);
+    const fallback = questDataFallbacks[questId];
+    const liveQuest = await this.ensureQuestLoaded(questId, {
+      allowFallback: false,
+      clearStaleTree: Boolean(fallback)
+    }).catch(() => undefined);
+    const quest = liveQuest ?? fallback;
+    const loadedLive = Boolean(liveQuest);
     if (!quest) {
       const detail = await this.questTreeSummary(questId).catch(() => "");
       throw new Error(`Quest ${questId} did not load${detail ? ` (${detail})` : ""}; refusing to accept it.`);
     }
+    if (!loadedLive && fallback) this.log(`Quest ${questId} did not load from Flash; using cached quest data for metadata.`);
     await this.bot.delay(actionDelay * 2, this.signal);
 
     for (let attempt = 1; attempt <= tries; attempt += 1) {
@@ -801,10 +808,16 @@ export class ZeroToHeroRuntime {
 
       await this.throttleServerAction();
       this.log(`Accepting quest ${questId}${attempt > 1 ? ` (retry ${attempt})` : ""}.`);
-      await this.bot.callGameFunction("world.acceptQuest", questId).catch(async (error) => {
-        lastError = error;
-        await this.sendAcceptQuestPacket(questId);
-      });
+      if (loadedLive) {
+        await this.bot.callGameFunction("world.acceptQuest", questId).catch(async (error) => {
+          lastError = error;
+          await this.sendAcceptQuestPacket(questId);
+        });
+      } else {
+        await this.acceptQuestThroughClientOnly(questId).catch((error) => {
+          lastError = error;
+        });
+      }
 
       const afterAccept = await this.bot.snapshot().catch(() => undefined);
       if (afterAccept && !afterAccept.loggedIn) {
@@ -824,7 +837,7 @@ export class ZeroToHeroRuntime {
         return;
       }
 
-      await this.sendGetQuestPacket(questId).catch(() => undefined);
+      if (loadedLive) await this.sendGetQuestPacket(questId).catch(() => undefined);
       await this.bot.delay(actionDelay, this.signal);
     }
 
@@ -6611,19 +6624,24 @@ export class ZeroToHeroRuntime {
 
   private async ensureQuestLoaded(
     questId: number,
-    options: { allowFallback?: boolean } = {}
+    options: { allowFallback?: boolean; clearStaleTree?: boolean } = {}
   ): Promise<Record<string, unknown> | undefined> {
     const existing = await this.findQuestInTree(questId);
     if (existing) return existing;
     const fallback = options.allowFallback === false ? undefined : questDataFallbacks[questId];
     const startedAt = Date.now();
     const timeoutMs = options.allowFallback === false ? 12000 : fallback ? 4000 : 8000;
+    let clearedTree = false;
     while (!this.signal?.aborted && Date.now() - startedAt < timeoutMs) {
       await this.throttleServerAction();
       await this.bot.callGameFunction("world.showQuests", String(questId), "q").catch(() => undefined);
       await this.bot.delay(500, this.signal);
       const quest = await this.findQuestInTree(questId);
       if (quest) return quest;
+      if (options.clearStaleTree && !clearedTree && Date.now() - startedAt >= 3000) {
+        clearedTree = true;
+        await this.clearQuestTree().catch(() => undefined);
+      }
     }
     return fallback;
   }
@@ -6678,6 +6696,15 @@ export class ZeroToHeroRuntime {
       return { ID: questId, ...record };
     }
     return undefined;
+  }
+
+  private async clearQuestTree(): Promise<void> {
+    await this.bot.call("setGameObject", "world.questTree", {});
+    await this.bot.delay(250, this.signal);
+  }
+
+  private async acceptQuestThroughClientOnly(questId: number): Promise<void> {
+    await this.bot.call<unknown>("callGameFunction", "world.acceptQuest", questId);
   }
 
   private async questTreeSummary(questId: number): Promise<string> {

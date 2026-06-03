@@ -5,7 +5,7 @@ export const meta = {
   name: "Free ACs",
   description: "Runs the yearly Free ACs quest and completes Borgars first when needed.",
   tags: ["acs", "free acs", "borgars", "quest"],
-  version: "2026.06.02.6"
+  version: "2026.06.02.7"
 };
 
 export async function main(bot: Bot, options: ZeroToHeroRuntimeOptions = {}): Promise<void> {
