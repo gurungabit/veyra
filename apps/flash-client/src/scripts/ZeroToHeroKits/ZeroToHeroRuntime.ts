@@ -91,6 +91,9 @@ const GLACERA_FACTION_ID = 52;
 const ESCHERION_MAP = "escherion";
 const ESCHERION_MONSTER_ID = 3;
 const STAFF_OF_INVERSION_MONSTER_ID = 2;
+const STALAGBITE_MAP = "stalagbite";
+const VATH_MONSTER_ID = 7;
+const STALAGBITE_MONSTER_ID = 8;
 
 const questDataFallbacks: Record<number, Record<string, unknown>> = {
   10584: {
@@ -1221,6 +1224,14 @@ export class ZeroToHeroRuntime {
     requestedMonster: MonsterTarget,
     location?: CombatLocation
   ): Promise<MonsterTarget> {
+    if (this.shouldUseVathStalagbitePriority(requestedMonster, location)) {
+      const stalagbite = await this.findMapMonster(STALAGBITE_MONSTER_ID);
+      if (stalagbite && this.monsterHp(stalagbite) > 0 && [1, 2].includes(this.monsterState(stalagbite))) {
+        return STALAGBITE_MONSTER_ID;
+      }
+      return VATH_MONSTER_ID;
+    }
+
     if (!this.shouldUseEscherionStaffPriority(requestedMonster, location)) return candidate;
 
     const currentTarget = await this.currentTargetMonster().catch(() => undefined);
@@ -1244,6 +1255,12 @@ export class ZeroToHeroRuntime {
     return ESCHERION_MONSTER_ID;
   }
 
+  private shouldUseVathStalagbitePriority(monster: MonsterTarget, location?: CombatLocation): boolean {
+    if (!location?.map || location.map.toLowerCase() !== STALAGBITE_MAP) return false;
+    if (typeof monster === "number") return monster === VATH_MONSTER_ID;
+    return monster.trim().toLowerCase() === "vath";
+  }
+
   private shouldUseEscherionStaffPriority(monster: MonsterTarget, location?: CombatLocation): boolean {
     if (!location?.map || location.map.toLowerCase() !== ESCHERION_MAP) return false;
     if (typeof monster === "number") return monster === ESCHERION_MONSTER_ID;
@@ -1251,8 +1268,13 @@ export class ZeroToHeroRuntime {
   }
 
   private async isMapMonsterAlive(monster: MonsterTarget): Promise<boolean> {
+    const record = await this.findMapMonster(monster);
+    return Boolean(record && this.monsterHp(record) > 0);
+  }
+
+  private async findMapMonster(monster: MonsterTarget): Promise<Record<string, unknown> | undefined> {
     const monsters = recordsFrom(await this.bot.call<unknown>("getMonsters").catch(() => []));
-    return monsters.some((record) => this.monsterRecordMatches(record, monster) && this.monsterHp(record) > 0);
+    return monsters.find((record) => this.monsterRecordMatches(record, monster));
   }
 
   private async isDropVisible(item: string | number): Promise<boolean> {
