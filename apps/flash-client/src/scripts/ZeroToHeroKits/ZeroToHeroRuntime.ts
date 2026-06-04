@@ -5816,6 +5816,7 @@ export class ZeroToHeroRuntime {
     await this.hunt("escherion", "Escherion", "1st Lord Of Chaos Helm", 1, false);
     await this.hunt("stalagbite", "Vath", "Chaos Dragonlord Helm", 1, false);
     await this.hunt("kitsune", "Kitsune", "Chaos Shogun Helmet", 1, false);
+    await this.ensureWolfwingBossUnlocked();
     await this.hunt("wolfwing", "Wolfwing", "Wolfwing Mask", 1, false);
     await this.completeQuest(8738);
   }
@@ -5826,8 +5827,26 @@ export class ZeroToHeroRuntime {
     await this.hunt("escherion", "Escherion", "1st Lord Of Chaos Staff", 1, false);
     await this.hunt("stalagbite", "Vath", "Chaos Dragonlord Axe", 1, false);
     await this.hunt("kitsune", "Kitsune", "Hanzamune Dragon Koi Blade", 1, false);
+    await this.ensureWolfwingBossUnlocked();
     await this.hunt("wolfwing", "Wolfwing", "Wrath of the Werepyre", 1, false);
     await this.completeQuest(8828);
+  }
+
+  private async ensureWolfwingBossUnlocked(): Promise<void> {
+    if (await this.isStoryQuestComplete(567).catch(() => false)) return;
+
+    this.log("Unlocking Wolfwing boss room by defeating Dracowerepyre.");
+    await this.completeQuestPlan(567, [
+      {
+        kind: "hunt",
+        map: "chaoscave",
+        cell: "r5",
+        pad: "Left",
+        monster: "DracoWerePyre",
+        item: "Dracowerepyre Defeated"
+      }
+    ]);
+    await this.chainQuest(597).catch(() => undefined);
   }
 
   private async forgeCapeEnhancement(): Promise<void> {
