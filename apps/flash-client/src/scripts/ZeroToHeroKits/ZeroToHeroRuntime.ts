@@ -6,6 +6,7 @@ import { runEmberseaRep } from "../Reputation/Embersea.js";
 
 export type PetChoice = "none" | "hotMama" | "akriloth";
 export type PlayerNumber = "Player1" | "Player2" | "Player3" | "Player4";
+export type BlacksmithingMethodChoice = "gold" | "mobs";
 
 export interface ZeroToHeroRuntimeOptions {
   signal?: AbortSignal;
@@ -14,6 +15,8 @@ export interface ZeroToHeroRuntimeOptions {
   equipOutfit?: boolean;
   sellStarterClasses?: boolean;
   petChoice?: PetChoice;
+  blacksmithingUseGold?: boolean;
+  blacksmithingMethod?: BlacksmithingMethodChoice;
   maxFarmLoops?: number;
 }
 
@@ -90,6 +93,13 @@ const EMBERSEA_FACTION_ID = 43;
 const GLACERA_FACTION_ID = 52;
 const BLACKSMITHING_FACTION_NAME = "Blacksmithing";
 const BLACKSMITHING_RANK_4_TURN_INS = 200;
+const BLACKSMITHING_SOCK_QUEST_ID = 2777;
+const BLACKSMITHING_GOLD_QUEST_ID = 8737;
+const BLACKSMITHING_VOUCHER = "Gold Voucher 500k";
+const BLACKSMITHING_VOUCHER_SHOP_ID = 2036;
+const BLACKSMITHING_VOUCHER_COST = 500000;
+const BLACKSMITHING_GOLD_REP_PER_TURN_IN = 1000;
+const BLACKSMITHING_MAX_GOLD_TURN_INS = 200;
 const ESCHERION_MAP = "escherion";
 const ESCHERION_MONSTER_ID = 3;
 const STAFF_OF_INVERSION_MONSTER_ID = 2;
@@ -248,6 +258,7 @@ export class ZeroToHeroRuntime {
   private lastFightPromptClickAt = 0;
   private readonly skuaBypassedMaps = new Set<string>();
   private bankLoadAttempted = false;
+  private blacksmithingMethodChoice?: BlacksmithingMethodChoice | "cancel";
 
   constructor(
     readonly bot: Bot,
@@ -290,6 +301,26 @@ export class ZeroToHeroRuntime {
     const snapshot = await this.bot.snapshot();
     if (!snapshot.loggedIn) return this.ensureLoggedIn();
     return snapshot;
+  }
+
+  async currentGold(): Promise<number> {
+    const paths = [
+      "world.myAvatar.objData.intGold",
+      "world.myAvatar.dataLeaf.intGold",
+      "world.myAvatar.objData.iGold",
+      "world.myAvatar.dataLeaf.iGold",
+      "world.myAvatar.objData.gold",
+      "world.myAvatar.dataLeaf.gold"
+    ];
+
+    for (const path of paths) {
+      const value = await this.bot.getGameObject<unknown>(path).catch(() => undefined);
+      const gold = Math.max(0, Math.floor(toNumber(value)));
+      if (gold > 0) return gold;
+    }
+
+    const direct = await this.bot.callGameFunction<unknown>("world.myAvatar.getGold").catch(() => undefined);
+    return Math.max(0, Math.floor(toNumber(direct)));
   }
 
   async inventory(includeBank = true): Promise<ItemRecord[]> {
@@ -1415,9 +1446,51 @@ export class ZeroToHeroRuntime {
     if (record && itemEnhancementLevel(record) <= 0) this.log(`${className} still appears unenhanced after enhancement request.`);
   }
 
-  async farmGold(): Promise<void> {
-    this.log("Farming gold with the current combat route.");
-    await this.farmExperience(100);
+  async farmGold(targetGold = 0): Promise<void> {
+    if (targetGold <= 0) {
+      this.log("Farming gold with the current combat route.");
+      await this.farmExperience(100);
+      return;
+    }
+
+    let currentGold = await this.currentGold();
+    if (currentGold >= targetGold) return;
+
+    this.log(`Farming gold toward ${formatGold(targetGold)}.`);
+    let loops = 0;
+    let staleChecks = 0;
+    let lastGold = currentGold;
+
+    while (!this.signal?.aborted && currentGold < targetGold) {
+      if (this.options.maxFarmLoops && loops >= this.options.maxFarmLoops) {
+        this.log(`Stopped gold farm at ${formatGold(currentGold)} due to maxFarmLoops.`);
+        return;
+      }
+
+      const snapshot = await this.snapshot();
+      const route = selectGoldRoute(snapshot.level);
+      if (await this.recoverIfDead(route)) continue;
+      await this.ensureRoute(route);
+      await this.bot.attack(route.monster);
+      await this.bot.useAvailableSkills();
+      await this.bot.delay(500, this.signal);
+      loops += 1;
+
+      if (loops === 1 || loops % 15 === 0) {
+        currentGold = await this.currentGold();
+        this.log(`Gold progress: ${formatGold(currentGold)}/${formatGold(targetGold)}.`);
+        if (currentGold <= lastGold) {
+          staleChecks += 1;
+          if (staleChecks >= 4) {
+            this.log("Gold is not increasing from the current route; stopping gold farm.");
+            return;
+          }
+        } else {
+          staleChecks = 0;
+          lastGold = currentGold;
+        }
+      }
+    }
   }
 
   async bladeOfAweRep(): Promise<void> {
@@ -1793,6 +1866,119 @@ export class ZeroToHeroRuntime {
       return;
     }
 
+    const method = await this.resolveBlacksmithingMethod();
+    if (!method) {
+      this.log("No Blacksmithing method selected; stopping Blacksmithing reputation farm.");
+      return;
+    }
+
+    if (method === "gold") {
+      await this.blacksmithingRepWithGold(cappedRank);
+      return;
+    }
+
+    await this.blacksmithingRepWithMobs(cappedRank, startRank);
+  }
+
+  private async resolveBlacksmithingMethod(): Promise<BlacksmithingMethodChoice | undefined> {
+    if (this.blacksmithingMethodChoice)
+      return this.blacksmithingMethodChoice === "cancel" ? undefined : this.blacksmithingMethodChoice;
+    if (typeof this.options.blacksmithingUseGold === "boolean") {
+      this.blacksmithingMethodChoice = this.options.blacksmithingUseGold ? "gold" : "mobs";
+      return this.blacksmithingMethodChoice;
+    }
+    if (this.options.blacksmithingMethod) {
+      this.blacksmithingMethodChoice = this.options.blacksmithingMethod;
+      return this.blacksmithingMethodChoice;
+    }
+
+    const choice = await requestBlacksmithingMethod(this.signal);
+    this.blacksmithingMethodChoice = choice ?? "cancel";
+    return choice;
+  }
+
+  private async blacksmithingRepWithGold(cappedRank: number): Promise<void> {
+    this.log(`Forge requires Blacksmithing Rank ${cappedRank}; using Gold Voucher route.`);
+    let turnIns = 0;
+    const startRank = await this.factionRankByName(BLACKSMITHING_FACTION_NAME);
+    const startRep = await this.factionRepByName(BLACKSMITHING_FACTION_NAME);
+    const estimatedStartRep = Math.max(startRep, rankMinimumPoints(startRank));
+    let lastRank = startRank;
+
+    while (true) {
+      const currentRank = await this.factionRankByName(BLACKSMITHING_FACTION_NAME);
+      const currentRep = await this.factionRepByName(BLACKSMITHING_FACTION_NAME);
+      if (currentRank >= cappedRank) {
+        this.log(`Blacksmithing reputation reached Rank ${currentRank}.`);
+        return;
+      }
+
+      const estimatedRep = Math.max(
+        currentRep,
+        rankMinimumPoints(currentRank),
+        estimatedStartRep + turnIns * BLACKSMITHING_GOLD_REP_PER_TURN_IN
+      );
+      const remainingRep = Math.max(0, rankMinimumPoints(cappedRank) - estimatedRep);
+      if (remainingRep <= 0) {
+        this.log(
+          `Blacksmithing rank is still not readable from Flash after ${turnIns} gold turn-ins; continuing after the Rank ${cappedRank} baseline farm.`
+        );
+        return;
+      }
+
+      if (this.options.maxFarmLoops && turnIns >= this.options.maxFarmLoops) {
+        this.log(`Stopped Blacksmithing gold route after ${turnIns} turn-ins due to maxFarmLoops.`);
+        return;
+      }
+
+      const neededTurnIns = Math.max(1, Math.ceil(remainingRep / BLACKSMITHING_GOLD_REP_PER_TURN_IN));
+      const batchTurnIns = Math.min(neededTurnIns, BLACKSMITHING_MAX_GOLD_TURN_INS);
+      await this.ensureGoldVouchers(batchTurnIns);
+      const vouchers = await this.quantity(BLACKSMITHING_VOUCHER, false);
+      if (vouchers <= 0) throw new Error(`Could not buy ${BLACKSMITHING_VOUCHER} for Blacksmithing reputation.`);
+
+      const turnInsThisBatch = Math.max(1, Math.min(batchTurnIns, vouchers));
+      await this.acceptQuest(BLACKSMITHING_GOLD_QUEST_ID);
+      await this.completeQuest(BLACKSMITHING_GOLD_QUEST_ID, -1, turnInsThisBatch);
+      turnIns += turnInsThisBatch;
+      await this.bot.delay(900, this.signal);
+
+      const afterRep = await this.factionRepByName(BLACKSMITHING_FACTION_NAME);
+      const rank = await this.factionRankByName(BLACKSMITHING_FACTION_NAME);
+      if (rank > lastRank || turnIns === turnInsThisBatch || turnIns % 10 === 0) {
+        this.log(`Blacksmithing gold progress: Rank ${rank || "?"}, ${afterRep || "unknown"} rep, ${turnIns} voucher turn-ins.`);
+        if (rank > 0) lastRank = rank;
+      }
+    }
+  }
+
+  private async ensureGoldVouchers(quantity: number): Promise<void> {
+    const targetQuantity = Math.max(1, Math.min(Math.floor(quantity), BLACKSMITHING_MAX_GOLD_TURN_INS));
+    let currentQuantity = await this.quantity(BLACKSMITHING_VOUCHER, false);
+    if (currentQuantity >= targetQuantity) return;
+
+    const missing = targetQuantity - currentQuantity;
+    const goldNeeded = missing * BLACKSMITHING_VOUCHER_COST;
+    const currentGold = await this.currentGold();
+    if (currentGold > 0 && currentGold < goldNeeded) {
+      this.log(`Need ${formatGold(goldNeeded)} for ${missing} ${BLACKSMITHING_VOUCHER}; current gold is ${formatGold(currentGold)}.`);
+      await this.farmGold(goldNeeded);
+    }
+
+    const goldAfterFarm = await this.currentGold();
+    const affordableQuantity =
+      goldAfterFarm > 0 ? Math.min(missing, Math.floor(goldAfterFarm / BLACKSMITHING_VOUCHER_COST)) : missing;
+    if (affordableQuantity <= 0)
+      throw new Error(`Need ${formatGold(BLACKSMITHING_VOUCHER_COST)} to buy one ${BLACKSMITHING_VOUCHER}.`);
+
+    await this.buyItem("alchemyacademy", BLACKSMITHING_VOUCHER_SHOP_ID, BLACKSMITHING_VOUCHER, affordableQuantity);
+    currentQuantity = await this.quantity(BLACKSMITHING_VOUCHER, false);
+    if (currentQuantity < targetQuantity) {
+      this.log(`Only ${currentQuantity}/${targetQuantity} ${BLACKSMITHING_VOUCHER} are available; using what was bought.`);
+    }
+  }
+
+  private async blacksmithingRepWithMobs(cappedRank: number, startRank: number): Promise<void> {
     this.log(`Forge requires Blacksmithing Rank ${cappedRank}; farming Blacksmithing from Rank ${startRank}.`);
     let loops = 0;
     let lastRank = startRank;
@@ -1815,7 +2001,7 @@ export class ZeroToHeroRuntime {
 
       loops += 1;
       await this.completeQuestPlan(
-        2777,
+        BLACKSMITHING_SOCK_QUEST_ID,
         [
           { kind: "hunt", map: "greenguardeast", monster: "Wolf", item: "Furry Lost Sock", quantity: 2, isTemp: true },
           { kind: "hunt", map: "greenguardwest", monster: "Slime", item: "Slimy Lost Sock", quantity: 5, isTemp: true }
@@ -7243,6 +7429,19 @@ function classRankFromPoints(cp: number): number {
   return 1;
 }
 
+function rankMinimumPoints(rank: number): number {
+  if (rank >= 10) return 302500;
+  if (rank >= 9) return 202500;
+  if (rank >= 8) return 129600;
+  if (rank >= 7) return 78400;
+  if (rank >= 6) return 44100;
+  if (rank >= 5) return 22500;
+  if (rank >= 4) return 10000;
+  if (rank >= 3) return 3600;
+  if (rank >= 2) return 900;
+  return 0;
+}
+
 function selectRoute(level: number): FarmRoute {
   for (const route of experienceRoutes) {
     if (level >= route.minLevel && level < route.maxLevel) return route;
@@ -7250,9 +7449,270 @@ function selectRoute(level: number): FarmRoute {
   return experienceRoutes[experienceRoutes.length - 1]!;
 }
 
+function selectGoldRoute(level: number): FarmRoute {
+  if (level >= 61) {
+    return (
+      experienceRoutes.find((route) => route.map === "battlegrounde") ??
+      selectRoute(level)
+    );
+  }
+  return selectRoute(level);
+}
+
 function clamp(value: number, min: number, max: number): number {
   if (!Number.isFinite(value)) return max;
   return Math.max(min, Math.min(Math.floor(value), max));
+}
+
+function formatGold(value: number): string {
+  return `${Math.max(0, Math.floor(value)).toLocaleString("en-US")} gold`;
+}
+
+function requestBlacksmithingMethod(signal?: AbortSignal): Promise<BlacksmithingMethodChoice | undefined> {
+  if (signal?.aborted) return Promise.resolve(undefined);
+  return requestBlacksmithingMethodWindow(signal)?.catch(() => requestBlacksmithingMethodOverlay(signal)) ?? requestBlacksmithingMethodOverlay(signal);
+}
+
+function requestBlacksmithingMethodWindow(signal?: AbortSignal): Promise<BlacksmithingMethodChoice | undefined> | undefined {
+  if (typeof window === "undefined" || typeof document === "undefined") return undefined;
+
+  const popup = window.open("", "veyra-blacksmithing-picker", "width=460,height=310,resizable=yes");
+  if (!popup) return undefined;
+
+  return new Promise((resolve, reject) => {
+    let resolved = false;
+    const finish = (choice: BlacksmithingMethodChoice | undefined): void => {
+      if (resolved) return;
+      resolved = true;
+      signal?.removeEventListener("abort", onAbort);
+      window.clearInterval(closeTimer);
+      try {
+        popup.close();
+      } catch {
+        // The picker may already be closed.
+      }
+      resolve(choice);
+    };
+
+    const onAbort = (): void => finish(undefined);
+    const closeTimer = window.setInterval(() => {
+      if (popup.closed) finish(undefined);
+    }, 350);
+
+    signal?.addEventListener("abort", onAbort, { once: true });
+    try {
+      writeBlacksmithingMethodWindow(popup, finish);
+      popup.focus();
+    } catch (error) {
+      signal?.removeEventListener("abort", onAbort);
+      window.clearInterval(closeTimer);
+      try {
+        popup.close();
+      } catch {
+        // Nothing else to clean up.
+      }
+      reject(error);
+    }
+  });
+}
+
+function writeBlacksmithingMethodWindow(
+  popup: Window,
+  finish: (choice: BlacksmithingMethodChoice | undefined) => void
+): void {
+  popup.document.open();
+  popup.document.write(`<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Blacksmithing Rep</title>
+    <style>
+      :root {
+        color-scheme: dark;
+        font-family: Bahnschrift, "Segoe UI", sans-serif;
+        background: #111310;
+        color: #f3efe7;
+      }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        min-height: 100vh;
+        display: grid;
+        place-items: center;
+        background: #111310;
+      }
+      main {
+        width: min(420px, calc(100vw - 28px));
+        border: 1px solid #343b34;
+        border-radius: 8px;
+        background: #171a17;
+        box-shadow: 0 18px 45px rgba(0, 0, 0, 0.48);
+        padding: 20px;
+      }
+      h1 {
+        margin: 0 0 8px;
+        font-size: 26px;
+        color: #c8d8b8;
+      }
+      p {
+        margin: 0 0 18px;
+        color: #c7c8df;
+        line-height: 1.35;
+      }
+      .actions {
+        display: grid;
+        gap: 10px;
+      }
+      button {
+        min-height: 46px;
+        border: 1px solid #59614f;
+        border-radius: 6px;
+        background: #2f342b;
+        color: #f5f3ed;
+        font: inherit;
+        font-size: 18px;
+        cursor: pointer;
+      }
+      button.primary {
+        background: #c8d8b8;
+        color: #111310;
+      }
+      button.subtle {
+        background: transparent;
+        color: #c7c8df;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>Blacksmithing Rep</h1>
+      <p>Choose how ZeroToHero should farm Blacksmithing Rank 4 for Forge.</p>
+      <div class="actions">
+        <button class="primary" data-choice="gold">Use Gold Vouchers</button>
+        <button data-choice="mobs">Farm Mobs</button>
+        <button class="subtle" data-choice="">Cancel</button>
+      </div>
+    </main>
+  </body>
+</html>`);
+  popup.document.close();
+  popup.document.querySelectorAll<HTMLButtonElement>("button[data-choice]").forEach((button) => {
+    button.addEventListener("click", () => {
+      const choice = button.dataset.choice;
+      finish(choice === "gold" || choice === "mobs" ? choice : undefined);
+    });
+  });
+}
+
+function requestBlacksmithingMethodOverlay(signal?: AbortSignal): Promise<BlacksmithingMethodChoice | undefined> {
+  if (typeof document === "undefined") return Promise.resolve(undefined);
+
+  return new Promise((resolve) => {
+    const restoreFlash = hideFlashForDialog();
+    const overlay = document.createElement("div");
+    Object.assign(overlay.style, {
+      position: "fixed",
+      inset: "0",
+      zIndex: "2147483647",
+      display: "grid",
+      placeItems: "center",
+      background: "rgba(4, 6, 5, 0.72)",
+      color: "#f3efe7",
+      fontFamily: 'Bahnschrift, "Segoe UI", sans-serif'
+    });
+
+    const card = document.createElement("section");
+    Object.assign(card.style, {
+      width: "min(420px, calc(100vw - 32px))",
+      padding: "20px",
+      border: "1px solid #343b34",
+      borderRadius: "8px",
+      background: "#171a17",
+      boxShadow: "0 18px 45px rgba(0, 0, 0, 0.48)"
+    });
+
+    const title = document.createElement("h1");
+    title.textContent = "Blacksmithing Rep";
+    Object.assign(title.style, { margin: "0 0 8px", fontSize: "26px", color: "#c8d8b8" });
+
+    const body = document.createElement("p");
+    body.textContent = "Choose how ZeroToHero should farm Blacksmithing Rank 4 for Forge.";
+    Object.assign(body.style, { margin: "0 0 18px", color: "#c7c8df", lineHeight: "1.35" });
+
+    const actions = document.createElement("div");
+    Object.assign(actions.style, { display: "grid", gap: "10px" });
+
+    const cleanup = (choice: BlacksmithingMethodChoice | undefined): void => {
+      document.removeEventListener("keydown", onKeyDown);
+      signal?.removeEventListener("abort", onAbort);
+      overlay.remove();
+      restoreFlash();
+      resolve(choice);
+    };
+    const onAbort = (): void => cleanup(undefined);
+    const onKeyDown = (event: KeyboardEvent): void => {
+      if (event.key === "Escape") cleanup(undefined);
+    };
+
+    for (const choice of [
+      { label: "Use Gold Vouchers", value: "gold", primary: true },
+      { label: "Farm Mobs", value: "mobs", primary: false }
+    ] as const) {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.textContent = choice.label;
+      Object.assign(button.style, {
+        minHeight: "46px",
+        border: "1px solid #59614f",
+        borderRadius: "6px",
+        background: choice.primary ? "#c8d8b8" : "#2f342b",
+        color: choice.primary ? "#111310" : "#f5f3ed",
+        font: "inherit",
+        fontSize: "18px",
+        cursor: "pointer"
+      });
+      button.addEventListener("click", () => cleanup(choice.value));
+      actions.appendChild(button);
+    }
+
+    const cancel = document.createElement("button");
+    cancel.type = "button";
+    cancel.textContent = "Cancel";
+    Object.assign(cancel.style, {
+      minHeight: "40px",
+      border: "1px solid #343b34",
+      borderRadius: "6px",
+      background: "transparent",
+      color: "#c7c8df",
+      font: "inherit",
+      fontSize: "16px",
+      cursor: "pointer"
+    });
+    cancel.addEventListener("click", () => cleanup(undefined));
+    actions.appendChild(cancel);
+
+    card.append(title, body, actions);
+    overlay.appendChild(card);
+    document.body.appendChild(overlay);
+    document.addEventListener("keydown", onKeyDown);
+    signal?.addEventListener("abort", onAbort, { once: true });
+    (actions.querySelector("button") as HTMLButtonElement | null)?.focus();
+  });
+}
+
+function hideFlashForDialog(): () => void {
+  const flash = document.getElementById("flash-game") as HTMLElement | null;
+  if (!flash) return () => undefined;
+
+  const previousVisibility = flash.style.visibility;
+  const previousPointerEvents = flash.style.pointerEvents;
+  flash.style.visibility = "hidden";
+  flash.style.pointerEvents = "none";
+
+  return () => {
+    flash.style.visibility = previousVisibility;
+    flash.style.pointerEvents = previousPointerEvents;
+  };
 }
 
 function toItemRecord(value: unknown): ItemRecord {
