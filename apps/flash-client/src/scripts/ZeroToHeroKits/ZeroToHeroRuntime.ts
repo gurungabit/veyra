@@ -247,6 +247,7 @@ const questClassRequirements: Record<
 };
 
 const knownDropItemIds: Record<string, number[]> = {
+  "berserker bunny": [34417],
   "blood sorceress": [36298],
   "dragon claw": [35997],
   "dracolich slain": [35956],
@@ -1028,6 +1029,40 @@ export class ZeroToHeroRuntime {
     await this.reconcileDropQueue(names);
   }
 
+  private async withTargetDropOverride<T>(
+    items: string | number | Array<string | number>,
+    action: () => Promise<T>
+  ): Promise<T> {
+    const names = (Array.isArray(items) ? items : [items])
+      .map((name) => String(name).trim())
+      .filter(Boolean);
+    const whitelist = uniqueDropNames(names);
+    if (whitelist.length === 0 || typeof window === "undefined") return action();
+
+    const acceptAcDrops = await this.shouldAcceptAcDrops();
+    let busy = false;
+    const tick = async (): Promise<void> => {
+      if (busy || this.signal?.aborted) return;
+      busy = true;
+      try {
+        await this.acceptTargetDropsNow(whitelist, acceptAcDrops);
+      } finally {
+        busy = false;
+      }
+    };
+
+    await tick();
+    const timer = window.setInterval(() => {
+      void tick();
+    }, 120);
+    try {
+      return await action();
+    } finally {
+      window.clearInterval(timer);
+      await tick();
+    }
+  }
+
   private async reconcileDropQueue(names: string[]): Promise<void> {
     const whitelist = uniqueDropNames(names);
     if (whitelist.length === 0) return;
@@ -1085,6 +1120,16 @@ export class ZeroToHeroRuntime {
       }
       if (!remainingDrops.some((drop) => dropMatchesNames(drop, whitelist)) && unrelatedDrops.length === 0) return;
     }
+  }
+
+  private async acceptTargetDropsNow(whitelist: string[], acceptAcDrops: boolean): Promise<void> {
+    const drops = await this.currentDrops();
+    const targetDrops = drops.filter((drop) => dropMatchesNames(drop, whitelist));
+    await this.pickupDropIds(targetDrops);
+    await this.pickupDropWhitelist(whitelist);
+    const whitelistCsv = whitelist.join(",");
+    await this.safeDropCall("acceptDrops", whitelistCsv);
+    if (acceptAcDrops) await this.safeDropCall("acceptACDrops");
   }
 
   private async shouldAcceptAcDrops(): Promise<boolean> {
@@ -1553,23 +1598,27 @@ export class ZeroToHeroRuntime {
       }
 
       loops += 1;
-      await this.acceptDrops(BERSERKER_BUNNY_ITEM);
-      await this.acceptQuest(BERSERKER_BUNNY_QUEST_ID);
-      await this.killMonster(
-        "greenguardwest",
-        "West12",
-        "Up",
-        "*",
-        "Were Egg",
-        1,
-        true,
-        [BERSERKER_BUNNY_ITEM]
-      );
-      await this.completeQuest(BERSERKER_BUNNY_QUEST_ID);
-      await this.acceptDrops(BERSERKER_BUNNY_ITEM);
-      await this.bot.delay(700, this.signal);
-      await this.sell(BERSERKER_BUNNY_ITEM, 1, true);
-      await this.bot.delay(700, this.signal);
+      await this.withTargetDropOverride(BERSERKER_BUNNY_ITEM, async () => {
+        await this.acceptDrops(BERSERKER_BUNNY_ITEM);
+        await this.acceptQuest(BERSERKER_BUNNY_QUEST_ID);
+        await this.killMonster(
+          "greenguardwest",
+          "West12",
+          "Up",
+          "*",
+          "Were Egg",
+          1,
+          true,
+          [BERSERKER_BUNNY_ITEM]
+        );
+        await this.completeQuest(BERSERKER_BUNNY_QUEST_ID);
+        await this.acceptDrops(BERSERKER_BUNNY_ITEM);
+        if (!(await this.waitForInventoryItem(BERSERKER_BUNNY_ITEM, 1, 8000, false))) {
+          throw new Error(`${BERSERKER_BUNNY_ITEM} was not accepted before it could be sold.`);
+        }
+        await this.sell(BERSERKER_BUNNY_ITEM, 1, true);
+        await this.bot.delay(700, this.signal);
+      });
 
       if (loops === 1 || loops % 5 === 0) {
         this.log(`Berserker Bunny gold progress: ${formatGold(await this.currentGold())}/${formatGold(targetGold)}.`);
