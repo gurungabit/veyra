@@ -312,6 +312,75 @@ export class BrowserFlashBot implements Bot {
     await this.waitForMap(targetMap, undefined, undefined);
   }
 
+  private async chooseExitCell(currentCell: string): Promise<{ cell: string; pad: string } | undefined> {
+    const current = currentCell.trim().toLowerCase();
+    const [cells, monsterCells] = await Promise.all([
+      this.cells().catch(() => []),
+      this.aliveMonsterCells().catch(() => new Set<string>())
+    ]);
+
+    const validCells = cells
+      .map((cell) => cell.trim())
+      .filter(Boolean)
+      .filter((cell, index, list) => list.findIndex((entry) => entry.toLowerCase() === cell.toLowerCase()) === index);
+
+    const safeCells = validCells.filter((cell) => {
+      const normalized = cell.toLowerCase();
+      return (
+        normalized !== current &&
+        normalized !== "blank" &&
+        !normalized.startsWith("cut") &&
+        !monsterCells.has(normalized)
+      );
+    });
+
+    const cell =
+      safeCells.find((candidate) => candidate.toLowerCase() === "enter") ??
+      safeCells.find((candidate) => candidate.toLowerCase() === "spawn") ??
+      safeCells.find((candidate) => !["init", "intro"].includes(candidate.toLowerCase())) ??
+      safeCells[0];
+    if (!cell) return undefined;
+
+    return { cell, pad: "Auto" };
+  }
+
+  private async aliveMonsterCells(): Promise<Set<string>> {
+    const monsters = parseMaybeJson<unknown>(await this.call<unknown>("getMonsters").catch(() => []));
+    if (!Array.isArray(monsters)) return new Set();
+
+    const cells = new Set<string>();
+    for (const monster of monsters) {
+      if (!monster || typeof monster !== "object") continue;
+      const record = monster as Record<string, unknown>;
+      const hp = firstNumber(record, ["intHP", "HP", "hp"]);
+      const frame = firstString(record, ["strFrame", "frame", "Frame", "cell", "Cell"]).trim().toLowerCase();
+      if (hp > 0 && frame && frame !== "blank") cells.add(frame);
+    }
+    return cells;
+  }
+
+  private async waitForCell(cell: string, timeoutMs = 2500): Promise<PlayerSnapshot | undefined> {
+    const targetCell = cell.trim().toLowerCase();
+    const deadline = Date.now() + timeoutMs;
+    let latest: PlayerSnapshot | undefined;
+    while (Date.now() < deadline) {
+      latest = await this.snapshot().catch(() => latest);
+      if (latest?.cell?.trim().toLowerCase() === targetCell && latest.mapLoaded !== false && latest.mapLoading !== true) {
+        return latest;
+      }
+      await this.delay(150);
+    }
+    return latest;
+  }
+
+  private async tryHouseEscape(): Promise<boolean> {
+    this.log("Using house as safe exit before map join.");
+    await this.call("untargetSelf").catch(() => undefined);
+    await this.call("joinHouse", "").catch(() => undefined);
+    const escaped = await this.waitForMap("house", undefined, undefined).catch(() => undefined);
+    return Boolean(escaped);
+  }
+
   private async leaveCombatCell(snapshot?: PlayerSnapshot, force = false): Promise<void> {
     if (!snapshot?.loggedIn || !snapshot.alive) return;
 
@@ -319,10 +388,22 @@ export class BrowserFlashBot implements Bot {
     const normalizedCell = currentCell.toLowerCase();
     if (!currentCell || normalizedCell === "enter" || (!force && normalizedCell === "enter")) return;
 
-    this.log(`Leaving ${currentCell || "current"} cell before map join.`);
     await this.call("untargetSelf").catch(() => undefined);
-    await this.call("jumpCorrectRoom", "Enter", "Spawn", false, true).catch(() => undefined);
-    await this.callGameFunction("world.moveToCell", "Enter", "Spawn", true).catch(() => undefined);
+    const exit = await this.chooseExitCell(currentCell);
+    if (exit) {
+      this.log(`Leaving ${currentCell || "current"} cell before map join via ${exit.cell}/${exit.pad}.`);
+      await this.jump(exit.cell, exit.pad).catch(() => undefined);
+      const afterExit = await this.waitForCell(exit.cell).catch(() => undefined);
+      if (afterExit?.cell?.trim().toLowerCase() === exit.cell.toLowerCase()) return;
+    } else {
+      this.log(`No safe non-combat cell found before map join from ${currentCell || "current"} cell.`);
+    }
+
+    if (force || normalizedCell === "blank") {
+      const escaped = await this.tryHouseEscape();
+      if (escaped) return;
+    }
+
     await this.delay(300);
   }
 
@@ -433,6 +514,23 @@ function toStringArray(value: unknown): string[] {
   const parsed = parseMaybeJson<unknown>(value);
   if (!Array.isArray(parsed)) return [];
   return parsed.map((item) => stringFrom(item)).filter(Boolean);
+}
+
+function firstNumber(record: Record<string, unknown>, keys: string[]): number {
+  for (const key of keys) {
+    const value = record[key];
+    const parsed = toNumber(value);
+    if (parsed > 0 || value === 0 || value === "0") return parsed;
+  }
+  return 0;
+}
+
+function firstString(record: Record<string, unknown>, keys: string[]): string {
+  for (const key of keys) {
+    const value = stringFrom(record[key]).trim();
+    if (value) return value;
+  }
+  return "";
 }
 
 function sameMap(left: string, right: string): boolean {
