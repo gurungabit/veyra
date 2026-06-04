@@ -89,6 +89,7 @@ const HORC_FACTION_ID = 19;
 const EMBERSEA_FACTION_ID = 43;
 const GLACERA_FACTION_ID = 52;
 const BLACKSMITHING_FACTION_NAME = "Blacksmithing";
+const BLACKSMITHING_RANK_4_TURN_INS = 200;
 const ESCHERION_MAP = "escherion";
 const ESCHERION_MONSTER_ID = 3;
 const STAFF_OF_INVERSION_MONSTER_ID = 2;
@@ -1794,17 +1795,25 @@ export class ZeroToHeroRuntime {
 
     this.log(`Forge requires Blacksmithing Rank ${cappedRank}; farming Blacksmithing from Rank ${startRank}.`);
     let loops = 0;
-    let staleTurnIns = 0;
     let lastRank = startRank;
 
-    while ((await this.factionRankByName(BLACKSMITHING_FACTION_NAME)) < cappedRank) {
+    while (true) {
+      const currentRank = await this.factionRankByName(BLACKSMITHING_FACTION_NAME);
+      if (currentRank >= cappedRank) return;
+      if (currentRank > 0) lastRank = Math.max(lastRank, currentRank);
+      if (currentRank <= 0 && loops >= BLACKSMITHING_RANK_4_TURN_INS) {
+        this.log(
+          `Blacksmithing rank is still not readable from Flash after ${loops} quest 2777 turn-ins; continuing after the Rank 4 baseline farm.`
+        );
+        return;
+      }
+
       if (this.options.maxFarmLoops && loops >= this.options.maxFarmLoops) {
         this.log(`Stopped Blacksmithing reputation farm after ${loops} loops due to maxFarmLoops.`);
         return;
       }
 
       loops += 1;
-      const beforeRep = await this.factionRepByName(BLACKSMITHING_FACTION_NAME);
       await this.completeQuestPlan(
         2777,
         [
@@ -1818,18 +1827,11 @@ export class ZeroToHeroRuntime {
 
       const afterRep = await this.factionRepByName(BLACKSMITHING_FACTION_NAME);
       const rank = await this.factionRankByName(BLACKSMITHING_FACTION_NAME);
-      if (rank > lastRank || loops === 1 || loops % 10 === 0) {
+      if (rank > 0 && (rank > lastRank || loops === 1 || loops % 10 === 0)) {
         this.log(`Blacksmithing reputation progress: Rank ${rank}, ${afterRep} rep.`);
         lastRank = rank;
-      }
-
-      if (afterRep <= beforeRep) {
-        staleTurnIns += 1;
-        if (staleTurnIns >= 3) {
-          throw new Error(`Quest 2777 is not increasing Blacksmithing reputation after ${staleTurnIns} turn-ins.`);
-        }
-      } else {
-        staleTurnIns = 0;
+      } else if (rank <= 0 && (loops === 1 || loops % 10 === 0)) {
+        this.log(`Blacksmithing quest 2777 turn-ins: ${loops}/${BLACKSMITHING_RANK_4_TURN_INS}; rank is not readable yet.`);
       }
     }
   }
@@ -6657,9 +6659,13 @@ export class ZeroToHeroRuntime {
   }
 
   private async factionRepByName(factionName: string): Promise<number> {
+    const direct = await this.bot.callGameFunction<unknown>("world.myAvatar.getRep", factionName).catch(() => undefined);
+    const directRep = toNumber(direct);
+    if (directRep > 0) return directRep;
+
     const record = await this.factionRecordByName(factionName);
     if (!record) return 0;
-    return numberFrom(record, ["iRep", "TotalRep", "totalRep", "Rep", "rep", "iTotalRep"]);
+    return numberFrom(record, ["iRep", "TotalRep", "totalRep", "Rep", "rep", "iTotalRep", "Value", "value"]);
   }
 
   private async factionRankByName(factionName: string): Promise<number> {
@@ -6673,9 +6679,17 @@ export class ZeroToHeroRuntime {
     const needle = normalizeFactionName(factionName);
     if (!needle) return undefined;
 
-    const factions = (await this.safeArray("world.myAvatar.factions")).flatMap(recordsFrom);
+    const paths = [
+      "world.myAvatar.factions",
+      "world.myAvatar.objData.factions",
+      "world.myAvatar.dataLeaf.factions",
+      "world.myAvatar.objData.Factions",
+      "world.myAvatar.dataLeaf.Factions"
+    ];
+    const batches = await Promise.all(paths.map((path) => this.bot.getGameObject<unknown>(path).catch(() => undefined)));
+    const factions = batches.flatMap(recordsFrom);
     return factions.find((record) => {
-      const name = stringFrom(firstFrom(record, ["sName", "Name", "name", "strName", "Faction", "faction"]));
+      const name = stringFrom(firstFrom(record, ["sName", "Name", "name", "strName", "Faction", "faction", "sFaction", "ID", "id"]));
       return normalizeFactionName(name) === needle;
     });
   }
