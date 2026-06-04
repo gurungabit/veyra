@@ -100,6 +100,8 @@ const BLACKSMITHING_VOUCHER_SHOP_ID = 2036;
 const BLACKSMITHING_VOUCHER_COST = 500000;
 const BLACKSMITHING_GOLD_REP_PER_TURN_IN = 1000;
 const BLACKSMITHING_MAX_GOLD_TURN_INS = 200;
+const BERSERKER_BUNNY_QUEST_ID = 236;
+const BERSERKER_BUNNY_ITEM = "Berserker Bunny";
 const ESCHERION_MAP = "escherion";
 const ESCHERION_MONSTER_ID = 3;
 const STAFF_OF_INVERSION_MONSTER_ID = 2;
@@ -685,7 +687,7 @@ export class ZeroToHeroRuntime {
     return undefined;
   }
 
-  async sell(name: string): Promise<void> {
+  async sell(name: string, quantity = 1, all = false): Promise<void> {
     const record = await this.item(name, false);
     if (!record) return;
     const id = primaryItemId(record);
@@ -694,7 +696,10 @@ export class ZeroToHeroRuntime {
       this.log(`Sell skipped; ${name} is missing an item id or character item id.`);
       return;
     }
-    await this.sendRoomPacket("sellItem", [id, 1, charItemId]);
+    const owned = await this.quantity(name, false);
+    const sellQuantity = all ? owned : Math.max(1, Math.min(Math.floor(quantity), owned || quantity));
+    if (sellQuantity <= 0) return;
+    await this.sendRoomPacket("sellItem", [id, sellQuantity, charItemId]);
     await this.bot.delay(650, this.signal);
   }
 
@@ -1446,49 +1451,128 @@ export class ZeroToHeroRuntime {
     if (record && itemEnhancementLevel(record) <= 0) this.log(`${className} still appears unenhanced after enhancement request.`);
   }
 
-  async farmGold(targetGold = 0): Promise<void> {
-    if (targetGold <= 0) {
-      this.log("Farming gold with the current combat route.");
-      await this.farmExperience(100);
-      return;
-    }
+  async farmGold(targetGold = 100000000): Promise<void> {
+    targetGold = Math.max(1, Math.floor(targetGold));
 
     let currentGold = await this.currentGold();
     if (currentGold >= targetGold) return;
 
     this.log(`Farming gold toward ${formatGold(targetGold)}.`);
-    let loops = 0;
-    let staleChecks = 0;
-    let lastGold = currentGold;
+    await this.goldHonorHall(targetGold).catch((error) =>
+      this.log(`HonorHall gold route skipped: ${errorSummary(error)}`)
+    );
+    if ((await this.currentGold()) >= targetGold) return;
+    await this.goldBattleGroundE(targetGold).catch((error) =>
+      this.log(`BattleGroundE gold route skipped: ${errorSummary(error)}`)
+    );
+    if ((await this.currentGold()) >= targetGold) return;
+    await this.goldBerserkerBunny(targetGold);
+  }
 
-    while (!this.signal?.aborted && currentGold < targetGold) {
+  private async goldHonorHall(targetGold: number): Promise<void> {
+    const snapshot = await this.snapshot();
+    if (snapshot.level < 61 || !(await this.isMember()) || (await this.currentGold()) >= targetGold) return;
+    this.log(`Farming ${formatGold(targetGold)} using HonorHall gold route.`);
+    await this.farmGoldQuestRoute({
+      label: "HonorHall",
+      targetGold,
+      questId: 3993,
+      map: "honorhall",
+      cell: "r1",
+      pad: "Center",
+      monster: "Ice Demon",
+      item: "HonorHall Opponent Defeated",
+      quantity: 10
+    });
+  }
+
+  private async goldBattleGroundE(targetGold: number): Promise<void> {
+    const snapshot = await this.snapshot();
+    if (snapshot.level < 61 || (await this.currentGold()) >= targetGold) return;
+    this.log(`Farming ${formatGold(targetGold)} using BattleGroundE gold route.`);
+    await this.farmGoldQuestRoute({
+      label: "BattleGroundE",
+      targetGold,
+      questId: 3992,
+      map: "battlegrounde",
+      cell: "r2",
+      pad: "Left",
+      monster: "*",
+      item: "Battleground E Opponent Defeated",
+      quantity: 10
+    });
+  }
+
+  private async farmGoldQuestRoute(options: {
+    label: string;
+    targetGold: number;
+    questId: number;
+    map: string;
+    cell: string;
+    pad: string;
+    monster: MonsterTarget;
+    item: string;
+    quantity: number;
+  }): Promise<void> {
+    let loops = 0;
+    while (!this.signal?.aborted && (await this.currentGold()) < options.targetGold) {
       if (this.options.maxFarmLoops && loops >= this.options.maxFarmLoops) {
-        this.log(`Stopped gold farm at ${formatGold(currentGold)} due to maxFarmLoops.`);
+        this.log(`Stopped ${options.label} gold route after ${loops} loops due to maxFarmLoops.`);
         return;
       }
 
-      const snapshot = await this.snapshot();
-      const route = selectGoldRoute(snapshot.level);
-      if (await this.recoverIfDead(route)) continue;
-      await this.ensureRoute(route);
-      await this.bot.attack(route.monster);
-      await this.bot.useAvailableSkills();
-      await this.bot.delay(500, this.signal);
       loops += 1;
+      await this.acceptQuest(options.questId);
+      await this.killMonster(
+        options.map,
+        options.cell,
+        options.pad,
+        options.monster,
+        options.item,
+        options.quantity,
+        true
+      );
+      await this.completeQuest(options.questId);
+      await this.bot.delay(700, this.signal);
 
-      if (loops === 1 || loops % 15 === 0) {
-        currentGold = await this.currentGold();
-        this.log(`Gold progress: ${formatGold(currentGold)}/${formatGold(targetGold)}.`);
-        if (currentGold <= lastGold) {
-          staleChecks += 1;
-          if (staleChecks >= 4) {
-            this.log("Gold is not increasing from the current route; stopping gold farm.");
-            return;
-          }
-        } else {
-          staleChecks = 0;
-          lastGold = currentGold;
-        }
+      if (loops === 1 || loops % 5 === 0) {
+        this.log(`${options.label} gold progress: ${formatGold(await this.currentGold())}/${formatGold(options.targetGold)}.`);
+      }
+    }
+  }
+
+  private async goldBerserkerBunny(targetGold: number): Promise<void> {
+    if ((await this.currentGold()) >= targetGold) return;
+    this.log(`Farming ${formatGold(targetGold)} using Berserker Bunny sell route.`);
+    let loops = 0;
+
+    while (!this.signal?.aborted && (await this.currentGold()) < targetGold) {
+      if (this.options.maxFarmLoops && loops >= this.options.maxFarmLoops) {
+        this.log(`Stopped Berserker Bunny gold route after ${loops} loops due to maxFarmLoops.`);
+        return;
+      }
+
+      loops += 1;
+      await this.acceptDrops(BERSERKER_BUNNY_ITEM);
+      await this.acceptQuest(BERSERKER_BUNNY_QUEST_ID);
+      await this.killMonster(
+        "greenguardwest",
+        "West12",
+        "Up",
+        "*",
+        "Were Egg",
+        1,
+        true,
+        [BERSERKER_BUNNY_ITEM]
+      );
+      await this.completeQuest(BERSERKER_BUNNY_QUEST_ID);
+      await this.acceptDrops(BERSERKER_BUNNY_ITEM);
+      await this.bot.delay(700, this.signal);
+      await this.sell(BERSERKER_BUNNY_ITEM, 1, true);
+      await this.bot.delay(700, this.signal);
+
+      if (loops === 1 || loops % 5 === 0) {
+        this.log(`Berserker Bunny gold progress: ${formatGold(await this.currentGold())}/${formatGold(targetGold)}.`);
       }
     }
   }
@@ -2075,7 +2159,7 @@ export class ZeroToHeroRuntime {
       if (!(await this.rankClass("Dragonslayer", 582))) return;
     }
     await this.lairStory();
-    await this.farmGold();
+    await this.farmGold(30000);
     this.log(
       "Dragonslayer General route: Enchanted Scale x75 from turning in quest 5294; Dragon Claw x100 as a regular drop; then buy Dragonslayer General from shop 1286."
     );
@@ -7449,16 +7533,6 @@ function selectRoute(level: number): FarmRoute {
   return experienceRoutes[experienceRoutes.length - 1]!;
 }
 
-function selectGoldRoute(level: number): FarmRoute {
-  if (level >= 61) {
-    return (
-      experienceRoutes.find((route) => route.map === "battlegrounde") ??
-      selectRoute(level)
-    );
-  }
-  return selectRoute(level);
-}
-
 function clamp(value: number, min: number, max: number): number {
   if (!Number.isFinite(value)) return max;
   return Math.max(min, Math.min(Math.floor(value), max));
@@ -7466,6 +7540,10 @@ function clamp(value: number, min: number, max: number): number {
 
 function formatGold(value: number): string {
   return `${Math.max(0, Math.floor(value)).toLocaleString("en-US")} gold`;
+}
+
+function errorSummary(error: unknown): string {
+  return error instanceof Error ? error.message.split("\n")[0] || error.message : String(error);
 }
 
 function requestBlacksmithingMethod(signal?: AbortSignal): Promise<BlacksmithingMethodChoice | undefined> {
