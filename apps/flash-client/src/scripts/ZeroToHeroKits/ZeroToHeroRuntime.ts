@@ -5833,9 +5833,56 @@ export class ZeroToHeroRuntime {
   }
 
   private async ensureWolfwingBossUnlocked(): Promise<void> {
-    if (await this.isStoryQuestComplete(567).catch(() => false)) return;
+    if (
+      (await this.isStoryQuestComplete(597).catch(() => false)) ||
+      (await this.isStoryQuestComplete(598).catch(() => false))
+    )
+      return;
 
-    this.log("Unlocking Wolfwing boss room by defeating Dracowerepyre.");
+    this.log("Unlocking Wolfwing boss room with the Darkovia story route.");
+    await this.completeWolfwingDarkoviaStory();
+  }
+
+  private async completeWolfwingDarkoviaStory(): Promise<void> {
+    if (
+      (await this.isStoryQuestComplete(597).catch(() => false)) ||
+      (await this.isStoryQuestComplete(598).catch(() => false))
+    )
+      return;
+
+    await this.storyMapItemQuest(494, "darkoviagrave", 97);
+    await this.storyKillQuest(495, "darkoviagrave", "Skeletal Fire Mage");
+    await this.storyKillQuest(496, "darkoviagrave", "Rattlebones");
+    await this.storyKillQuest(497, "darkoviagrave", "Albino Bat");
+    await this.storyKillQuest(498, "darkoviagrave", "Blightfang");
+    await this.storyKillQuest(308, "greenguardeast", "Wolf");
+    await this.storyKillQuest(309, "greenguardwest", "Slime");
+    await this.storyKillQuest(310, "greenguardwest", "Frogzard");
+    await this.storyKillQuest(311, "greenguardeast", "Spider");
+    await this.completeWolfwingGreenguardDocs();
+    await this.storyKillQuest(516, "darkoviaforest", "Dire Wolf");
+    await this.completeQuestPlan(517, [
+      { kind: "hunt", map: "darkoviaforest", monster: "Blood Maggot", item: "Vial of Blood", quantity: 3 },
+      { kind: "hunt", map: "darkoviaforest", monster: "Blood Maggot", item: "Vial of Sweat", quantity: 2 },
+      { kind: "hunt", map: "darkoviaforest", monster: "Blood Maggot", item: "Vial of Tears" }
+    ]);
+    await this.storyKillQuest(518, "darkoviaforest", "Lich of the Stone");
+    await this.storyKillQuest(519, "safiria", "Blood Maggot");
+    await this.storyKillQuest(520, "safiria", "Albino Bat");
+    await this.storyKillQuest(521, "safiria", "Chaos Lycan");
+    await this.storyKillQuest(522, "safiria", "Twisted Paw");
+    await this.storyKillQuest(534, "lycan", "Dire Wolf");
+    await this.storyKillQuest(535, "lycan", ["Lycan Knight", "Lycan"]);
+    await this.storyKillQuest(536, "lycan", "Chaos Vampire Knight");
+    await this.completeQuestPlan(537, [
+      { kind: "hunt", map: "lycan", monster: "Sanguine", item: "Sanguine Mask" }
+    ]);
+    await this.chainQuest(552);
+    await this.completeWolfwingSearchAndReport();
+    await this.storyKillQuest(565, "chaoscave", "Werepyre");
+    await this.completeQuestPlan(566, [
+      { kind: "hunt", map: "chaoscave", cell: "r3", pad: "Left", monster: "Werepyre", item: "Secret Words" }
+    ]);
     await this.completeQuestPlan(567, [
       {
         kind: "hunt",
@@ -5843,10 +5890,67 @@ export class ZeroToHeroRuntime {
         cell: "r5",
         pad: "Left",
         monster: "DracoWerePyre",
-        item: "Dracowerepyre Defeated"
+        item: "DracoWerePyre Defeated"
       }
     ]);
     await this.chainQuest(597).catch(() => undefined);
+  }
+
+  private async completeWolfwingGreenguardDocs(): Promise<void> {
+    if (await this.isStoryQuestComplete(516).catch(() => false)) return;
+
+    const quest514Done = await this.isStoryQuestComplete(514).catch(() => false);
+    const quest515Done = await this.isStoryQuestComplete(515).catch(() => false);
+
+    if (!quest514Done) await this.acceptQuest(514);
+    if (!quest515Done) {
+      await this.acceptQuest(515);
+      await this.hunt("greenguardeast", "Spider", "Spider Documentation", 1, true, [
+        "Red's Big Wolf Slaying Axe"
+      ]);
+      await this.hunt("greenguardeast", "Wolf", "Wolf Documentation", 1, true, ["Red's Big Wolf Slaying Axe"]);
+      await this.hunt("greenguardwest", "Slime", "Slime Documentation", 1, true, [
+        "Red's Big Wolf Slaying Axe"
+      ]);
+      await this.hunt("greenguardwest", "Frogzard", "Frogzard Documentation", 1, true, [
+        "Red's Big Wolf Slaying Axe"
+      ]);
+      await this.killMonster(
+        "greenguardwest",
+        "West12",
+        "Up",
+        "Big Bad Boar",
+        "Wereboar Documentation",
+        1,
+        true,
+        ["Red's Big Wolf Slaying Axe"]
+      );
+      await this.completeQuest(515);
+      await this.acceptQuestDrops(515);
+      await this.acceptDrops("Red's Big Wolf Slaying Axe");
+    }
+
+    if (!quest514Done) {
+      await this.acceptDrops("Red's Big Wolf Slaying Axe");
+      await this.completeQuest(514);
+      await this.acceptQuestDrops(514);
+    }
+  }
+
+  private async completeWolfwingSearchAndReport(): Promise<void> {
+    if (await this.isStoryQuestComplete(564).catch(() => false)) return;
+
+    await this.acceptQuest(564);
+    await this.join("lycanwar", "Boss", "Left");
+    await this.attackQuestMonsterUntilClear(564, "Edvard", {
+      map: "lycanwar",
+      cell: "Boss",
+      pad: "Left"
+    });
+    await this.bot.delay(5000, this.signal);
+    await this.getMapItem("chaoscave", 107);
+    await this.completeQuest(564);
+    await this.acceptQuestDrops(564);
   }
 
   private async forgeCapeEnhancement(): Promise<void> {
@@ -6265,6 +6369,15 @@ export class ZeroToHeroRuntime {
   }
 
   private async runChaosPlanStep(step: ChaosPlanStep): Promise<void> {
+    if (step.questId === 514) {
+      await this.completeWolfwingGreenguardDocs();
+      return;
+    }
+    if (step.questId === 564) {
+      await this.completeWolfwingSearchAndReport();
+      return;
+    }
+
     switch (step.kind) {
       case "chain":
         await this.chainQuest(step.questId);
