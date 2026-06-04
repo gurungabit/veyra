@@ -1,7 +1,10 @@
 package veyra.api {
 import flash.display.DisplayObject;
+import flash.display.DisplayObjectContainer;
 import flash.display.FrameLabel;
+import flash.events.MouseEvent;
 import flash.events.TimerEvent;
+import flash.text.TextField;
 import flash.utils.Timer;
 
 import veyra.Main;
@@ -214,6 +217,131 @@ public class World {
             Main.instance.game.mcExtSWF.removeChildAt(0);
         }
         Main.instance.game.showInterface();
+    }
+
+    public static function clickFightPrompt():String {
+        try {
+            return clickTextPrompt("fight") ? "true" : "false";
+        } catch (ex:Error) {
+            Main.instance.external.debug("World::clickFightPrompt failed " + ex.message);
+            return "false";
+        }
+        return "false";
+    }
+
+    private static function clickTextPrompt(label:String):Boolean {
+        var normalizedLabel:String = normalizeText(label);
+        var roots:Array = [];
+
+        try {
+            if (Main.instance.game.mcExtSWF != null) roots.push(Main.instance.game.mcExtSWF);
+        } catch (ex1:Error) {
+        }
+        try {
+            if (Main.instance.game.ui != null) roots.push(Main.instance.game.ui);
+        } catch (ex2:Error) {
+        }
+        try {
+            if (Main.instance.game != null) roots.push(Main.instance.game);
+        } catch (ex3:Error) {
+        }
+        try {
+            if (Main.instance.stage != null) roots.push(Main.instance.stage);
+        } catch (ex4:Error) {
+        }
+
+        for each (var root:* in roots) {
+            var field:DisplayObject = findTextField(root as DisplayObjectContainer, normalizedLabel, 0);
+            if (field == null) continue;
+
+            var target:DisplayObject = clickableTargetFor(field);
+            if (target != null && dispatchMouseClick(target)) return true;
+        }
+
+        return false;
+    }
+
+    private static function findTextField(root:DisplayObjectContainer, label:String, depth:int):DisplayObject {
+        if (root == null || depth > 45) return null;
+        try {
+            if (!root.visible) return null;
+        } catch (visibleEx:Error) {
+        }
+
+        for (var i:int = 0; i < root.numChildren; i++) {
+            var child:DisplayObject;
+            try {
+                child = root.getChildAt(i);
+            } catch (childEx:Error) {
+                continue;
+            }
+
+            if (child == null) continue;
+            try {
+                if (!child.visible) continue;
+            } catch (childVisibleEx:Error) {
+            }
+
+            if (child is TextField) {
+                var text:String = normalizeText((child as TextField).text);
+                if (text == label) return child;
+            }
+
+            if (child is DisplayObjectContainer) {
+                var found:DisplayObject = findTextField(child as DisplayObjectContainer, label, depth + 1);
+                if (found != null) return found;
+            }
+        }
+
+        return null;
+    }
+
+    private static function clickableTargetFor(field:DisplayObject):DisplayObject {
+        var current:DisplayObject = field;
+        var fallback:DisplayObject = field.parent != null ? field.parent : field;
+
+        for (var depth:int = 0; current != null && depth < 8; depth++) {
+            if (isButtonLike(current)) return current;
+            current = current.parent;
+        }
+
+        return fallback;
+    }
+
+    private static function isButtonLike(target:DisplayObject):Boolean {
+        var name:String = target.name != null ? target.name.toLowerCase() : "";
+        if (name.indexOf("btn") >= 0 || name.indexOf("button") >= 0 || name.indexOf("fight") >= 0 || name.indexOf("hit") >= 0)
+            return true;
+
+        var dynamicTarget:Object = target as Object;
+        try {
+            if (dynamicTarget != null && dynamicTarget["buttonMode"] == true) return true;
+        } catch (buttonModeEx:Error) {
+        }
+        try {
+            if (dynamicTarget != null && dynamicTarget["useHandCursor"] == true) return true;
+        } catch (handCursorEx:Error) {
+        }
+
+        return false;
+    }
+
+    private static function dispatchMouseClick(target:DisplayObject):Boolean {
+        try {
+            target.dispatchEvent(new MouseEvent(MouseEvent.MOUSE_OVER, true, false));
+            target.dispatchEvent(new MouseEvent(MouseEvent.MOUSE_DOWN, true, false));
+            target.dispatchEvent(new MouseEvent(MouseEvent.MOUSE_UP, true, false));
+            target.dispatchEvent(new MouseEvent(MouseEvent.CLICK, true, false));
+            return true;
+        } catch (ex:Error) {
+            return false;
+        }
+        return false;
+    }
+
+    private static function normalizeText(value:String):String {
+        if (value == null) return "";
+        return value.replace(/^\s+|\s+$/g, "").toLowerCase();
     }
 
     public static function hidePlayers(enabled:Boolean):void {

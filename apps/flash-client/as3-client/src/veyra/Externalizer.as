@@ -73,6 +73,7 @@ public class Externalizer {
         this.addCallback("getPads", World.getPads);
         this.addCallback("disableDeathAd", World.disableDeathAd);
         this.addCallback("skipCutscenes", World.skipCutscenes);
+        this.addCallback("clickFightPrompt", World.clickFightPrompt);
         this.addCallback("hidePlayers", World.hidePlayers);
         this.addCallback("disableFX", World.disableFX);
         this.addCallback("killLag", World.killLag);

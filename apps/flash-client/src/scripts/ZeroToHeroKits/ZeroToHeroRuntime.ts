@@ -243,6 +243,8 @@ const knownDropItemIds: Record<string, number[]> = {
 export class ZeroToHeroRuntime {
   private readonly options: ZeroToHeroRuntimeOptions;
   private lastServerActionAt = 0;
+  private lastFightPromptClickAt = 0;
+  private readonly skuaBypassedMaps = new Set<string>();
   private bankLoadAttempted = false;
 
   constructor(
@@ -520,9 +522,11 @@ export class ZeroToHeroRuntime {
   async join(map: string, cell = "Enter", pad = "Spawn"): Promise<void> {
     await this.recoverIfDead({ map, cell, pad });
     this.throwIfAborted();
+    await this.applySkuaMapBypass(map);
     await this.bot.join(map, cell, pad);
     await this.bot.delay(700, this.signal);
     await this.skipCutsceneIfActive();
+    await this.clickFightPromptIfVisible();
   }
 
   async jump(cell: string, pad = "Spawn"): Promise<void> {
@@ -531,6 +535,7 @@ export class ZeroToHeroRuntime {
     await this.bot.jump(cell, pad);
     await this.bot.delay(450, this.signal);
     await this.skipCutsceneIfActive();
+    await this.clickFightPromptIfVisible();
   }
 
   async skipCutsceneIfActive(): Promise<boolean> {
@@ -550,7 +555,35 @@ export class ZeroToHeroRuntime {
     await this.bot.call("setGameObject", "world.visible", true).catch(() => undefined);
     await this.bot.call("setGameObject", "mcExtSWF.visible", false).catch(() => undefined);
     await this.bot.callGameFunction("showInterface").catch(() => undefined);
+    await this.clickFightPromptIfVisible();
     return true;
+  }
+
+  private async clickFightPromptIfVisible(): Promise<boolean> {
+    const clicked = toBoolean(await this.bot.call<unknown>("clickFightPrompt").catch(() => false));
+    if (!clicked) return false;
+
+    const now = Date.now();
+    if (now - this.lastFightPromptClickAt > 5000) {
+      this.log("Clicked Fight prompt.");
+      this.lastFightPromptClickAt = now;
+    }
+    await this.bot.delay(900, this.signal);
+    return true;
+  }
+
+  private async applySkuaMapBypass(map: string): Promise<void> {
+    const normalizedMap = map.trim().toLowerCase();
+    if (normalizedMap !== "chaoscave" && normalizedMap !== "lycanwar") return;
+
+    if (!this.skuaBypassedMaps.has(normalizedMap)) {
+      this.log(`Applying Skua map bypass for ${normalizedMap}.`);
+      this.skuaBypassedMaps.add(normalizedMap);
+    }
+
+    const packet = JSON.stringify({ t: "xt", b: { r: -1, o: { cmd: "updateQuest", iValue: 26, iIndex: 22 } } });
+    await this.bot.call("sendClientPacket", packet, "json").catch(() => undefined);
+    await this.bot.delay(200, this.signal);
   }
 
   async equip(name: string, itemId?: number): Promise<boolean> {
@@ -1138,6 +1171,7 @@ export class ZeroToHeroRuntime {
     if (item) this.log(`Farming ${item}${quantity > 1 ? ` x${quantity}` : ""} from ${monster}.`);
     if (!item) {
       await this.recoverIfDead(location);
+      if (await this.clickFightPromptIfVisible()) await this.bot.delay(500, this.signal);
       const target = location?.map && !location.cell ? await this.jumpToMonsterCell(monster, `fighting ${monster}`) : undefined;
       await this.bot.attack(await this.resolvePriorityCombatTarget(target?.id ?? monster, monster, location));
       await this.bot.useAvailableSkills();
@@ -1166,6 +1200,7 @@ export class ZeroToHeroRuntime {
       }
       loops += 1;
       await this.recoverIfDead(location);
+      if (await this.clickFightPromptIfVisible()) continue;
       let target: MonsterPosition | undefined;
       if (location?.map && !location.cell) {
         target = await this.jumpToMonsterCell(monster, item ? `farming ${item}` : `fighting ${monster}`);
