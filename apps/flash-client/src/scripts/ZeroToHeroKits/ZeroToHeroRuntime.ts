@@ -88,6 +88,7 @@ const SANDSEA_FACTION_ID = 13;
 const HORC_FACTION_ID = 19;
 const EMBERSEA_FACTION_ID = 43;
 const GLACERA_FACTION_ID = 52;
+const BLACKSMITHING_FACTION_NAME = "Blacksmithing";
 const ESCHERION_MAP = "escherion";
 const ESCHERION_MONSTER_ID = 3;
 const STAFF_OF_INVERSION_MONSTER_ID = 2;
@@ -1433,6 +1434,11 @@ export class ZeroToHeroRuntime {
   async unlockEnhancement(name: string, questId?: number, action?: () => Promise<void>): Promise<void> {
     const resolvedQuestId = questId ?? forgeEnhancementQuestIds[name];
     if (resolvedQuestId && (await this.isQuestCompleted(resolvedQuestId))) {
+      if (this.isBaseForgeEnhancement(name) && (await this.factionRankByName(BLACKSMITHING_FACTION_NAME)) < 4) {
+        this.log(`${name} quest is complete, but Blacksmithing Rank 4 is still required.`);
+        await this.blacksmithingRep(4);
+        return;
+      }
       this.log(`${name} enhancement already unlocked.`);
       return;
     }
@@ -1776,6 +1782,56 @@ export class ZeroToHeroRuntime {
         await this.hunt("bloodtuskwar", "Chaotic Chinchilizard", "Chaorrupted Tusk", 5, true);
       }
     });
+  }
+
+  private async blacksmithingRep(targetRank = 4): Promise<void> {
+    const cappedRank = Math.max(1, Math.min(targetRank, 10));
+    const startRank = await this.factionRankByName(BLACKSMITHING_FACTION_NAME);
+    if (startRank >= cappedRank) {
+      this.log(`Blacksmithing reputation is already Rank ${startRank}; skipping reputation farm.`);
+      return;
+    }
+
+    this.log(`Forge requires Blacksmithing Rank ${cappedRank}; farming Blacksmithing from Rank ${startRank}.`);
+    let loops = 0;
+    let staleTurnIns = 0;
+    let lastRank = startRank;
+
+    while ((await this.factionRankByName(BLACKSMITHING_FACTION_NAME)) < cappedRank) {
+      if (this.options.maxFarmLoops && loops >= this.options.maxFarmLoops) {
+        this.log(`Stopped Blacksmithing reputation farm after ${loops} loops due to maxFarmLoops.`);
+        return;
+      }
+
+      loops += 1;
+      const beforeRep = await this.factionRepByName(BLACKSMITHING_FACTION_NAME);
+      await this.completeQuestPlan(
+        2777,
+        [
+          { kind: "hunt", map: "greenguardeast", monster: "Wolf", item: "Furry Lost Sock", quantity: 2, isTemp: true },
+          { kind: "hunt", map: "greenguardwest", monster: "Slime", item: "Slimy Lost Sock", quantity: 5, isTemp: true }
+        ],
+        -1,
+        true
+      );
+      await this.bot.delay(750, this.signal);
+
+      const afterRep = await this.factionRepByName(BLACKSMITHING_FACTION_NAME);
+      const rank = await this.factionRankByName(BLACKSMITHING_FACTION_NAME);
+      if (rank > lastRank || loops === 1 || loops % 10 === 0) {
+        this.log(`Blacksmithing reputation progress: Rank ${rank}, ${afterRep} rep.`);
+        lastRank = rank;
+      }
+
+      if (afterRep <= beforeRep) {
+        staleTurnIns += 1;
+        if (staleTurnIns >= 3) {
+          throw new Error(`Quest 2777 is not increasing Blacksmithing reputation after ${staleTurnIns} turn-ins.`);
+        }
+      } else {
+        staleTurnIns = 0;
+      }
+    }
   }
 
   private async dragonslayer(): Promise<void> {
@@ -5780,6 +5836,11 @@ export class ZeroToHeroRuntime {
 
   private async runForgeEnhancement(name: string, questId?: number): Promise<void> {
     if (questId && (await this.isQuestCompleted(questId))) {
+      if (this.isBaseForgeEnhancement(name) && (await this.factionRankByName(BLACKSMITHING_FACTION_NAME)) < 4) {
+        this.log(`${name} quest is complete, but Blacksmithing Rank 4 is still required.`);
+        await this.blacksmithingRep(4);
+        return;
+      }
       this.log(`${name} enhancement already unlocked.`);
       return;
     }
@@ -5845,7 +5906,14 @@ export class ZeroToHeroRuntime {
     }
   }
 
+  private isBaseForgeEnhancement(name: string): boolean {
+    return ["ForgeWeaponEnhancement", "ForgeWeapon", "ForgeCapeEnhancement", "ForgeCape", "ForgeHelmEnhancement", "ForgeHelm"].some(
+      (candidate) => sameName(candidate, name)
+    );
+  }
+
   private async forgeWeaponEnhancement(): Promise<void> {
+    await this.blacksmithingRep(4);
     if (await this.isQuestCompleted(8738)) return;
     await this.acceptQuest(8738);
     await this.hunt("escherion", "Escherion", "1st Lord Of Chaos Helm", 1, false);
@@ -5857,6 +5925,7 @@ export class ZeroToHeroRuntime {
   }
 
   private async forgeHelmEnhancement(): Promise<void> {
+    await this.blacksmithingRep(4);
     if (await this.isQuestCompleted(8828)) return;
     await this.acceptQuest(8828);
     await this.hunt("escherion", "Escherion", "1st Lord Of Chaos Staff", 1, false);
@@ -5989,6 +6058,7 @@ export class ZeroToHeroRuntime {
   }
 
   private async forgeCapeEnhancement(): Promise<void> {
+    await this.blacksmithingRep(4);
     if (await this.isQuestCompleted(8758)) return;
     await this.acceptQuest(8758);
     await this.hunt("lostruinswar", "Diabolical Warlord", "Prismatic Celestial Wings", 1, false);
@@ -6584,6 +6654,30 @@ export class ZeroToHeroRuntime {
 
   async factionRank(factionId: number): Promise<number> {
     return classRankFromPoints(await this.factionRep(factionId));
+  }
+
+  private async factionRepByName(factionName: string): Promise<number> {
+    const record = await this.factionRecordByName(factionName);
+    if (!record) return 0;
+    return numberFrom(record, ["iRep", "TotalRep", "totalRep", "Rep", "rep", "iTotalRep"]);
+  }
+
+  private async factionRankByName(factionName: string): Promise<number> {
+    const record = await this.factionRecordByName(factionName);
+    if (!record) return 0;
+    const rank = numberFrom(record, ["iRank", "Rank", "rank"]);
+    return rank > 0 ? rank : classRankFromPoints(await this.factionRepByName(factionName));
+  }
+
+  private async factionRecordByName(factionName: string): Promise<Record<string, unknown> | undefined> {
+    const needle = normalizeFactionName(factionName);
+    if (!needle) return undefined;
+
+    const factions = (await this.safeArray("world.myAvatar.factions")).flatMap(recordsFrom);
+    return factions.find((record) => {
+      const name = stringFrom(firstFrom(record, ["sName", "Name", "name", "strName", "Faction", "faction"]));
+      return normalizeFactionName(name) === needle;
+    });
   }
 
   private async runQuestAction(action: VeyraQuestAction, defaultQuestId?: number): Promise<void> {
