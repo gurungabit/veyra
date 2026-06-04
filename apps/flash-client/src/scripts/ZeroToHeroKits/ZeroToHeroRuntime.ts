@@ -88,6 +88,9 @@ const SANDSEA_FACTION_ID = 13;
 const HORC_FACTION_ID = 19;
 const EMBERSEA_FACTION_ID = 43;
 const GLACERA_FACTION_ID = 52;
+const ESCHERION_MAP = "escherion";
+const ESCHERION_MONSTER_ID = 3;
+const STAFF_OF_INVERSION_MONSTER_ID = 2;
 
 const questDataFallbacks: Record<number, Record<string, unknown>> = {
   10584: {
@@ -1133,7 +1136,7 @@ export class ZeroToHeroRuntime {
     if (!item) {
       await this.recoverIfDead(location);
       const target = location?.map && !location.cell ? await this.jumpToMonsterCell(monster, `fighting ${monster}`) : undefined;
-      await this.bot.attack(target?.id ?? monster);
+      await this.bot.attack(await this.resolvePriorityCombatTarget(target?.id ?? monster, monster, location));
       await this.bot.useAvailableSkills();
       await this.bot.delay(650, this.signal);
       return;
@@ -1164,7 +1167,7 @@ export class ZeroToHeroRuntime {
       if (location?.map && !location.cell) {
         target = await this.jumpToMonsterCell(monster, item ? `farming ${item}` : `fighting ${monster}`);
       }
-      await this.bot.attack(target?.id ?? monster);
+      await this.bot.attack(await this.resolvePriorityCombatTarget(target?.id ?? monster, monster, location));
       await this.bot.useAvailableSkills();
       if (acceptedDrops.length > 0) await this.acceptDrops(acceptedDrops);
       await this.bot.delay(650, this.signal);
@@ -1211,6 +1214,45 @@ export class ZeroToHeroRuntime {
     const pad = stringFrom(firstFrom(best, ["strPad", "pad", "Pad"])).trim() || "Auto";
     const id = optionalNumberFrom(best, ["MonMapID", "MapID", "monMapId"]);
     return cell ? { id, cell, pad } : undefined;
+  }
+
+  private async resolvePriorityCombatTarget(
+    candidate: MonsterTarget,
+    requestedMonster: MonsterTarget,
+    location?: CombatLocation
+  ): Promise<MonsterTarget> {
+    if (!this.shouldUseEscherionStaffPriority(requestedMonster, location)) return candidate;
+
+    const currentTarget = await this.currentTargetMonster().catch(() => undefined);
+    if (
+      currentTarget &&
+      this.monsterRecordMatches(currentTarget, STAFF_OF_INVERSION_MONSTER_ID) &&
+      this.monsterHp(currentTarget) > 0
+    ) {
+      return STAFF_OF_INVERSION_MONSTER_ID;
+    }
+
+    if (
+      currentTarget &&
+      this.monsterRecordMatches(currentTarget, ESCHERION_MONSTER_ID) &&
+      this.monsterState(currentTarget) === 2 &&
+      (await this.isMapMonsterAlive(STAFF_OF_INVERSION_MONSTER_ID))
+    ) {
+      return STAFF_OF_INVERSION_MONSTER_ID;
+    }
+
+    return ESCHERION_MONSTER_ID;
+  }
+
+  private shouldUseEscherionStaffPriority(monster: MonsterTarget, location?: CombatLocation): boolean {
+    if (!location?.map || location.map.toLowerCase() !== ESCHERION_MAP) return false;
+    if (typeof monster === "number") return monster === ESCHERION_MONSTER_ID;
+    return monster.trim().toLowerCase() === "escherion";
+  }
+
+  private async isMapMonsterAlive(monster: MonsterTarget): Promise<boolean> {
+    const monsters = recordsFrom(await this.bot.call<unknown>("getMonsters").catch(() => []));
+    return monsters.some((record) => this.monsterRecordMatches(record, monster) && this.monsterHp(record) > 0);
   }
 
   private async isDropVisible(item: string | number): Promise<boolean> {
@@ -6479,7 +6521,7 @@ export class ZeroToHeroRuntime {
         }
 
         await this.jumpToMonsterCell(monster, `quest ${questId}`);
-        await this.attackMonsterTarget(monster);
+        await this.attackMonsterTarget(await this.resolvePriorityCombatTarget(monster, monster, location));
         await this.bot.delay(250, this.signal);
         target = await this.currentTargetMonster();
         hasTarget = Boolean(target && this.monsterRecordMatches(target, monster));
@@ -6524,6 +6566,14 @@ export class ZeroToHeroRuntime {
     const targetName = monster.trim().toLowerCase();
     const name = stringFrom(firstFrom(record, ["strMonName", "sName", "Name", "name"])).toLowerCase();
     return targetName === "*" || name.includes(targetName);
+  }
+
+  private monsterHp(record: Record<string, unknown>): number {
+    return numberFrom(record, ["intHP", "HP", "hp"]);
+  }
+
+  private monsterState(record: Record<string, unknown>): number {
+    return numberFrom(record, ["intState", "State", "state"]);
   }
 
   private async acceptQuestDrops(questId: number): Promise<void> {
