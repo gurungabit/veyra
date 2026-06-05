@@ -211,6 +211,8 @@ let launchAccount: LaunchAccountPayload | undefined;
 let launchLoginStarted = false;
 let launchLoginTimer: number | undefined;
 let reloginPromise: Promise<boolean> | undefined;
+let clientPerformanceFrameRateCap = 0;
+let lastClientPerformanceFrameRateCap = -1;
 const toolBus = new BroadcastChannel(`veyra-tools-${instanceId}`);
 const themeBus = new BroadcastChannel("veyra-theme");
 const armyBus = new BroadcastChannel("veyra-army");
@@ -236,6 +238,10 @@ themeBus.onmessage = (event: MessageEvent<unknown>) => {
 armyBus.onmessage = (event: MessageEvent<unknown>) => {
   handleArmyMessage(event.data);
 };
+
+nativeApi()?.onClientPerformanceMode?.((payload) => {
+  void applyClientPerformanceMode(payload);
+});
 
 function boot(): void {
   if (!swfUrl) {
@@ -2157,7 +2163,7 @@ async function applyGameOption(option: string, value: GameOptionValue): Promise<
         await bot.call("setGameObject", "ui.mcFPS.visible", enabled);
         break;
       case "set-fps":
-        await bot.call("setGameObject", "stage.frameRate", numberValue);
+        await bot.call("setGameObject", "stage.frameRate", effectiveGameFrameRate(numberValue));
         break;
       case "walk-speed":
         await bot.call("setGameObject", "world.WALKSPEED", numberValue);
@@ -2206,6 +2212,32 @@ async function applyGameOption(option: string, value: GameOptionValue): Promise<
   } catch (error) {
     log("debug", `Game option ${option}: ${describeUnknownError(error)}`);
   }
+}
+
+async function applyClientPerformanceMode(payload: unknown): Promise<void> {
+  const record = asRecord(payload);
+  const clientCount = Math.max(0, Math.floor(numberValue(record.clientCount)));
+  const requestedCap = Math.max(0, Math.floor(numberValue(record.frameRateCap)));
+  clientPerformanceFrameRateCap = clientCount > 1 ? requestedCap : 0;
+
+  const previousCap = lastClientPerformanceFrameRateCap;
+  if (clientPerformanceFrameRateCap === lastClientPerformanceFrameRateCap) return;
+  lastClientPerformanceFrameRateCap = clientPerformanceFrameRateCap;
+
+  if (gameBridgeReady) {
+    await applyGameOption("set-fps", gameOptionsState.values["set-fps"] ?? 30);
+  }
+
+  if (clientPerformanceFrameRateCap > 0) {
+    log("event", `Multi-client performance cap: ${clientPerformanceFrameRateCap} FPS.`);
+  } else if (previousCap > 0 && clientCount <= 1) {
+    log("event", "Multi-client performance cap cleared.");
+  }
+}
+
+function effectiveGameFrameRate(value: number): number {
+  const requested = Math.max(1, Math.floor(Number.isFinite(value) ? value : 30));
+  return clientPerformanceFrameRateCap > 0 ? Math.min(requested, clientPerformanceFrameRateCap) : requested;
 }
 
 function gameOptionNeedsReadyGame(option: string): boolean {
@@ -3017,6 +3049,7 @@ function nativeApi(): {
   getLaunchPayload?: (launchId: string) => Promise<unknown>;
   readScriptPackScripts?: () => Promise<unknown>;
   onScriptPacksChanged?: (callback: (payload: unknown) => void) => () => void;
+  onClientPerformanceMode?: (callback: (payload: unknown) => void) => () => void;
 } | undefined {
   return (window as unknown as {
     veyraNative?: {
@@ -3035,6 +3068,7 @@ function nativeApi(): {
       getLaunchPayload?: (launchId: string) => Promise<unknown>;
       readScriptPackScripts?: () => Promise<unknown>;
       onScriptPacksChanged?: (callback: (payload: unknown) => void) => () => void;
+      onClientPerformanceMode?: (callback: (payload: unknown) => void) => () => void;
     };
   }).veyraNative;
 }

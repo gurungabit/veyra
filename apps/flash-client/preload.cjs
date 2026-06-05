@@ -24,5 +24,10 @@ window.veyraNative = {
     const listener = (_event, payload) => callback(payload);
     ipcRenderer.on("script-packs-changed", listener);
     return () => ipcRenderer.removeListener("script-packs-changed", listener);
+  },
+  onClientPerformanceMode: (callback) => {
+    const listener = (_event, payload) => callback(payload);
+    ipcRenderer.on("client-performance-mode", listener);
+    return () => ipcRenderer.removeListener("client-performance-mode", listener);
   }
 };

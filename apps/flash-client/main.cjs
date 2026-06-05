@@ -44,6 +44,8 @@ let launcherWindow;
 const clientWindows = new Map();
 const launchPayloads = new Map();
 const toolWindows = new Map();
+const focusedMultiClientFrameRate = 24;
+const backgroundMultiClientFrameRate = 12;
 const updateRepo = { owner: "gurungabit", repo: "veyra" };
 const defaultScriptUpdatesManifestBaseUrl = `https://raw.githubusercontent.com/${updateRepo.owner}/${updateRepo.repo}/main/script-updates`;
 let updateCheckerInitialized = false;
@@ -162,6 +164,9 @@ function createClientWindow(options = {}) {
   }
 
   clientWindows.set(instanceId, clientWindow);
+  clientWindow.on("focus", scheduleClientPerformanceBroadcast);
+  clientWindow.on("blur", scheduleClientPerformanceBroadcast);
+  clientWindow.webContents.on("did-finish-load", scheduleClientPerformanceBroadcast);
   clientWindow.loadURL(url.toString());
   clientWindow.show();
   clientWindow.moveTop();
@@ -170,7 +175,9 @@ function createClientWindow(options = {}) {
   clientWindow.once("closed", () => {
     clientWindows.delete(instanceId);
     if (options.launchId) launchPayloads.delete(options.launchId);
+    scheduleClientPerformanceBroadcast();
   });
+  scheduleClientPerformanceBroadcast();
 
   if (!flash.path) {
     clientWindow.once("ready-to-show", () => {
@@ -184,6 +191,31 @@ function createClientWindow(options = {}) {
   }
 
   return clientWindow;
+}
+
+let clientPerformanceBroadcastTimer;
+
+function scheduleClientPerformanceBroadcast() {
+  if (clientPerformanceBroadcastTimer) clearTimeout(clientPerformanceBroadcastTimer);
+  clientPerformanceBroadcastTimer = setTimeout(() => {
+    clientPerformanceBroadcastTimer = undefined;
+    broadcastClientPerformanceMode();
+  }, 150);
+}
+
+function broadcastClientPerformanceMode() {
+  const entries = Array.from(clientWindows.entries()).filter(([, win]) => win && !win.isDestroyed());
+  const clientCount = entries.length;
+  for (const [instanceId, win] of entries) {
+    const active = win.isFocused();
+    const frameRateCap = clientCount > 1 ? (active ? focusedMultiClientFrameRate : backgroundMultiClientFrameRate) : 0;
+    win.webContents.send("client-performance-mode", {
+      instanceId,
+      clientCount,
+      active,
+      frameRateCap
+    });
+  }
 }
 
 function focusNativeWindow(win) {
