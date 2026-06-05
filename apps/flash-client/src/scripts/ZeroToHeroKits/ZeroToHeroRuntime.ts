@@ -102,6 +102,9 @@ const BLACKSMITHING_GOLD_REP_PER_TURN_IN = 1000;
 const BLACKSMITHING_MAX_GOLD_TURN_INS = 200;
 const BERSERKER_BUNNY_QUEST_ID = 236;
 const BERSERKER_BUNNY_ITEM = "Berserker Bunny";
+const BLOOD_SORCERESS_ITEM_ID = 36298;
+const SCARLET_SORCERESS_ITEM_ID = 42992;
+const SCARLET_SORCERESS_QUEST_ID = 6236;
 const ESCHERION_MAP = "escherion";
 const ESCHERION_MONSTER_ID = 3;
 const STAFF_OF_INVERSION_MONSTER_ID = 2;
@@ -2164,37 +2167,95 @@ export class ZeroToHeroRuntime {
   }
 
   private async scarletSorceress(): Promise<void> {
-    const bloodSorceressId = 36298;
-    const scarletSorceressId = 42992;
-
-    if ((await this.contains("Scarlet Sorceress")) || (await this.contains(scarletSorceressId))) {
-      await this.rankClass("Scarlet Sorceress", scarletSorceressId);
+    if ((await this.contains("Scarlet Sorceress")) || (await this.contains(SCARLET_SORCERESS_ITEM_ID))) {
+      await this.rankClass("Scarlet Sorceress", SCARLET_SORCERESS_ITEM_ID);
       return;
     }
 
-    if (!(await this.ensureInInventory("Blood Sorceress", bloodSorceressId))) {
+    if (!(await this.ensureInInventory("Blood Sorceress", BLOOD_SORCERESS_ITEM_ID))) {
       this.log("Farming Blood Sorceress for Scarlet Sorceress.");
       await this.killMonster(
         "towerofmirrors",
         "r16",
         "Top",
         32,
-        bloodSorceressId,
+        BLOOD_SORCERESS_ITEM_ID,
         1,
         false,
         ["Blood Sorceress"]
       );
-      await this.ensureInInventory("Blood Sorceress", bloodSorceressId);
+      await this.ensureInInventory("Blood Sorceress", BLOOD_SORCERESS_ITEM_ID);
     }
 
-    if ((await this.contains("Blood Sorceress")) || (await this.contains(bloodSorceressId))) {
-      await this.rankClass("Blood Sorceress", bloodSorceressId);
-    }
+    await this.ensureBloodSorceressRank10();
     await this.farmExperience(50);
-    await this.acceptQuest(6236);
-    await this.completeQuest(6236);
+
+    if (!(await this.isQuestUnlocked(SCARLET_SORCERESS_QUEST_ID))) {
+      this.log("Scarlet Sorceress quest is still locked; refreshing Blood Sorceress rank once more.");
+      await this.rankClass("Blood Sorceress", BLOOD_SORCERESS_ITEM_ID);
+      await this.bot.delay(1200, this.signal);
+    }
+
+    if (!(await this.isQuestUnlocked(SCARLET_SORCERESS_QUEST_ID))) {
+      const progress = await this.bloodSorceressProgressSummary();
+      throw new Error(
+        `Scarlet Sorceress quest is still locked. Blood Sorceress must be Rank 10 first (${progress}).`
+      );
+    }
+
     await this.acceptDrops("Scarlet Sorceress");
-    await this.rankClass("Scarlet Sorceress", scarletSorceressId);
+    await this.acceptQuest(SCARLET_SORCERESS_QUEST_ID);
+    await this.completeQuest(SCARLET_SORCERESS_QUEST_ID);
+    await this.acceptDrops("Scarlet Sorceress");
+    await this.ensureInInventory("Scarlet Sorceress", SCARLET_SORCERESS_ITEM_ID);
+    await this.rankClass("Scarlet Sorceress", SCARLET_SORCERESS_ITEM_ID);
+  }
+
+  private async ensureBloodSorceressRank10(): Promise<void> {
+    if (!(await this.ensureInInventory("Blood Sorceress", BLOOD_SORCERESS_ITEM_ID))) {
+      throw new Error("Blood Sorceress is required before farming Scarlet Sorceress.");
+    }
+
+    if (await this.hasBloodSorceressRank10()) return;
+
+    this.log(
+      `Blood Sorceress is not Rank 10 yet (${await this.bloodSorceressProgressSummary()}); ranking before Scarlet Sorceress.`
+    );
+    await this.rankClass("Blood Sorceress", BLOOD_SORCERESS_ITEM_ID);
+
+    if (await this.hasBloodSorceressRank10()) return;
+
+    this.log("Blood Sorceress rank is still below Rank 10; continuing the rank farm.");
+    await this.equip("Blood Sorceress", BLOOD_SORCERESS_ITEM_ID);
+    await this.farmClassRank("Blood Sorceress", BLOOD_SORCERESS_ITEM_ID, 10);
+
+    if (!(await this.hasBloodSorceressRank10())) {
+      throw new Error(`Blood Sorceress did not reach Rank 10 (${await this.bloodSorceressProgressSummary()}).`);
+    }
+  }
+
+  private async hasBloodSorceressRank10(): Promise<boolean> {
+    const snapshot = await this.snapshot().catch(() => undefined);
+    if (snapshot && sameName(snapshot.currentClassName, "Blood Sorceress") && normalizedClassRank(snapshot) >= 10) {
+      return true;
+    }
+
+    const record = await this.itemById(BLOOD_SORCERESS_ITEM_ID, true).catch(() => undefined);
+    if (record && itemClassPoints(record) >= RANK_10_CLASS_POINTS) return true;
+
+    const directCp = await this.classPointsById(BLOOD_SORCERESS_ITEM_ID).catch(() => 0);
+    return directCp >= RANK_10_CLASS_POINTS;
+  }
+
+  private async bloodSorceressProgressSummary(): Promise<string> {
+    const record = await this.itemById(BLOOD_SORCERESS_ITEM_ID, true).catch(() => undefined);
+    const itemCp = record ? itemClassPoints(record) : 0;
+    const directCp = await this.classPointsById(BLOOD_SORCERESS_ITEM_ID).catch(() => 0);
+    const snapshot = await this.snapshot().catch(() => undefined);
+    const equippedCp =
+      snapshot && sameName(snapshot.currentClassName, "Blood Sorceress") ? snapshot.currentClassPoints : 0;
+    const bestCp = Math.max(itemCp, directCp, equippedCp);
+    return `${bestCp}/${RANK_10_CLASS_POINTS} CP, Rank ${classRankFromPoints(bestCp)}`;
   }
 
   private async dragonslayerGeneral(): Promise<void> {
