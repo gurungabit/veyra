@@ -91,6 +91,8 @@ const SANDSEA_FACTION_ID = 13;
 const HORC_FACTION_ID = 19;
 const EMBERSEA_FACTION_ID = 43;
 const GLACERA_FACTION_ID = 52;
+const DOOMWOOD_FACTION_ID = 17;
+const DOOMWOOD_FACTION_NAME = "DoomWood";
 const BLACKSMITHING_FACTION_NAME = "Blacksmithing";
 const BLACKSMITHING_RANK_4_TURN_INS = 200;
 const BLACKSMITHING_SOCK_QUEST_ID = 2777;
@@ -828,10 +830,15 @@ export class ZeroToHeroRuntime {
     if (!faction || requiredRank <= 0) return false;
 
     const factionId = knownFactionId(faction);
-    if (factionId && (await this.factionRank(factionId)) >= requiredRank) return false;
+    const currentRank = factionId
+      ? Math.max(await this.factionRank(factionId), await this.factionRankByName(faction))
+      : await this.factionRankByName(faction);
+    if (currentRank >= requiredRank) return false;
 
     const handled = await this.farmShopFactionRequirement(faction, requiredRank, label);
-    if (!handled) this.log(`${label} requires ${faction} Rank ${requiredRank}; no Veyra reputation route is mapped yet.`);
+    if (!handled) {
+      throw new Error(`${label} requires ${faction} Rank ${requiredRank}; no Veyra reputation route is mapped yet.`);
+    }
     return handled;
   }
 
@@ -860,6 +867,11 @@ export class ZeroToHeroRuntime {
       case "glacerarep":
       case "glacerareputation":
         await this.glaceraRepPass(requiredRank);
+        return true;
+      case "doomwood":
+      case "doomwoodrep":
+      case "doomwoodreputation":
+        await this.doomwoodRep(requiredRank, label);
         return true;
       default:
         return false;
@@ -2034,6 +2046,44 @@ export class ZeroToHeroRuntime {
         await this.hunt("bloodtuskwar", "Chaotic Chinchilizard", "Chaorrupted Tusk", 5, true);
       }
     });
+  }
+
+  private async doomwoodRep(targetRank = 10, reason = "DoomWood item"): Promise<void> {
+    const startRank = await this.doomwoodRank();
+    if (startRank >= targetRank) {
+      this.log(`DoomWood reputation is already Rank ${startRank}; skipping reputation farm.`);
+      return;
+    }
+
+    this.log(`${reason} requires DoomWood Rank ${targetRank}; farming DoomWood from Rank ${startRank}.`);
+    await this.farmRepeatableFaction({
+      factionId: DOOMWOOD_FACTION_ID,
+      factionName: DOOMWOOD_FACTION_NAME,
+      targetRank,
+      questIds: [1151, 1152, 1153],
+      getRep: () => this.doomwoodRepValue(),
+      getRank: () => this.doomwoodRank(),
+      action: async () => {
+        const sharedDrops = ["Un-Dead Tag", "To Do List of Doom", "Skeleton Key"];
+        await this.killMonster("shadowfallwar", "Garden1", "Left", "*", "Un-Dead Tag", 15, true, sharedDrops);
+        await this.killMonster("shadowfallwar", "Garden1", "Left", "*", "To Do List of Doom", 1, true, sharedDrops);
+        await this.killMonster("shadowfallwar", "Garden1", "Left", "*", "Skeleton Key", 1, true, sharedDrops);
+      }
+    });
+  }
+
+  private async doomwoodRepValue(): Promise<number> {
+    return Math.max(
+      await this.factionRep(DOOMWOOD_FACTION_ID),
+      await this.factionRepByName(DOOMWOOD_FACTION_NAME)
+    );
+  }
+
+  private async doomwoodRank(): Promise<number> {
+    return Math.max(
+      await this.factionRank(DOOMWOOD_FACTION_ID),
+      await this.factionRankByName(DOOMWOOD_FACTION_NAME)
+    );
   }
 
   private async blacksmithingRep(targetRank = 4): Promise<void> {
@@ -7053,27 +7103,31 @@ export class ZeroToHeroRuntime {
     questIds: number[];
     action: () => Promise<void>;
     afterComplete?: () => Promise<void>;
+    getRep?: () => Promise<number>;
+    getRank?: () => Promise<number>;
   }): Promise<void> {
     let loops = 0;
     let staleTurnIns = 0;
-    let lastRank = await this.factionRank(options.factionId);
+    const readRep = options.getRep ?? (() => this.factionRep(options.factionId));
+    const readRank = options.getRank ?? (() => this.factionRank(options.factionId));
+    let lastRank = await readRank();
 
-    while ((await this.factionRank(options.factionId)) < options.targetRank) {
+    while ((await readRank()) < options.targetRank) {
       if (this.options.maxFarmLoops && loops >= this.options.maxFarmLoops) {
         this.log(`Stopped ${options.factionName} reputation farm after ${loops} loops due to maxFarmLoops.`);
         return;
       }
 
       loops += 1;
-      const beforeRep = await this.factionRep(options.factionId);
+      const beforeRep = await readRep();
       for (const questId of options.questIds) await this.acceptQuest(questId);
       await options.action();
       for (const questId of options.questIds) await this.completeQuest(questId);
       await options.afterComplete?.();
       await this.bot.delay(750, this.signal);
 
-      const afterRep = await this.factionRep(options.factionId);
-      const rank = classRankFromPoints(afterRep);
+      const afterRep = await readRep();
+      const rank = await readRank();
       if (rank > lastRank || loops === 1 || loops % 10 === 0) {
         this.log(`${options.factionName} reputation progress: Rank ${rank}, ${afterRep} rep.`);
         lastRank = rank;
@@ -8131,6 +8185,10 @@ function knownFactionId(faction: string): number | undefined {
     case "glacerarep":
     case "glacerareputation":
       return GLACERA_FACTION_ID;
+    case "doomwood":
+    case "doomwoodrep":
+    case "doomwoodreputation":
+      return DOOMWOOD_FACTION_ID;
     default:
       return undefined;
   }
