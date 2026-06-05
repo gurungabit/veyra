@@ -182,11 +182,11 @@ const experienceRoutes: FarmRoute[] = [
   {
     minLevel: 50,
     maxLevel: 61,
-    map: "icestormarena",
-    cell: "r16",
+    map: "underlair",
+    cell: "r5",
     pad: "Left",
     monster: "*",
-    label: "Ice Storm Arena r16"
+    label: "Underlair r5"
   },
   {
     minLevel: 61,
