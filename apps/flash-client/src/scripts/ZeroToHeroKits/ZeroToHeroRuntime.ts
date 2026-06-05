@@ -2172,6 +2172,8 @@ export class ZeroToHeroRuntime {
       return;
     }
 
+    await this.ensureScarletSorceressPrerequisites();
+
     if (!(await this.ensureInInventory("Blood Sorceress", BLOOD_SORCERESS_ITEM_ID))) {
       this.log("Farming Blood Sorceress for Scarlet Sorceress.");
       await this.killMonster(
@@ -2189,11 +2191,13 @@ export class ZeroToHeroRuntime {
 
     await this.ensureBloodSorceressRank10();
     await this.farmExperience(50);
+    await this.ensureScarletSorceressPrerequisites();
 
     if (!(await this.isQuestUnlocked(SCARLET_SORCERESS_QUEST_ID))) {
       this.log("Scarlet Sorceress quest is still locked; refreshing Blood Sorceress rank once more.");
       await this.rankClass("Blood Sorceress", BLOOD_SORCERESS_ITEM_ID);
       await this.bot.delay(1200, this.signal);
+      await this.ensureScarletSorceressPrerequisites();
     }
 
     if (!(await this.isQuestUnlocked(SCARLET_SORCERESS_QUEST_ID))) {
@@ -2209,6 +2213,23 @@ export class ZeroToHeroRuntime {
     await this.acceptDrops("Scarlet Sorceress");
     await this.ensureInInventory("Scarlet Sorceress", SCARLET_SORCERESS_ITEM_ID);
     await this.rankClass("Scarlet Sorceress", SCARLET_SORCERESS_ITEM_ID);
+  }
+
+  private async ensureScarletSorceressPrerequisites(): Promise<void> {
+    if (await this.isQuestUnlocked(SCARLET_SORCERESS_QUEST_ID).catch(() => false)) return;
+    if (await this.isStoryQuestComplete(5332).catch(() => false)) {
+      await this.clearQuestTree().catch(() => undefined);
+      await this.bot.delay(700, this.signal);
+      return;
+    }
+
+    this.log("Scarlet Sorceress quest is locked; running Tower of Mirrors prerequisite story.");
+    await this.withTargetDropOverride(["Blood Sorceress", BLOOD_SORCERESS_ITEM_ID], async () => {
+      const { definition } = await import("../Story/ThroneofDarkness/06bScarlettaTowerofMirrors.js");
+      await definition.run(this.bot, this.options);
+    });
+    await this.clearQuestTree().catch(() => undefined);
+    await this.bot.delay(1200, this.signal);
   }
 
   private async ensureBloodSorceressRank10(): Promise<void> {
