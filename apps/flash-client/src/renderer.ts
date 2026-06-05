@@ -2573,7 +2573,12 @@ async function followArmyLocation(message: ArmyLocationMessage): Promise<void> {
     }
 
     const leaderVisible = message.username ? await isArmyLeaderVisible(bot, message.username) : true;
-    if (!leaderVisible || !snapshot || !sameArmyMap(snapshot, origin)) {
+    if (message.username && (!leaderVisible || !snapshot || !sameArmyMap(snapshot, origin))) {
+      log("debug", `Army Follower: goto ${message.username} did not land on the leader yet; waiting for next publish.`);
+      return;
+    }
+
+    if (!message.username && (!leaderVisible || !snapshot || !sameArmyMap(snapshot, origin))) {
       snapshot = await tryArmyFallbackRooms(bot, message, origin);
     }
   }
@@ -2643,6 +2648,16 @@ async function tryArmyFallbackRooms(bot: BrowserFlashBot, message: ArmyLocationM
   let latest = await bot.snapshot().catch(() => undefined);
 
   for (const map of candidates) {
+    if (latest && sameArmyFallbackMap(latest, map)) {
+      if (origin.cell && !sameAutoOrigin(latest, origin)) {
+        log("event", `Army Follower: jumping to ${origin.cell}/${origin.pad}.`);
+        await bot.jump(origin.cell, origin.pad);
+        await sleep(300);
+        latest = await bot.snapshot().catch(() => latest);
+      }
+      return latest;
+    }
+
     log("event", `Army Follower: joining ${map}.`);
     await bot.call("joinMap", map, origin.cell, origin.pad).catch((error) => log("debug", `Army join ${map}: ${describeUnknownError(error)}`));
     await sleep(900);
@@ -2663,6 +2678,11 @@ function armyFallbackJoinCandidates(message: ArmyLocationMessage, origin: AutoOr
     armySettings.joinRooms.length === 0 ? origin.targetMap || baseMap : ""
   ];
   return uniqueStrings(candidates.filter(Boolean));
+}
+
+function sameArmyFallbackMap(snapshot: PlayerSnapshot, map: string): boolean {
+  const candidateRoom = privateRoomFromMap(map);
+  return baseArmyMapName(snapshot.map) === baseArmyMapName(map) && (!candidateRoom || snapshot.room === candidateRoom);
 }
 
 async function isArmyLeaderVisible(bot: BrowserFlashBot, username: string): Promise<boolean> {
