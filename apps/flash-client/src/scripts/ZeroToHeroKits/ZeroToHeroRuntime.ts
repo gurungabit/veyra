@@ -724,13 +724,22 @@ export class ZeroToHeroRuntime {
   }
 
   async loadShop(shopId: number): Promise<Record<string, unknown>> {
-    await this.throttleServerAction();
     this.log(`Loading shop ${shopId}.`);
-    await this.bot.callGameFunction("world.sendLoadShopRequest", shopId).catch(() => undefined);
-    const deadline = Date.now() + 10000;
+    const deadline = Date.now() + 22000;
     let lastShop: Record<string, unknown> = {};
+    let nextRequestAt = 0;
+    let attempts = 0;
 
     while (!this.signal?.aborted && Date.now() < deadline) {
+      if (Date.now() >= nextRequestAt) {
+        attempts += 1;
+        await this.clearStaleShopInfo(shopId).catch(() => undefined);
+        await this.throttleServerAction();
+        if (attempts > 1) this.log(`Retrying shop ${shopId} load (${attempts}).`);
+        await this.bot.callGameFunction("world.sendLoadShopRequest", shopId).catch(() => undefined);
+        nextRequestAt = Date.now() + 2500;
+      }
+
       const shop = asRecord(await this.bot.getGameObject<unknown>("world.shopinfo").catch(() => ({})));
       if (Object.keys(shop).length > 0) lastShop = shop;
       const loadedId = numberFrom(shop, ["ShopID", "shopId", "iShopID", "id", "ID"]);
@@ -740,6 +749,13 @@ export class ZeroToHeroRuntime {
 
     const loadedId = numberFrom(lastShop, ["ShopID", "shopId", "iShopID", "id", "ID"]);
     throw new Error(`Timed out loading shop ${shopId}${loadedId > 0 ? `; last loaded shop was ${loadedId}` : ""}.`);
+  }
+
+  private async clearStaleShopInfo(shopId: number): Promise<void> {
+    const shop = asRecord(await this.bot.getGameObject<unknown>("world.shopinfo").catch(() => ({})));
+    const loadedId = numberFrom(shop, ["ShopID", "shopId", "iShopID", "id", "ID"]);
+    if (loadedId <= 0 || loadedId === shopId) return;
+    await this.bot.call("setGameObject", "world.shopinfo", {}).catch(() => undefined);
   }
 
   async buyItem(
