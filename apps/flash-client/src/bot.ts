@@ -441,6 +441,20 @@ export class BrowserFlashBot implements Bot {
   }
 
   async attack(monster: string | number = "*"): Promise<void> {
+    let lastError: unknown;
+    for (let attempt = 1; attempt <= 2; attempt += 1) {
+      try {
+        await this.attackOnce(monster);
+        return;
+      } catch (error) {
+        lastError = error;
+        await this.delay(250);
+      }
+    }
+    throw new Error(`Attack failed: ${describeUnknownError(lastError)}`);
+  }
+
+  private async attackOnce(monster: string | number): Promise<void> {
     if (typeof monster === "number") {
       await this.call("attackMonsterID", monster);
       return;
@@ -451,7 +465,7 @@ export class BrowserFlashBot implements Bot {
   async useAvailableSkills(): Promise<void> {
     for (const skill of [1, 2, 3, 4, 5]) {
       if (toBoolean(await this.call("canUseSkill", skill).catch(() => false))) {
-        await this.call("useSkill", skill);
+        await this.call("useSkill", skill).catch(() => undefined);
       }
     }
   }

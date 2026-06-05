@@ -262,6 +262,8 @@ export class ZeroToHeroRuntime {
   private readonly options: ZeroToHeroRuntimeOptions;
   private lastServerActionAt = 0;
   private lastFightPromptClickAt = 0;
+  private consecutiveAttackErrors = 0;
+  private lastAttackErrorLogAt = 0;
   private readonly skuaBypassedMaps = new Set<string>();
   private bankLoadAttempted = false;
   private blacksmithingMethodChoice?: BlacksmithingMethodChoice | "cancel";
@@ -1275,8 +1277,8 @@ export class ZeroToHeroRuntime {
       await this.recoverIfDead(location);
       if (await this.clickFightPromptIfVisible()) await this.bot.delay(500, this.signal);
       const target = location?.map && !location.cell ? await this.jumpToMonsterCell(monster, `fighting ${monster}`) : undefined;
-      await this.bot.attack(await this.resolvePriorityCombatTarget(target?.id ?? monster, monster, location));
-      await this.bot.useAvailableSkills();
+      const attackTarget = await this.resolvePriorityCombatTarget(target?.id ?? monster, monster, location);
+      if (await this.safeAttack(attackTarget, `fighting ${monster}`)) await this.bot.useAvailableSkills();
       await this.bot.delay(650, this.signal);
       return;
     }
@@ -1307,10 +1309,36 @@ export class ZeroToHeroRuntime {
       if (location?.map && !location.cell) {
         target = await this.jumpToMonsterCell(monster, item ? `farming ${item}` : `fighting ${monster}`);
       }
-      await this.bot.attack(await this.resolvePriorityCombatTarget(target?.id ?? monster, monster, location));
+      const attackTarget = await this.resolvePriorityCombatTarget(target?.id ?? monster, monster, location);
+      if (!(await this.safeAttack(attackTarget, item ? `farming ${item}` : `fighting ${monster}`))) {
+        await this.bot.delay(650, this.signal);
+        continue;
+      }
       await this.bot.useAvailableSkills();
       if (acceptedDrops.length > 0) await this.acceptDrops(acceptedDrops);
       await this.bot.delay(650, this.signal);
+    }
+  }
+
+  private async safeAttack(monster: MonsterTarget, context: string): Promise<boolean> {
+    try {
+      await this.bot.attack(monster);
+      this.consecutiveAttackErrors = 0;
+      return true;
+    } catch (error) {
+      this.consecutiveAttackErrors += 1;
+      const now = Date.now();
+      if (
+        this.consecutiveAttackErrors === 1 ||
+        this.consecutiveAttackErrors % 10 === 0 ||
+        now - this.lastAttackErrorLogAt > 10000
+      ) {
+        this.log(`Attack call failed while ${context}; continuing (${errorSummary(error)}).`);
+        this.lastAttackErrorLogAt = now;
+      }
+      await this.bot.call("untargetSelf").catch(() => undefined);
+      await this.bot.delay(Math.min(1500, 300 + this.consecutiveAttackErrors * 100), this.signal);
+      return false;
     }
   }
 
@@ -1435,8 +1463,7 @@ export class ZeroToHeroRuntime {
       }
 
       await this.ensureRoute(route);
-      await this.bot.attack(route.monster);
-      await this.bot.useAvailableSkills();
+      if (await this.safeAttack(route.monster, route.label)) await this.bot.useAvailableSkills();
       await this.bot.delay(500, this.signal);
     }
   }
@@ -1464,8 +1491,7 @@ export class ZeroToHeroRuntime {
       const route = selectRoute(snapshot.level);
       if (await this.recoverIfDead(route)) continue;
       await this.ensureRoute(route);
-      await this.bot.attack(route.monster);
-      await this.bot.useAvailableSkills();
+      if (await this.safeAttack(route.monster, `${className} rank farm`)) await this.bot.useAvailableSkills();
       await this.bot.delay(500, this.signal);
       loops += 1;
     }
