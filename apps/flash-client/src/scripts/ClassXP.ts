@@ -44,7 +44,7 @@ async function ensureClassXpRoute(bot: Bot, snapshot: PlayerSnapshot, signal?: A
 
   const route = snapshot.level >= 75
     ? { map: "icestormunder", cell: "r2", pad: "Top" }
-    : { map: "battlegrounde", cell: "r2", pad: "Left" };
+    : { map: "underlair", cell: "r5", pad: "Left" };
 
   if (snapshot.map.toLowerCase() !== route.map) {
     await bot.join(route.map, route.cell, route.pad);

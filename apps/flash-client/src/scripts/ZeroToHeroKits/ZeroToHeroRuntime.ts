@@ -208,11 +208,11 @@ const experienceRoutes: FarmRoute[] = [
   {
     minLevel: 61,
     maxLevel: 75,
-    map: "battlegrounde",
-    cell: "r2",
+    map: "underlair",
+    cell: "r5",
     pad: "Left",
     monster: "*",
-    label: "Battle Ground E"
+    label: "Underlair r5"
   },
   {
     minLevel: 75,
@@ -256,11 +256,20 @@ const questClassNames: Record<number, string> = {
   582: "Dragonslayer"
 };
 
-const questClassRequirements: Record<
-  number,
-  { classId: number; className: string; classPoints: number }
-> = {
-  5294: { classId: 582, className: "Dragonslayer", classPoints: RANK_10_CLASS_POINTS }
+type QuestClassRequirement = {
+  classId: number;
+  className: string;
+  classPoints: number;
+  inventoryOnly?: boolean;
+};
+
+const questClassRequirements: Record<number, QuestClassRequirement> = {
+  5294: {
+    classId: 582,
+    className: "Dragonslayer",
+    classPoints: RANK_10_CLASS_POINTS,
+    inventoryOnly: true
+  }
 };
 
 const knownDropItemIds: Record<string, number[]> = {
@@ -486,7 +495,10 @@ export class ZeroToHeroRuntime {
   }
 
   private async classRecord(className: string, itemId?: number, includeBank = true): Promise<ItemRecord | undefined> {
-    if (itemId) return this.itemById(itemId, includeBank);
+    if (itemId) {
+      const record = await this.itemById(itemId, includeBank);
+      if (record) return record;
+    }
     return this.item(className, includeBank);
   }
 
@@ -7263,6 +7275,7 @@ export class ZeroToHeroRuntime {
         options.isTemp,
         dropWhitelist
       );
+      if (!(await this.ensureQuestClassRequirement(options.questId))) return;
       await this.completeQuest(options.questId, rewardId);
       await this.waitForRewardDrop(
         dropWhitelist,
@@ -7775,9 +7788,24 @@ export class ZeroToHeroRuntime {
     }
 
     const requiredRank = classRankFromPoints(classPoints);
+    if (!(await this.ensureQuestClassInInventory(questId, className, classId))) return false;
     if (await this.hasClassRank(className, classId, requiredRank)) return true;
     this.log(`Quest ${questId} requires Rank ${requiredRank} ${className}.`);
+    if (override?.inventoryOnly) return false;
     return this.rankClass(className, classId);
+  }
+
+  private async ensureQuestClassInInventory(
+    questId: number,
+    className: string,
+    classId?: number
+  ): Promise<boolean> {
+    if ((await this.ensureInInventory(className, classId)) || (classId && (await this.ensureInInventory(className)))) {
+      return true;
+    }
+
+    this.log(`Quest ${questId} requires ${className}; it was not found in inventory or bank.`);
+    return false;
   }
 
   private async questCompletionReadiness(
