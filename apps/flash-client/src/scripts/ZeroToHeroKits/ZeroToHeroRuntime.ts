@@ -2117,20 +2117,19 @@ export class ZeroToHeroRuntime {
   private async joinDoomwoodRepRoom(): Promise<void> {
     const map = "shadowfallwar";
     const cell = "Garden1";
-    const pad = "Left";
     const snapshot = await this.snapshot().catch(() => undefined);
     if (!snapshot || snapshot.map.toLowerCase() !== map) {
       await this.join(map);
     }
 
     const afterJoin = await this.snapshot().catch(() => undefined);
-    if (afterJoin?.cell !== cell || afterJoin.pad !== pad) {
-      this.log("Jumping to Garden1/Left.");
-      await this.bot.call("jumpCorrectRoom", cell, pad, false, false);
+    if (afterJoin?.cell !== cell) {
+      this.log("Jumping to Garden1 with blank pad.");
+      await this.bot.call("jumpCorrectRoom", cell, "", false, false);
       const deadline = Date.now() + 5000;
       while (!this.signal?.aborted && Date.now() < deadline) {
         const current = await this.snapshot().catch(() => undefined);
-        if (current?.cell === cell && current.pad === pad) return;
+        if (current?.cell === cell) return;
         await this.bot.delay(250, this.signal);
       }
     }
