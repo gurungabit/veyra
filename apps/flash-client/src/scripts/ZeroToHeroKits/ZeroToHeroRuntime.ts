@@ -94,7 +94,7 @@ const GLACERA_FACTION_ID = 52;
 const DOOMWOOD_FACTION_ID = 17;
 const DOOMWOOD_FACTION_NAME = "DoomWood";
 const BLACKSMITHING_FACTION_NAME = "Blacksmithing";
-const BLACKSMITHING_RANK_4_TURN_INS = 200;
+const BLACKSMITHING_SOCK_REP_PER_TURN_IN = 50;
 const BLACKSMITHING_SOCK_QUEST_ID = 2777;
 const BLACKSMITHING_GOLD_QUEST_ID = 8737;
 const BLACKSMITHING_VOUCHER = "Gold Voucher 500k";
@@ -250,6 +250,16 @@ const forgeEnhancementQuestIds: Record<string, number> = {
   Anima: 8826,
   Pneuma: 8827,
   Ravenous: 9560
+};
+
+const forgeEnhancementBlacksmithingRanks: Record<string, number> = {
+  ForgeWeaponEnhancement: 4,
+  ForgeWeapon: 4,
+  ForgeCapeEnhancement: 4,
+  ForgeCape: 4,
+  ForgeHelmEnhancement: 4,
+  ForgeHelm: 4,
+  Lacerate: 5
 };
 
 const questClassNames: Record<number, string> = {
@@ -1894,9 +1904,10 @@ export class ZeroToHeroRuntime {
   async unlockEnhancement(name: string, questId?: number, action?: () => Promise<void>): Promise<void> {
     const resolvedQuestId = questId ?? forgeEnhancementQuestIds[name];
     if (resolvedQuestId && (await this.isQuestCompleted(resolvedQuestId))) {
-      if (this.isBaseForgeEnhancement(name) && (await this.factionRankByName(BLACKSMITHING_FACTION_NAME)) < 4) {
-        this.log(`${name} quest is complete, but Blacksmithing Rank 4 is still required.`);
-        await this.blacksmithingRep(4);
+      const requiredRank = this.forgeBlacksmithingRank(name);
+      if (requiredRank > 0 && (await this.factionRankByName(BLACKSMITHING_FACTION_NAME)) < requiredRank) {
+        this.log(`${name} quest is complete, but Blacksmithing Rank ${requiredRank} is still required.`);
+        await this.blacksmithingRep(requiredRank);
         return;
       }
       this.log(`${name} enhancement already unlocked.`);
@@ -2481,9 +2492,10 @@ export class ZeroToHeroRuntime {
       const currentRank = await this.factionRankByName(BLACKSMITHING_FACTION_NAME);
       if (currentRank >= cappedRank) return;
       if (currentRank > 0) lastRank = Math.max(lastRank, currentRank);
-      if (currentRank <= 0 && loops >= BLACKSMITHING_RANK_4_TURN_INS) {
+      const fallbackTurnIns = Math.ceil(rankMinimumPoints(cappedRank) / BLACKSMITHING_SOCK_REP_PER_TURN_IN);
+      if (currentRank <= 0 && loops >= fallbackTurnIns) {
         this.log(
-          `Blacksmithing rank is still not readable from Flash after ${loops} quest 2777 turn-ins; continuing after the Rank 4 baseline farm.`
+          `Blacksmithing rank is still not readable from Flash after ${loops} quest 2777 turn-ins; continuing after the Rank ${cappedRank} baseline farm.`
         );
         return;
       }
@@ -2511,7 +2523,7 @@ export class ZeroToHeroRuntime {
         this.log(`Blacksmithing reputation progress: Rank ${rank}, ${afterRep} rep.`);
         lastRank = rank;
       } else if (rank <= 0 && (loops === 1 || loops % 10 === 0)) {
-        this.log(`Blacksmithing quest 2777 turn-ins: ${loops}/${BLACKSMITHING_RANK_4_TURN_INS}; rank is not readable yet.`);
+        this.log(`Blacksmithing quest 2777 turn-ins: ${loops}/${fallbackTurnIns}; rank is not readable yet.`);
       }
     }
   }
@@ -6695,14 +6707,17 @@ export class ZeroToHeroRuntime {
 
   private async runForgeEnhancement(name: string, questId?: number): Promise<void> {
     if (questId && (await this.isQuestCompleted(questId))) {
-      if (this.isBaseForgeEnhancement(name) && (await this.factionRankByName(BLACKSMITHING_FACTION_NAME)) < 4) {
-        this.log(`${name} quest is complete, but Blacksmithing Rank 4 is still required.`);
-        await this.blacksmithingRep(4);
+      const requiredRank = this.forgeBlacksmithingRank(name);
+      if (requiredRank > 0 && (await this.factionRankByName(BLACKSMITHING_FACTION_NAME)) < requiredRank) {
+        this.log(`${name} quest is complete, but Blacksmithing Rank ${requiredRank} is still required.`);
+        await this.blacksmithingRep(requiredRank);
         return;
       }
       this.log(`${name} enhancement already unlocked.`);
       return;
     }
+
+    await this.ensureForgeBlacksmithingRank(name);
 
     switch (name) {
       case "ForgeWeaponEnhancement":
@@ -6765,10 +6780,20 @@ export class ZeroToHeroRuntime {
     }
   }
 
-  private isBaseForgeEnhancement(name: string): boolean {
-    return ["ForgeWeaponEnhancement", "ForgeWeapon", "ForgeCapeEnhancement", "ForgeCape", "ForgeHelmEnhancement", "ForgeHelm"].some(
-      (candidate) => sameName(candidate, name)
-    );
+  private forgeBlacksmithingRank(name: string): number {
+    for (const [enhancement, rank] of Object.entries(forgeEnhancementBlacksmithingRanks)) {
+      if (sameName(enhancement, name)) return rank;
+    }
+    return 0;
+  }
+
+  private async ensureForgeBlacksmithingRank(name: string): Promise<void> {
+    const requiredRank = this.forgeBlacksmithingRank(name);
+    if (requiredRank <= 0) return;
+    const currentRank = await this.factionRankByName(BLACKSMITHING_FACTION_NAME);
+    if (currentRank >= requiredRank) return;
+    this.log(`${name} requires Blacksmithing Rank ${requiredRank}; farming Blacksmithing first.`);
+    await this.blacksmithingRep(requiredRank);
   }
 
   private async forgeWeaponEnhancement(): Promise<void> {
@@ -8290,7 +8315,7 @@ function writeBlacksmithingMethodWindow(
   <body>
     <main>
       <h1>Blacksmithing Rep</h1>
-      <p>Choose how ZeroToHero should farm Blacksmithing Rank 4 for Forge.</p>
+      <p>Choose how ZeroToHero should farm Blacksmithing reputation for Forge.</p>
       <div class="actions">
         <button class="primary" data-choice="gold">Use Gold Vouchers</button>
         <button data-choice="mobs">Farm Mobs</button>
@@ -8340,7 +8365,7 @@ function requestBlacksmithingMethodOverlay(signal?: AbortSignal): Promise<Blacks
     Object.assign(title.style, { margin: "0 0 8px", fontSize: "26px", color: "#c8d8b8" });
 
     const body = document.createElement("p");
-    body.textContent = "Choose how ZeroToHero should farm Blacksmithing Rank 4 for Forge.";
+    body.textContent = "Choose how ZeroToHero should farm Blacksmithing reputation for Forge.";
     Object.assign(body.style, { margin: "0 0 18px", color: "#c7c8df", lineHeight: "1.35" });
 
     const actions = document.createElement("div");
