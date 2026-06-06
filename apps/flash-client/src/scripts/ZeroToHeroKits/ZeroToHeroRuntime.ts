@@ -1923,7 +1923,7 @@ export class ZeroToHeroRuntime {
   }
 
   private async eldersBlood(): Promise<void> {
-    if (await this.contains("Elders' Blood", 5)) {
+    if (await this.contains("Elders' Blood", 20)) {
       this.log("Elders' Blood is already stocked.");
       return;
     }

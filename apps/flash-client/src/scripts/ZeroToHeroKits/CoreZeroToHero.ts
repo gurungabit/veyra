@@ -11,7 +11,7 @@ export const meta = {
   name: "CoreZeroToHero",
   description: "Veyra ZeroToHero progression, class setup, outfit, pet, and endgame flow.",
   tags: ["zero-to-hero", "progression", "core"],
-  version: "0.1.0"
+  version: "2026.06.06.2"
 };
 
 const soloClasses = [
@@ -66,6 +66,7 @@ const dodgeClasses = [
 
 export class CoreZeroToHero {
   private readonly runtime: ZeroToHeroRuntime;
+  private readonly options: ZeroToHeroRuntimeOptions;
   private lastCheckedLevel = 0;
   private lastSolo = "";
   private lastFarm = "";
@@ -75,6 +76,7 @@ export class CoreZeroToHero {
   private dodgeClass = "";
 
   constructor(bot: Bot, options: ZeroToHeroRuntimeOptions = {}) {
+    this.options = options;
     this.runtime = new ZeroToHeroRuntime(bot, options);
   }
 
@@ -99,7 +101,8 @@ export class CoreZeroToHero {
 
   async level30to75(): Promise<void> {
     await this.setClass();
-    if (await this.runtime.isQuestCompleted(802)) await this.runtime.runTask("CoreDailies.EldersBlood");
+    if ((await this.runtime.snapshot()).level >= 30) await this.runtime.runTask("CoreDailies.EldersBlood");
+    if (this.options.getBoosts) await this.ensureFarmerJoeBoosts();
     this.runtime.log("ZeroToHero level brackets: 30, 50, 55, 60, 65, 70, 75.");
 
     const handlers: Record<number, () => Promise<void>> = {
@@ -125,8 +128,10 @@ export class CoreZeroToHero {
   async level75to100(): Promise<void> {
     this.runtime.log("Phase 1: Class preparation for 13 Lords of Chaos.");
     if (await this.runtime.contains("Dragon of Time")) await this.runtime.rankClass("Dragon of Time");
-    else if (!(await this.runtime.contains(["Healer", "Healer (Rare)"], 1, true)))
+    else if (!(await this.runtime.contains(["Healer", "Healer (Rare)"], 1, true))) {
       await this.runtime.buyItem("classhalla", 176, "Healer");
+      await this.runtime.rankClass("Healer");
+    }
 
     this.runtime.log("Phase 2: Cape of Awe and 13 Lords of Chaos.");
     await this.runtime.runTask("CapeOfAwe.GetCoA");
@@ -165,10 +170,15 @@ export class CoreZeroToHero {
   }
 
   async endGame(): Promise<void> {
+    if (this.options.outfit) await this.outfit();
     await this.setClass();
     this.runtime.log("P5: Preparing remaining forge enhancements and Apotheosis prerequisites.");
-    for (const enhancement of ["HerosValiance", "Elysium", "Ravenous"])
-      await this.runtime.unlockEnhancement(enhancement);
+    await this.runtime.unlockEnhancement("HerosValiance");
+    if (await this.runtime.contains("The Divine Will")) await this.runtime.unlockEnhancement("Elysium");
+    else this.runtime.log("Skipping Elysium; The Divine Will is not owned.");
+    if ((await this.runtime.contains("Void Highlord")) && (await this.runtime.contains("Roentgenium of Nulgath", 10)))
+      await this.runtime.unlockEnhancement("Ravenous");
+    else this.runtime.log("Skipping Ravenous; Void Highlord and 10 Roentgenium of Nulgath are required.");
     await this.runtime.runTask("ExaltedApotheosisPreReqs.PreReqs");
     this.runtime.log("P6: Max nation materials via Supplies.");
     await this.runtime.runTask("CoreNation.Supplies");
@@ -179,7 +189,15 @@ export class CoreZeroToHero {
     await this.shirtAndHat();
     await this.serversAreDown();
     await this.runtime.smartEnhance();
-    await this.pets();
+    await this.pets(this.options.petChoice ?? "none");
+    if (this.options.equipOutfit) {
+      await this.runtime.equip("NO BOTS Armor");
+      await this.runtime.equip("Scarecrow Hat");
+      await this.runtime.equip("The Server is Down");
+      await this.runtime.equip("Hollowborn Reaper's Scythe");
+      const pet = this.petItemName(this.options.petChoice ?? "none");
+      if (pet) await this.runtime.equip(pet);
+    }
     this.runtime.log("We are farmers, bum ba dum bum bum bum bum.");
   }
 
@@ -363,6 +381,58 @@ export class CoreZeroToHero {
     await this.setClass();
     await this.runtime.hunt("undergroundlabb", "Rabid Server Hamster", "The Server is Down", 1, false);
     await this.runtime.equip("The Server is Down");
+  }
+
+  private async ensureFarmerJoeBoosts(): Promise<void> {
+    const targets = [
+      { label: "Gold", name: "GOLD Boost! (10 min)", quantity: 10 },
+      { label: "Class", name: "CLASS Boost! (10 min)", quantity: 10 },
+      { label: "Reputation", name: "REPUTATION Boost! (10 min)", quantity: 10 }
+    ];
+    if (await this.freeBoostTargetsMet(targets)) return;
+
+    this.runtime.log("GetBoosts: farming Zifwin 10-minute Gold/Class/Reputation boosts to 10.");
+    this.runtime.log("GetBoosts: Skua's fishing XP/REP boost quests are not mapped in Veyra yet.");
+    let turnIns = 0;
+    while (!(await this.freeBoostTargetsMet(targets))) {
+      if (this.options.maxFarmLoops && turnIns >= this.options.maxFarmLoops) {
+        this.runtime.log(`Stopped GetBoosts after ${turnIns} Zifwin turn-ins due to maxFarmLoops.`);
+        return;
+      }
+      await this.runtime.acceptDrops(targets.map((target) => target.name));
+      await this.runtime.acceptQuest(6208);
+      await this.runtime.hunt("bloodtusk", "Trollola Plant", "Trollola Nectar", 2, true);
+      await this.runtime.hunt("cloister", "Acornent", "Nimblestem", 1, true);
+      await this.runtime.hunt("nibbleon", "Dark Makai", "Moglinberries", 3, true);
+      await this.runtime.completeQuest(6208);
+      await this.runtime.acceptDrops(targets.map((target) => target.name));
+      turnIns += 1;
+      await this.logFreeBoostProgress(targets, turnIns);
+    }
+  }
+
+  private async freeBoostTargetsMet(targets: Array<{ name: string; quantity: number }>): Promise<boolean> {
+    for (const target of targets) {
+      if ((await this.runtime.quantity(target.name, true)) < target.quantity) return false;
+    }
+    return true;
+  }
+
+  private async logFreeBoostProgress(
+    targets: Array<{ label: string; name: string; quantity: number }>,
+    turnIns: number
+  ): Promise<void> {
+    const parts = [];
+    for (const target of targets) {
+      parts.push(`${target.label} ${await this.runtime.quantity(target.name, true)}/${target.quantity}`);
+    }
+    this.runtime.log(`GetBoosts turn-in ${turnIns}: ${parts.join(", ")}.`);
+  }
+
+  private petItemName(petChoice: PetChoice): string {
+    if (petChoice === "hotMama") return "Hot Mama";
+    if (petChoice === "akriloth") return "Akriloth Pet";
+    return "";
   }
 
   private async resolveClass(current: string, pool: string[]): Promise<string> {
