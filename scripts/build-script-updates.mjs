@@ -31,6 +31,12 @@ const officialCoreScripts = [
     entry: "apps/flash-client/src/scripts/EmberseaRep.ts"
   },
   {
+    id: "reputation.doomwood",
+    category: "Reputation",
+    map: "shadowfallwar",
+    entry: "apps/flash-client/src/scripts/DoomwoodRep.ts"
+  },
+  {
     id: "story.complete-all-stories",
     category: "Story",
     map: "all",
