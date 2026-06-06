@@ -133,6 +133,8 @@ export class PlayerApi {
 }
 
 export class CombatApi {
+  private skillCursor = 0;
+
   constructor(
     private readonly flash: FlashApi,
     private readonly logger: Logger
@@ -155,11 +157,18 @@ export class CombatApi {
     return toBoolean(await getOrDefault(this.flash.call<unknown>("useSkill", index), false));
   }
 
-  async useAvailableSkills(indexes = [1, 2, 3, 4, 5]): Promise<void> {
-    for (const index of indexes) {
-      if (await this.canUseSkill(index)) {
-        await this.useSkill(index);
-      }
+  async useAvailableSkills(indexes = [1, 2, 3, 4]): Promise<void> {
+    if (indexes.length === 0) return;
+
+    for (let offset = 0; offset < indexes.length; offset += 1) {
+      const position = (this.skillCursor + offset) % indexes.length;
+      const index = indexes[position];
+      if (index === undefined) continue;
+      if (!(await this.canUseSkill(index))) continue;
+
+      const used = await this.useSkill(index);
+      this.skillCursor = (position + 1) % indexes.length;
+      if (used) return;
     }
   }
 }

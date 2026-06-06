@@ -49,6 +49,8 @@ type FlashObject = HTMLElement & Record<string, (...args: unknown[]) => unknown>
 const publicOnlyMaps = new Set<string>();
 
 export class BrowserFlashBot implements Bot {
+  private skillCursor = 0;
+
   constructor(
     private readonly flash: () => FlashObject,
     private readonly logger: (message: string) => void,
@@ -463,10 +465,15 @@ export class BrowserFlashBot implements Bot {
   }
 
   async useAvailableSkills(): Promise<void> {
-    for (const skill of [1, 2, 3, 4, 5]) {
-      if (toBoolean(await this.call("canUseSkill", skill).catch(() => false))) {
-        await this.call("useSkill", skill).catch(() => undefined);
-      }
+    const skills = [1, 2, 3, 4];
+    for (let offset = 0; offset < skills.length; offset += 1) {
+      const index = (this.skillCursor + offset) % skills.length;
+      const skill = skills[index];
+      if (!toBoolean(await this.call("canUseSkill", skill).catch(() => false))) continue;
+
+      const used = toBoolean(await this.call("useSkill", skill).catch(() => false));
+      this.skillCursor = (index + 1) % skills.length;
+      if (used) return;
     }
   }
 
