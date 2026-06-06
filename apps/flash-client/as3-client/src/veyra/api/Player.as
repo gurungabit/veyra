@@ -124,7 +124,8 @@ public class Player {
     }
 
     public static function questDropsOnly(acceptAC:Boolean = false):String {
-        return handleDrops("quest-only", "", acceptAC, questDropsOnlyVisibleDrops(acceptAC));
+        var questDrops:Array = activeQuestDropWhitelist();
+        return handleDrops("quest-only", "", acceptAC, questDropsOnlyVisibleDrops(acceptAC, questDrops), questDrops);
     }
 
     public static function acceptACDrops():String {
@@ -163,7 +164,7 @@ public class Player {
         return acted;
     }
 
-    private static function questDropsOnlyVisibleDrops(acceptAC:Boolean = false):int {
+    private static function questDropsOnlyVisibleDrops(acceptAC:Boolean = false, questDrops:Array = null):int {
         var acted:int = 0;
         var seen:Array = [];
         if (Main.instance == null || Main.instance.game == null) {
@@ -173,13 +174,13 @@ public class Player {
         var game:* = Main.instance.game;
         if (game.cDropsUI) {
             var source:* = game.cDropsUI.mcDraggable ? game.cDropsUI.mcDraggable.menu : game.cDropsUI;
-            acted += questDropsOnlyDropSource(source, acceptAC, seen);
-            acted += questDropsOnlyDropSource(game.cDropsUI, acceptAC, seen);
+            acted += questDropsOnlyDropSource(source, acceptAC, seen, questDrops);
+            acted += questDropsOnlyDropSource(game.cDropsUI, acceptAC, seen, questDrops);
         }
 
         if (game.ui) {
-            acted += questDropsOnlyDropSource(game.ui.dropStack, acceptAC, seen);
-            acted += questDropsOnlyDropSource(game.ui.mcDropStack, acceptAC, seen);
+            acted += questDropsOnlyDropSource(game.ui.dropStack, acceptAC, seen, questDrops);
+            acted += questDropsOnlyDropSource(game.ui.mcDropStack, acceptAC, seen, questDrops);
         }
 
         return acted;
@@ -215,7 +216,7 @@ public class Player {
 
             var drop:* = parseDrop(label);
             var id:int = dropId(item);
-            var whitelisted:Boolean = pickup.indexOf(drop.name) >= 0 || pickup.indexOf(String(id)) >= 0;
+            var whitelisted:Boolean = dropMatchesWhitelist(drop.name, id, pickup);
             if (!whitelisted && !(acceptAC && isAcDrop(item))) {
                 if (rejectDropTarget({
                     noButton: findNestedButton(child, ["btNo", "btnNo", "noBtn", "nbtn", "no", "reject"]),
@@ -235,7 +236,7 @@ public class Player {
         return acted;
     }
 
-    private static function questDropsOnlyDropSource(source:*, acceptAC:Boolean, seen:Array, depth:int = 0):int {
+    private static function questDropsOnlyDropSource(source:*, acceptAC:Boolean, seen:Array, questDrops:Array = null, depth:int = 0):int {
         var acted:int = 0;
         if (source == null || depth > 6 || seen.indexOf(source) >= 0) {
             return acted;
@@ -259,7 +260,9 @@ public class Player {
                 label = dropLabel(child);
             }
             if (label.length > 0 && isDropFrameDisplay(child)) {
-                if (isQuestDrop(item, child) || (acceptAC && isAcDrop(item))) {
+                var drop:* = parseDrop(label);
+                var id:int = dropId(item);
+                if (isQuestDrop(item, child) || dropMatchesWhitelist(drop.name, id, questDrops) || (acceptAC && isAcDrop(item))) {
                     if (clickDropButton(findNestedButton(child, ["ybtn", "btYes", "btnYes", "yesBtn", "yes", "accept"]))) {
                         acted++;
                         actedOnChild = true;
@@ -275,14 +278,14 @@ public class Player {
             }
 
             if (!actedOnChild) {
-                acted += questDropsOnlyDropSource(child, acceptAC, seen, depth + 1);
+                acted += questDropsOnlyDropSource(child, acceptAC, seen, questDrops, depth + 1);
             }
         }
 
         return acted;
     }
 
-    private static function handleDrops(mode:String, whitelist:String = "", acceptAC:Boolean = false, initialActed:int = 0):String {
+    private static function handleDrops(mode:String, whitelist:String = "", acceptAC:Boolean = false, initialActed:int = 0, questDrops:Array = null):String {
         var targets:Array = scanDropTargets();
         var pickup:Array = normalizeWhitelist(whitelist);
         var acted:int = initialActed;
@@ -294,17 +297,17 @@ public class Player {
             if (mode == "accept-all") {
                 shouldAccept = true;
             } else if (mode == "accept-list") {
-                shouldAccept = pickup.indexOf(target.name) >= 0 || pickup.indexOf(String(target.id)) >= 0;
+                shouldAccept = dropMatchesWhitelist(target.name, int(target.id), pickup);
             } else if (mode == "accept-ac") {
                 shouldAccept = target.ac == true;
             } else if (mode == "reject-all") {
                 shouldAccept = acceptAC && target.ac == true;
                 shouldReject = !shouldAccept;
             } else if (mode == "reject-except") {
-                shouldAccept = pickup.indexOf(target.name) >= 0 || pickup.indexOf(String(target.id)) >= 0 || (acceptAC && target.ac == true);
+                shouldAccept = dropMatchesWhitelist(target.name, int(target.id), pickup) || (acceptAC && target.ac == true);
                 shouldReject = !shouldAccept;
             } else if (mode == "quest-only") {
-                shouldAccept = target.quest == true || (acceptAC && target.ac == true);
+                shouldAccept = target.quest == true || dropMatchesWhitelist(target.name, int(target.id), questDrops) || (acceptAC && target.ac == true);
                 shouldReject = !shouldAccept;
             }
 
@@ -448,6 +451,165 @@ public class Player {
             quest: target.quest,
             type: target.type
         };
+    }
+
+    private static function activeQuestDropWhitelist():Array {
+        var values:Array = [];
+        if (Main.instance == null || Main.instance.game == null) {
+            return values;
+        }
+
+        var game:* = Main.instance.game;
+        try {
+            addActiveQuestRecords(values, game.world.questTree, game);
+        } catch (questTreeError:Error) {
+        }
+        try {
+            addActiveQuestRecords(values, game.world.quests, game);
+        } catch (worldQuestsError:Error) {
+        }
+        try {
+            addActiveQuestRecords(values, game.world.myAvatar.quests, game);
+        } catch (avatarQuestsError:Error) {
+        }
+        try {
+            addActiveQuestRecords(values, game.world.myAvatar.objData.quests, game);
+        } catch (objDataQuestsError:Error) {
+        }
+        return values;
+    }
+
+    private static function addActiveQuestRecords(values:Array, source:*, game:*):void {
+        if (source == null) {
+            return;
+        }
+
+        if (isActiveQuestRecord(source, game)) {
+            addQuestRequirementValues(values, source);
+        }
+
+        if (source is Array) {
+            for each (var entry:* in source) {
+                if (isActiveQuestRecord(entry, game)) {
+                    addQuestRequirementValues(values, entry);
+                }
+            }
+            return;
+        }
+
+        for (var key:String in source) {
+            try {
+                entry = source[key];
+                if (isActiveQuestRecord(entry, game)) {
+                    addQuestRequirementValues(values, entry);
+                }
+            } catch (entryError:Error) {
+            }
+        }
+    }
+
+    private static function isActiveQuestRecord(record:*, game:*):Boolean {
+        if (record == null) {
+            return false;
+        }
+
+        var questId:int = intValue(firstProperty(record, ["QuestID", "ID", "id", "iID", "qid"]));
+        if (questId > 0) {
+            try {
+                if (isTruthy(game.world.isQuestInProgress(questId))) {
+                    return true;
+                }
+            } catch (progressError:Error) {
+            }
+        }
+
+        var status:String = trimString(String(firstProperty(record, ["sStatus", "Status", "status"]) || "")).toLowerCase();
+        if (status == "p" || status == "active" || status == "accepted" || status == "in progress") {
+            return true;
+        }
+
+        return isTruthy(firstProperty(record, ["bAccepted", "Active", "active", "accepted", "isActive", "inProgress"]));
+    }
+
+    private static function addQuestRequirementValues(values:Array, quest:*):void {
+        addRequirementList(values, firstProperty(quest, ["oItems", "items", "Requirements", "requirements", "reqs", "objectives", "turnin"]));
+    }
+
+    private static function addRequirementList(values:Array, requirements:*):void {
+        if (requirements == null) {
+            return;
+        }
+
+        if (requirements is Array) {
+            for each (var requirement:* in requirements) {
+                addRequirement(values, requirement);
+            }
+            return;
+        }
+
+        addRequirement(values, requirements);
+        for (var key:String in requirements) {
+            try {
+                addRequirement(values, requirements[key]);
+            } catch (requirementError:Error) {
+            }
+        }
+    }
+
+    private static function addRequirement(values:Array, requirement:*):void {
+        if (requirement == null) {
+            return;
+        }
+        addDropWhitelistValue(values, firstProperty(requirement, ["sName", "Name", "name", "strName"]));
+        addDropWhitelistValue(values, firstProperty(requirement, ["ItemID", "id", "ID", "iID"]));
+    }
+
+    private static function addDropWhitelistValue(values:Array, value:*):void {
+        var text:String = normalizeDropName(value);
+        if (text.length > 0 && values.indexOf(text) < 0) {
+            values.push(text);
+        }
+    }
+
+    private static function dropMatchesWhitelist(name:*, id:int, whitelist:Array):Boolean {
+        if (whitelist == null) {
+            return false;
+        }
+        var normalized:String = normalizeDropName(name);
+        if (normalized.length > 0 && whitelist.indexOf(normalized) >= 0) {
+            return true;
+        }
+        return id > 0 && whitelist.indexOf(String(id)) >= 0;
+    }
+
+    private static function normalizeDropName(value:*):String {
+        return trimString(String(value == null ? "" : value).toLowerCase().replace(/\s+x\s*\d+$/, ""));
+    }
+
+    private static function firstProperty(source:*, names:Array):* {
+        if (source == null) {
+            return null;
+        }
+        for each (var name:String in names) {
+            try {
+                if (source[name] != null) {
+                    return source[name];
+                }
+            } catch (propertyError:Error) {
+            }
+        }
+        return null;
+    }
+
+    private static function intValue(value:*):int {
+        if (value == null) {
+            return 0;
+        }
+        var parsed:Number = Number(value);
+        if (isNaN(parsed)) {
+            return 0;
+        }
+        return int(parsed);
     }
 
     private static function rejectDropTarget(target:*):Boolean {

@@ -267,8 +267,10 @@ const knownDropItemIds: Record<string, number[]> = {
   "berserker bunny": [34417],
   "blood sorceress": [36298],
   "dragon claw": [35997],
+  "dragon shinobi token": [20561],
   "dracolich slain": [35956],
   "enchanted scale": [35957],
+  "perfect orochi scales": [54105],
   "scarlet sorceress": [42992]
 };
 
@@ -1260,7 +1262,7 @@ export class ZeroToHeroRuntime {
   }
 
   private async reconcileDropQueue(names: string[]): Promise<void> {
-    const whitelist = uniqueDropNames(names);
+    const whitelist = expandKnownDropWhitelist(uniqueDropNames(names));
     if (whitelist.length === 0) return;
 
     const whitelistCsv = whitelist.join(",");
@@ -1319,6 +1321,7 @@ export class ZeroToHeroRuntime {
   }
 
   private async acceptTargetDropsNow(whitelist: string[], acceptAcDrops: boolean): Promise<void> {
+    whitelist = expandKnownDropWhitelist(whitelist);
     const drops = await this.currentDrops();
     const targetDrops = drops.filter((drop) => dropMatchesNames(drop, whitelist));
     await this.pickupDropIds(targetDrops);
@@ -1345,7 +1348,7 @@ export class ZeroToHeroRuntime {
   }
 
   private async collectWantedDropsOnly(names: string[]): Promise<void> {
-    const whitelist = uniqueDropNames(names);
+    const whitelist = expandKnownDropWhitelist(uniqueDropNames(names));
     if (whitelist.length === 0) return;
     const drops = await this.currentDrops();
     const targetDrops = drops.filter((drop) => dropMatchesNames(drop, whitelist));
@@ -1462,6 +1465,24 @@ export class ZeroToHeroRuntime {
       ? uniqueDropNames([String(item), ...dropWhitelist])
       : uniqueDropNames(dropWhitelist);
 
+    if (acceptedDrops.length > 0) {
+      await this.withTargetDropOverride(acceptedDrops, () =>
+        this.farmMonsterLoop(monster, item, quantity, isTemp, location, acceptedDrops)
+      );
+      return;
+    }
+
+    await this.farmMonsterLoop(monster, item, quantity, isTemp, location, acceptedDrops);
+  }
+
+  private async farmMonsterLoop(
+    monster: string | number,
+    item: string | number | undefined,
+    quantity: number,
+    isTemp: boolean,
+    location: CombatLocation | undefined,
+    acceptedDrops: string[]
+  ): Promise<void> {
     let loops = 0;
     while (!this.signal?.aborted) {
       if (acceptedDrops.length > 0) {
@@ -8569,6 +8590,14 @@ function uniqueDropNames(names: string[]): string[] {
   for (const name of names) {
     const key = normalizeDropKey(name);
     if (key) values.add(key);
+  }
+  return Array.from(values);
+}
+
+function expandKnownDropWhitelist(whitelist: string[]): string[] {
+  const values = new Set(whitelist);
+  for (const name of whitelist) {
+    for (const id of knownDropItemIds[name] ?? []) values.add(String(id));
   }
   return Array.from(values);
 }
