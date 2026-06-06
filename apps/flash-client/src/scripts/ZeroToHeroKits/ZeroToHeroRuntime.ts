@@ -2056,66 +2056,23 @@ export class ZeroToHeroRuntime {
     }
 
     this.log(`${reason} requires DoomWood Rank ${targetRank}; farming DoomWood from Rank ${startRank}.`);
-    await this.farmDoomwoodRep(targetRank);
-  }
-
-  private async farmDoomwoodRep(targetRank: number): Promise<void> {
     const questIds = [1151, 1152, 1153];
-    const sharedDrops = ["Un-Dead Tag", "To Do List of Doom", "Skeleton Key"];
-    let loops = 0;
-    let lastRank = await this.doomwoodRank();
-    let lastRep = await this.doomwoodRepValue();
-    let completedSinceProgress = 0;
-
-    await this.joinDoomwoodRepRoom();
-    for (const questId of questIds) await this.acceptQuest(questId);
-
-    while ((await this.doomwoodRank()) < targetRank) {
-      if (this.options.maxFarmLoops && loops >= this.options.maxFarmLoops) {
-        this.log(`Stopped DoomWood reputation farm after ${loops} loops due to maxFarmLoops.`);
-        return;
+    await this.farmRepeatableFaction({
+      factionId: DOOMWOOD_FACTION_ID,
+      factionName: DOOMWOOD_FACTION_NAME,
+      targetRank,
+      questIds,
+      getRep: () => this.doomwoodRepValue(),
+      getRank: () => this.doomwoodRank(),
+      action: async () => {
+        const sharedDrops = ["Un-Dead Tag", "To Do List of Doom", "Skeleton Key"];
+        await this.killMonster("shadowfallwar", "Garden1", "", "*", "Un-Dead Tag", 15, true, sharedDrops);
+        await this.completeReadyRepeatableQuests(questIds);
+        await this.killMonster("shadowfallwar", "Garden1", "", "*", "To Do List of Doom", 1, true, sharedDrops);
+        await this.completeReadyRepeatableQuests(questIds);
+        await this.killMonster("shadowfallwar", "Garden1", "", "*", "Skeleton Key", 1, true, sharedDrops);
       }
-
-      loops += 1;
-      const completedBeforeAttack = await this.completeReadyRepeatableQuests(questIds);
-      completedSinceProgress += completedBeforeAttack;
-      if ((await this.doomwoodRank()) >= targetRank) return;
-
-      if (await this.recoverIfDead()) {
-        await this.joinDoomwoodRepRoom();
-        for (const questId of questIds) await this.acceptQuest(questId);
-        continue;
-      }
-
-      if (await this.clickFightPromptIfVisible()) {
-        await this.bot.delay(500, this.signal);
-        continue;
-      }
-
-      if (await this.safeAttack("*", "farming DoomWood reputation")) await this.bot.useAvailableSkills();
-      await this.acceptDrops(sharedDrops);
-      await this.bot.delay(650, this.signal);
-
-      const completedAfterAttack = await this.completeReadyRepeatableQuests(questIds);
-      completedSinceProgress += completedAfterAttack;
-
-      const rep = await this.doomwoodRepValue();
-      const rank = await this.doomwoodRank();
-      if (rank > lastRank || rep > lastRep || loops === 1 || loops % 20 === 0) {
-        this.log(`DoomWood reputation progress: Rank ${rank}, ${rep} rep.`);
-        lastRank = rank;
-        lastRep = rep;
-        completedSinceProgress = 0;
-      }
-
-      if (completedSinceProgress >= 6 && rep <= lastRep) {
-        throw new Error("DoomWood reputation did not increase after multiple ready quest turn-ins.");
-      }
-    }
-  }
-
-  private async joinDoomwoodRepRoom(): Promise<void> {
-    await this.join("shadowfallwar", "Garden1", "");
+    });
   }
 
   private async completeReadyRepeatableQuests(questIds: number[]): Promise<number> {
