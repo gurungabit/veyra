@@ -1108,6 +1108,19 @@ export class ZeroToHeroRuntime {
     return currentValue >= value;
   }
 
+  private async isDailyQuestComplete(questId: number): Promise<boolean> {
+    if (questId <= 0) return false;
+    const quest = await this.ensureQuestLoaded(questId).catch(() => undefined);
+    if (!quest) return false;
+    const field = stringFrom(firstFrom(quest, ["sField", "Field", "field"]));
+    const index = numberFrom(quest, ["iIndex", "Index", "index"]);
+    if (!field || index <= 0) return false;
+    const achievement = toNumber(
+      await this.bot.callGameFunction<unknown>("world.getAchievement", field, index).catch(() => 0)
+    );
+    return achievement > 0;
+  }
+
   async isQuestInProgress(questId: number): Promise<boolean> {
     if (questId <= 0) return false;
     const snapshot = await this.bot.snapshot().catch(() => undefined);
@@ -2047,8 +2060,14 @@ export class ZeroToHeroRuntime {
   }
 
   private async eldersBlood(): Promise<void> {
+    if (!(await this.contains("Elders' Blood", 1, false, false)) && (await this.contains("Elders' Blood", 1, false, true)))
+      await this.ensureInInventory("Elders' Blood");
     if (await this.contains("Elders' Blood", 20)) {
       this.log("Elders' Blood is already stocked.");
+      return;
+    }
+    if (await this.isDailyQuestComplete(802)) {
+      this.log("Elders' Blood daily is not available right now.");
       return;
     }
     await this.completeKillQuest({
@@ -2608,7 +2627,9 @@ export class ZeroToHeroRuntime {
       return;
     }
     await this.pyromancer();
-    if (await this.contains("Pyromancer")) await this.rankClass("Pyromancer");
+    if (!(await this.ensurePyromancerInInventory()))
+      throw new Error("Blaze Binder requires Pyromancer in inventory before FireForge shop 1142 can open.");
+    await this.rankClass("Pyromancer");
     await this.buyItem("fireforge", 1142, "Darkness Sigil");
     await runEmberseaRep(this, 10);
     await this.buyItem("fireforge", 1142, "Flame Sigil");
@@ -2617,10 +2638,25 @@ export class ZeroToHeroRuntime {
   }
 
   private async pyromancer(): Promise<void> {
-    if ((await this.contains("Pyromancer")) || (await this.contains(12812)) || (await this.contains(12811)))
+    if (await this.ensurePyromancerInInventory())
       return;
     await this.killMonster("xancave", "r9", "Down", "*", "Shurpu Blaze Token", 84, false);
     await this.buyItem("xancave", 447, 12812, 1, 1278);
+    await this.ensurePyromancerInInventory();
+  }
+
+  private async ensurePyromancerInInventory(): Promise<boolean> {
+    if (
+      (await this.contains("Pyromancer", 1, false, false)) ||
+      (await this.contains(12812, 1, false, false)) ||
+      (await this.contains(12811, 1, false, false))
+    )
+      return true;
+    for (const itemId of [12812, 12811]) {
+      if (await this.contains(itemId, 1, false, true)) return this.ensureInInventory("Pyromancer", itemId);
+    }
+    if (await this.contains("Pyromancer", 1, false, true)) return this.ensureInInventory("Pyromancer");
+    return false;
   }
 
   private async cryomancer(): Promise<void> {
