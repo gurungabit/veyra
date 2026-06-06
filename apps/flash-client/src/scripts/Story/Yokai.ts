@@ -173,35 +173,39 @@ const steps: StoryStep[] = [
   {
     "kind": "plan",
     "questId": 6464,
-    "actions": []
-  },
-  {
-    "kind": "mapItem",
-    "questId": 6464,
-    "map": "shinringrove",
-    "ids": [
-      5962
+    "actions": [
+      {
+        "kind": "mapItem",
+        "map": "shinringrove",
+        "id": 5962
+      },
+      {
+        "kind": "hunt",
+        "map": "shinringrove",
+        "cell": "r4a",
+        "pad": "Left",
+        "monster": "Otoroshi",
+        "item": "Otoroshi Defeated"
+      }
     ]
   },
   {
-    "kind": "chain",
-    "questId": 6464
-  },
-  {
-    "kind": "mapItem",
+    "kind": "plan",
     "questId": 6465,
-    "map": "greenshell",
-    "ids": [
-      5964
-    ],
-    "quantity": 5
-  },
-  {
-    "kind": "kill",
-    "questId": 6465,
-    "map": "greenshell",
-    "monsters": [
-      "Tsurubebi"
+    "actions": [
+      {
+        "kind": "mapItem",
+        "map": "greenshell",
+        "id": 5964,
+        "quantity": 5
+      },
+      {
+        "kind": "hunt",
+        "map": "greenshell",
+        "monster": "Tsurubebi",
+        "item": "Tsurubebi Extinguished",
+        "quantity": 5
+      }
     ]
   },
   {
@@ -229,36 +233,40 @@ const steps: StoryStep[] = [
     ]
   },
   {
-    "kind": "mapItem",
+    "kind": "plan",
     "questId": 6469,
-    "map": "greenshell",
-    "ids": [
-      5965
-    ],
-    "quantity": 8
-  },
-  {
-    "kind": "kill",
-    "questId": 6469,
-    "map": "shinringrove",
-    "monsters": [
-      "Reishi"
+    "actions": [
+      {
+        "kind": "mapItem",
+        "map": "greenshell",
+        "id": 5965,
+        "quantity": 8
+      },
+      {
+        "kind": "hunt",
+        "map": "shinringrove",
+        "monster": "Reishi",
+        "item": "Luminous Spores",
+        "quantity": 6
+      }
     ]
   },
   {
-    "kind": "mapItem",
+    "kind": "plan",
     "questId": 6470,
-    "map": "greenshell",
-    "ids": [
-      5966
-    ]
-  },
-  {
-    "kind": "kill",
-    "questId": 6470,
-    "map": "greenshell",
-    "monsters": [
-      "Merdraconian"
+    "actions": [
+      {
+        "kind": "mapItem",
+        "map": "greenshell",
+        "id": 5966
+      },
+      {
+        "kind": "hunt",
+        "map": "greenshell",
+        "monster": "Merdraconian",
+        "item": "Merdraconians Slain",
+        "quantity": 3
+      }
     ]
   },
   {
@@ -330,20 +338,22 @@ const steps: StoryStep[] = [
     ]
   },
   {
-    "kind": "mapItem",
+    "kind": "plan",
     "questId": 6476,
-    "map": "heiwavalley",
-    "ids": [
-      5968
-    ],
-    "quantity": 6
-  },
-  {
-    "kind": "kill",
-    "questId": 6476,
-    "map": "heiwavalley",
-    "monsters": [
-      "Kosenjobi"
+    "actions": [
+      {
+        "kind": "mapItem",
+        "map": "heiwavalley",
+        "id": 5968,
+        "quantity": 6
+      },
+      {
+        "kind": "hunt",
+        "map": "heiwavalley",
+        "monster": "Kosenjobi",
+        "item": "Kosenjobi Flame",
+        "quantity": 6
+      }
     ]
   },
   {
@@ -364,13 +374,7 @@ const steps: StoryStep[] = [
         "monster": "Kosenjobi",
         "item": "Spectral Heat",
         "quantity": 5
-      }
-    ]
-  },
-  {
-    "kind": "plan",
-    "questId": 6478,
-    "actions": [
+      },
       {
         "kind": "buy",
         "map": "heiwavalley",
@@ -405,34 +409,31 @@ const steps: StoryStep[] = [
         "monster": "Inugami",
         "item": "Spirit Eyes",
         "quantity": 4
+      },
+      {
+        "kind": "mapItem",
+        "map": "heiwavalley",
+        "id": 5970,
+        "quantity": 8
       }
     ]
   },
   {
-    "kind": "mapItem",
-    "questId": 6481,
-    "map": "heiwavalley",
-    "ids": [
-      5970
-    ],
-    "quantity": 8
-  },
-  {
-    "kind": "mapItem",
+    "kind": "plan",
     "questId": 6482,
-    "map": "heiwavalley",
-    "ids": [
-      5971
+    "actions": [
+      {
+        "kind": "mapItem",
+        "map": "heiwavalley",
+        "id": 5971
+      },
+      {
+        "kind": "mapItem",
+        "map": "heiwavalley",
+        "id": 5972,
+        "quantity": 8
+      }
     ]
-  },
-  {
-    "kind": "mapItem",
-    "questId": 6482,
-    "map": "heiwavalley",
-    "ids": [
-      5972
-    ],
-    "quantity": 8
   },
   {
     "kind": "plan",
@@ -471,19 +472,21 @@ const steps: StoryStep[] = [
     ]
   },
   {
-    "kind": "mapItem",
+    "kind": "plan",
     "questId": 6488,
-    "map": "shadowfortress",
-    "ids": [
-      5974
-    ]
-  },
-  {
-    "kind": "kill",
-    "questId": 6488,
-    "map": "shadowfortress",
-    "monsters": [
-      "Living Shadow"
+    "actions": [
+      {
+        "kind": "mapItem",
+        "map": "shadowfortress",
+        "id": 5974
+      },
+      {
+        "kind": "hunt",
+        "map": "shadowfortress",
+        "monster": "Living Shadow",
+        "item": "Shadow Essence",
+        "quantity": 7
+      }
     ]
   },
   {
@@ -495,20 +498,22 @@ const steps: StoryStep[] = [
     ]
   },
   {
-    "kind": "mapItem",
+    "kind": "plan",
     "questId": 6490,
-    "map": "shadowfortress",
-    "ids": [
-      5975
-    ],
-    "quantity": 7
-  },
-  {
-    "kind": "kill",
-    "questId": 6490,
-    "map": "shadowfortress",
-    "monsters": [
-      "Creeping Shadow"
+    "actions": [
+      {
+        "kind": "mapItem",
+        "map": "shadowfortress",
+        "id": 5975,
+        "quantity": 7
+      },
+      {
+        "kind": "hunt",
+        "map": "shadowfortress",
+        "monster": "Creeping Shadow",
+        "item": "Shadows Slain",
+        "quantity": 7
+      }
     ]
   },
   {
@@ -567,15 +572,12 @@ const steps: StoryStep[] = [
         "map": "shadowfortress",
         "monster": "1st Head of Orochi",
         "item": "1st Head Defeated"
+      },
+      {
+        "kind": "mapItem",
+        "map": "shadowfortress",
+        "id": 5977
       }
-    ]
-  },
-  {
-    "kind": "mapItem",
-    "questId": 6493,
-    "map": "shadowfortress",
-    "ids": [
-      5977
     ]
   },
   {
@@ -589,11 +591,6 @@ const steps: StoryStep[] = [
         "item": "Jaaku Defeated"
       }
     ]
-  },
-  {
-    "kind": "plan",
-    "questId": 6494,
-    "actions": []
   }
 ];
 
