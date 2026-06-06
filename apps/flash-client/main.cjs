@@ -21,6 +21,7 @@ const certKeyPath = join(certDir, "game-aq-dev.key");
 const certPemPath = join(certDir, "game-aq-dev.pem");
 const certPassphrase = "veyra-dev";
 const bundledPepperFlashDir = join(appDir, "vendor", "pepper-flash");
+const showWindowMenuBar = process.platform === "win32";
 const flash = resolvePepperFlash();
 migrateGlobalFlashSharedObjects();
 installFlashTrust();
@@ -86,7 +87,7 @@ function createLauncherWindow() {
     icon: iconPath,
     show: true,
     backgroundColor: "#101510",
-    autoHideMenuBar: true,
+    autoHideMenuBar: !showWindowMenuBar,
     webPreferences: {
       plugins: false,
       preload: preloadPath,
@@ -95,7 +96,7 @@ function createLauncherWindow() {
       webSecurity: false
     }
   });
-  launcherWindow.setMenuBarVisibility(false);
+  launcherWindow.setMenuBarVisibility(showWindowMenuBar);
   launcherWindow.loadURL(`${assetOrigin}/src/launcher.html`);
   launcherWindow.once("closed", () => {
     launcherWindow = undefined;
@@ -115,7 +116,7 @@ function createClientWindow(options = {}) {
     icon: iconPath,
     show: true,
     backgroundColor: "#050505",
-    autoHideMenuBar: true,
+    autoHideMenuBar: !showWindowMenuBar,
     webPreferences: {
       plugins: true,
       nativeWindowOpen: true,
@@ -127,7 +128,7 @@ function createClientWindow(options = {}) {
       allowRunningInsecureContent: true
     }
   });
-  clientWindow.setMenuBarVisibility(false);
+  clientWindow.setMenuBarVisibility(showWindowMenuBar);
   clientWindow.webContents.on("new-window", (event, targetUrl, frameName, disposition, childOptions) => {
     const toolWindow = getToolWindowOptions(targetUrl);
     if (!toolWindow) return;
@@ -137,7 +138,7 @@ function createClientWindow(options = {}) {
       minWidth: Math.min(toolWindow.width, 360),
       minHeight: Math.min(toolWindow.height, 320),
       title: toolWindow.title,
-      autoHideMenuBar: true,
+      autoHideMenuBar: !showWindowMenuBar,
       backgroundColor: "#070b0a",
       webPreferences: {
         plugins: true,
@@ -270,7 +271,7 @@ function showToolWindow(payload = {}) {
     icon: iconPath,
     show: true,
     backgroundColor: "#070b0a",
-    autoHideMenuBar: true,
+    autoHideMenuBar: !showWindowMenuBar,
     webPreferences: {
       plugins: true,
       nativeWindowOpen: true,
@@ -281,7 +282,7 @@ function showToolWindow(payload = {}) {
       allowRunningInsecureContent: true
     }
   });
-  win.setMenuBarVisibility(false);
+  win.setMenuBarVisibility(showWindowMenuBar);
   toolWindows.set(key, { window: win, section });
   win.loadURL(url.toString());
   win.once("closed", () => {
