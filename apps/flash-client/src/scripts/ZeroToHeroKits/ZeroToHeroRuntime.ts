@@ -122,6 +122,9 @@ const XP_BOOST_10_MIN = "XP Boost! (10 min)";
 const REP_BOOST_10_MIN = "REPUTATION Boost! (10 min)";
 const FISHING_XP_BOOST_ITEM_ID = 10850;
 const FISHING_REP_BOOST_ITEM_ID = 10997;
+const FROZEN_TOWER_FINAL_QUEST_ID = 3937;
+const CRYOMANCER_MEMBER_DAILY_QUEST_ID = 3965;
+const CRYOMANCER_DAILY_QUEST_ID = 3966;
 
 const questDataFallbacks: Record<number, Record<string, unknown>> = {
   10584: {
@@ -2688,9 +2691,10 @@ export class ZeroToHeroRuntime {
       return;
     }
     if (!(await this.contains("Glacera Ice Token", 84))) {
+      await this.ensureFrozenTowerForCryomancer();
       if (await this.isMember()) {
         await this.completeKillQuest({
-          questId: 3965,
+          questId: CRYOMANCER_MEMBER_DAILY_QUEST_ID,
           map: "frozentower",
           monster: "Frost Invader",
           item: "Dark Ice",
@@ -2700,7 +2704,7 @@ export class ZeroToHeroRuntime {
         });
       }
       await this.completeKillQuest({
-        questId: 3966,
+        questId: CRYOMANCER_DAILY_QUEST_ID,
         map: "frozentower",
         monster: "Frost Invader",
         item: "Dark Ice",
@@ -2709,8 +2713,88 @@ export class ZeroToHeroRuntime {
         reward: "Glacera Ice Token"
       });
     }
-    if (await this.contains("Glacera Ice Token", 84)) await this.buyItem("frozenruins", 1056, 27525, 1, 2603);
+    if (await this.contains("Glacera Ice Token", 84)) {
+      await this.ensureInventoryQuantity("Glacera Ice Token", 84);
+      await this.buyItem("frozenruins", 1056, 27525, 1, 2603);
+    }
     await this.rankClass("Cryomancer");
+  }
+
+  private async ensureFrozenTowerForCryomancer(): Promise<void> {
+    if (await this.isStoryQuestComplete(FROZEN_TOWER_FINAL_QUEST_ID).catch(() => false)) return;
+    this.log("Glacera Ice Token quest is locked; running Frozen Tower story first.");
+    await this.frozenTowerStory();
+    await this.clearQuestTree().catch(() => undefined);
+    await this.bot.delay(1400, this.signal);
+    if (!(await this.isStoryQuestComplete(FROZEN_TOWER_FINAL_QUEST_ID).catch(() => false))) {
+      throw new Error("Frozen Tower story did not complete through quest 3937; Glacera Ice Token is still locked.");
+    }
+  }
+
+  private async frozenTowerStory(): Promise<void> {
+    if (await this.isStoryQuestComplete(FROZEN_TOWER_FINAL_QUEST_ID).catch(() => false)) return;
+    this.log("Running Frozen Tower story through quest 3937.");
+
+    await this.storyMapItemQuest(3907, "frozentower", 3022);
+    await this.storyKillQuest(3908, "frozentower", "Polar Elemental");
+    await this.storyMapItemQuest(3909, "frozentower", 3019);
+    await this.storyMapItemQuest(3910, "frozentower", 3004, 13);
+    await this.storyKillQuest(3911, "frozentower", ["Frostwyrm", "Frostwyrm"]);
+    await this.storyKillQuest(3912, "frozentower", "FrostDeep Dweller");
+    await this.storyMapItemQuest(3913, "frozentower", 3005, 13);
+    await this.storyKillQuest(3914, "frozentower", "Twisted Ice");
+    await this.storyMapItemQuest(3915, "frozentower", 3006);
+    await this.storyKillQuest(3916, "frozentower", "Polar Elemental");
+    await this.storyMapItemQuest(3917, "frozentower", 3007, 6);
+    await this.storyMapItemQuest(3918, "frozentower", 3013);
+    await this.storyQuestPlan(3919, async () => {
+      await this.getMapItem("frozentower", 3008, 6);
+      await this.attackUntilQuestReady(3919, "frozentower", ["Polar Elemental"]);
+    });
+    await this.storyQuestPlan(3920, async () => {
+      await this.getMapItem("frozentower", 3020);
+      await this.attackUntilQuestReady(3920, "frozentower", ["Polar Elemental", "Ice Wolf"]);
+    });
+    await this.storyQuestPlan(3921, async () => {
+      await this.getMapItem("frozentower", 3017, 6);
+      await this.attackUntilQuestReady(3921, "frozentower", ["FrostDeep Dweller"]);
+    });
+    await this.storyKillQuest(3922, "frozentower", "Polar Elemental");
+    await this.storyKillQuest(3923, "frozentower", "Frostwyrm");
+    await this.storyMapItemQuest(3924, "frozentower", 3009, 6);
+    await this.storyQuestPlan(3925, async () => {
+      await this.getMapItem("frozentower", 3012, 4);
+      await this.getMapItem("frozentower", 3011, 4);
+      await this.hunt("frozentower", "Frostwyrm", "Frozen Tail", 5, true);
+      await this.hunt("frozentower", "Arctic Eel", "Frozen Scale", 5, true);
+    });
+    await this.storyMapItemQuest(3926, "frozentower", 3021);
+    await this.storyMapItemQuest(3927, "frozentower", 3014, 7);
+    await this.storyKillQuest(3928, "frozentower", "Arctic Eel");
+    await this.storyKillQuest(3929, "frozentower", "Polar Elemental");
+    await this.storyKillQuest(3930, "frozentower", "Twisted Ice");
+    await this.storyKillQuest(3931, "frozentower", "Frostwyrm");
+    await this.storyMapItemQuest(3932, "frozentower", 3016, 13);
+    await this.storyKillQuest(3933, "frozentower", "Ice Wolf");
+    await this.storyKillQuest(3934, "frozentower", "Rotten Ice");
+    await this.storyQuestPlan(3935, async () => {
+      await this.getMapItem("frozentower", 3018, 13);
+      await this.attackUntilQuestReady(3935, "frozentower", ["Ice Wolf"]);
+    });
+    await this.storyQuestPlan(3936, async () => {
+      await this.hunt("frozentower", "Frost Invader", "FrostSpawn Invader defeated", 10, true);
+    });
+    await this.storyQuestPlan(FROZEN_TOWER_FINAL_QUEST_ID, async () => {
+      await this.hunt("frozentower", "Frost Fangbeast", "Fangbeasts defeated", 15, true);
+    });
+  }
+
+  private async storyQuestPlan(questId: number, action: () => Promise<void>): Promise<void> {
+    if (await this.isStoryQuestComplete(questId).catch(() => false)) return;
+    await this.acceptQuest(questId);
+    await action();
+    await this.completeQuest(questId);
+    await this.acceptQuestDrops(questId);
   }
 
   private async dragonSoulShinobi(): Promise<void> {
