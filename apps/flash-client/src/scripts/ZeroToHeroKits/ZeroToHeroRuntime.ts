@@ -2825,7 +2825,7 @@ export class ZeroToHeroRuntime {
     }
     await this.yokaiStory();
     while (!(await this.contains("Dragon Shinobi Token", 300))) {
-      await this.acceptQuest(7924);
+      await this.ensureRepeatableQuestAccepted(7924);
       await this.hunt("shadowfortress", "1st Head of Orochi", "Perfect Orochi Scales", 10, false);
       await this.completeQuest(7924);
       await this.acceptDrops("Dragon Shinobi Token");
