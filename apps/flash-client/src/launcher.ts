@@ -106,11 +106,13 @@ function bindControls(): void {
   byId<HTMLButtonElement>("save-account").addEventListener("click", () => void saveAccount());
   selectAllButtonEl.addEventListener("click", toggleAllAccounts);
   byId<HTMLButtonElement>("start-selected").addEventListener("click", () => void startSelected());
+  serverDropdownEl.addEventListener("mousedown", stopDropdownMouseEvent);
   serverDropdownButtonEl.addEventListener("mousedown", (event) => {
     event.preventDefault();
     event.stopPropagation();
     setServerDropdownOpen(!serverDropdownOpen);
   });
+  accountServerDropdownEl.addEventListener("mousedown", stopDropdownMouseEvent);
   accountServerDropdownButtonEl.addEventListener("mousedown", (event) => {
     event.preventDefault();
     event.stopPropagation();
@@ -126,6 +128,10 @@ function bindControls(): void {
       setAccountServerDropdownOpen(false);
     }
   });
+}
+
+function stopDropdownMouseEvent(event: MouseEvent): void {
+  event.stopPropagation();
 }
 
 async function refreshAccounts(): Promise<void> {
