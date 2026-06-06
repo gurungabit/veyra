@@ -7886,7 +7886,8 @@ export class ZeroToHeroRuntime {
     if (!quest) return this.isQuestCompleted(questId);
     const slot = numberFrom(quest, ["iSlot", "Slot", "slot", "iIndex"]);
     const value = numberFrom(quest, ["iValue", "Value", "value"]);
-    if (slot < 0 || value <= 0) return this.isQuestCompleted(questId);
+    if (slot < 0) return true;
+    if (value <= 0) return this.isQuestCompleted(questId);
     const current = toNumber(
       await this.bot.callGameFunction<unknown>("world.getQuestValue", slot).catch(() => 0)
     );
