@@ -2065,9 +2065,9 @@ export class ZeroToHeroRuntime {
       getRank: () => this.doomwoodRank(),
       action: async () => {
         const sharedDrops = ["Un-Dead Tag", "To Do List of Doom", "Skeleton Key"];
-        await this.killMonster("shadowfallwar", "Garden1", "Left", "*", "Un-Dead Tag", 15, true, sharedDrops);
-        await this.killMonster("shadowfallwar", "Garden1", "Left", "*", "To Do List of Doom", 1, true, sharedDrops);
-        await this.killMonster("shadowfallwar", "Garden1", "Left", "*", "Skeleton Key", 1, true, sharedDrops);
+        await this.killMonster("shadowfallwar", "Garden1", "", "*", "Un-Dead Tag", 15, true, sharedDrops);
+        await this.killMonster("shadowfallwar", "Garden1", "", "*", "To Do List of Doom", 1, true, sharedDrops);
+        await this.killMonster("shadowfallwar", "Garden1", "", "*", "Skeleton Key", 1, true, sharedDrops);
       }
     });
   }
