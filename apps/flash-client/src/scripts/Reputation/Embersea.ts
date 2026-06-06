@@ -4,7 +4,7 @@ import { runFireIslandPyrewatchStory } from "../Story/FireIsland.js";
 const EMBERSEA_FACTION_ID = 43;
 
 export async function runEmberseaRep(runtime: ZeroToHeroRuntime, targetRank = 10): Promise<void> {
-  const currentRank = await runtime.factionRank(EMBERSEA_FACTION_ID);
+  const currentRank = await runtime.factionRankBest(EMBERSEA_FACTION_ID, "Embersea");
   if (currentRank >= targetRank) {
     runtime.log(`Embersea reputation is already Rank ${currentRank}; skipping reputation farm.`);
     return;
@@ -18,7 +18,7 @@ export async function runEmberseaRep(runtime: ZeroToHeroRuntime, targetRank = 10
     await farmEmberseaRepWithBlazebinders(runtime, targetRank);
   }
 
-  const finalRank = await runtime.factionRank(EMBERSEA_FACTION_ID);
+  const finalRank = await runtime.factionRankBest(EMBERSEA_FACTION_ID, "Embersea");
   if (finalRank < targetRank) {
     throw new Error(`Flame Sigil requires Embersea Rank ${targetRank}; current Embersea Rank is ${finalRank}.`);
   }

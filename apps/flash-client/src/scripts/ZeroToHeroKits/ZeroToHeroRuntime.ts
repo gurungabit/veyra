@@ -1013,13 +1013,36 @@ export class ZeroToHeroRuntime {
 
   private async ensureRepeatableQuestAccepted(questId: number): Promise<void> {
     if (await this.isQuestInProgress(questId).catch(() => false)) return;
-    await this.ensureQuestLoaded(questId, { allowFallback: false }).catch(() => undefined);
-    await this.throttleServerAction();
-    this.log(`Accepting quest ${questId}.`);
-    await this.bot.callGameFunction("world.acceptQuest", questId).catch(async () => {
-      await this.sendAcceptQuestPacket(questId);
-    });
-    await this.bot.delay(900, this.signal);
+    const settings = await this.bot.gameOptions().catch(() => undefined);
+    const tries = clamp(Number(settings?.values["quest-accept-and-complete-tries"] ?? 8), 1, 30);
+    const actionDelay = clamp(Number(settings?.values["action-delay"] ?? 700), 250, 3000);
+
+    for (let attempt = 1; attempt <= tries; attempt += 1) {
+      this.throwIfAborted();
+      await this.ensureLoggedIn();
+      if (await this.isQuestInProgress(questId).catch(() => false)) return;
+
+      await this.ensureQuestLoaded(questId, { allowFallback: false }).catch(() => undefined);
+      await this.throttleServerAction();
+      this.log(`Accepting repeatable quest ${questId}${attempt > 1 ? ` (retry ${attempt})` : ""}.`);
+      await this.bot.callGameFunction("world.acceptQuest", questId).catch(async () => {
+        await this.sendAcceptQuestPacket(questId);
+      });
+
+      const result = await this.waitForQuestAcceptResult(questId, Math.max(5000, actionDelay * 4));
+      if (result === "accepted") {
+        await this.bot.delay(actionDelay, this.signal);
+        return;
+      }
+      if (result === "disconnected") {
+        throw new Error(`Accepting repeatable quest ${questId} disconnected the client.`);
+      }
+
+      await this.sendGetQuestPacket(questId).catch(() => undefined);
+      await this.bot.delay(actionDelay, this.signal);
+    }
+
+    throw new Error(`Repeatable quest ${questId} was not accepted after ${tries} tries.`);
   }
 
   private async ensureFishingRank2(): Promise<void> {
@@ -7286,24 +7309,25 @@ export class ZeroToHeroRuntime {
   }): Promise<void> {
     let loops = 0;
     let staleTurnIns = 0;
-    let lastRank = await this.factionRank(options.factionId);
+    let lastRank = await this.factionRankBest(options.factionId, options.factionName);
+    const readRep = () => this.factionRepBest(options.factionId, options.factionName);
+    const readRank = () => this.factionRankBest(options.factionId, options.factionName);
 
-    while ((await this.factionRank(options.factionId)) < options.targetRank) {
+    while ((await readRank()) < options.targetRank) {
       if (this.options.maxFarmLoops && loops >= this.options.maxFarmLoops) {
         this.log(`Stopped ${options.factionName} quest ${options.questId} after ${loops} loops due to maxFarmLoops.`);
         return;
       }
 
       loops += 1;
-      const beforeRep = await this.factionRep(options.factionId);
-      await this.acceptQuest(options.questId);
+      const beforeRep = await readRep();
+      await this.ensureRepeatableQuestAccepted(options.questId);
       await options.action();
       await this.completeQuest(options.questId);
       await options.afterComplete?.();
-      await this.bot.delay(750, this.signal);
 
-      const afterRep = await this.factionRep(options.factionId);
-      const rank = classRankFromPoints(afterRep);
+      const afterRep = await this.waitForRepUpdate(readRep, beforeRep);
+      const rank = await readRank();
       if (rank > lastRank || loops === 1 || loops % 10 === 0) {
         this.log(`${options.factionName} reputation progress: Rank ${rank}, ${afterRep} rep.`);
         lastRank = rank;
@@ -7344,13 +7368,12 @@ export class ZeroToHeroRuntime {
 
       loops += 1;
       const beforeRep = await readRep();
-      for (const questId of options.questIds) await this.acceptQuest(questId);
+      for (const questId of options.questIds) await this.ensureRepeatableQuestAccepted(questId);
       await options.action();
       for (const questId of options.questIds) await this.completeQuest(questId);
       await options.afterComplete?.();
-      await this.bot.delay(750, this.signal);
 
-      const afterRep = await readRep();
+      const afterRep = await this.waitForRepUpdate(readRep, beforeRep);
       const rank = await readRank();
       if (rank > lastRank || loops === 1 || loops % 10 === 0) {
         this.log(`${options.factionName} reputation progress: Rank ${rank}, ${afterRep} rep.`);
@@ -7370,6 +7393,16 @@ export class ZeroToHeroRuntime {
     }
   }
 
+  private async waitForRepUpdate(readRep: () => Promise<number>, beforeRep: number, timeoutMs = 9000): Promise<number> {
+    const deadline = Date.now() + timeoutMs;
+    let bestRep = await readRep();
+    while (bestRep <= beforeRep && Date.now() < deadline) {
+      await this.bot.delay(750, this.signal);
+      bestRep = Math.max(bestRep, await readRep());
+    }
+    return bestRep;
+  }
+
   async factionRep(factionId: number): Promise<number> {
     const rep = await this.bot.callGameFunction<unknown>("world.myAvatar.getRep", factionId).catch(() => undefined);
     return rep === undefined ? 0 : Math.max(0, toNumber(rep));
@@ -7377,6 +7410,14 @@ export class ZeroToHeroRuntime {
 
   async factionRank(factionId: number): Promise<number> {
     return classRankFromPoints(await this.factionRep(factionId));
+  }
+
+  async factionRepBest(factionId: number, factionName: string): Promise<number> {
+    return Math.max(await this.factionRep(factionId), await this.factionRepByName(factionName));
+  }
+
+  async factionRankBest(factionId: number, factionName: string): Promise<number> {
+    return Math.max(await this.factionRank(factionId), await this.factionRankByName(factionName));
   }
 
   private async factionRepByName(factionName: string): Promise<number> {
