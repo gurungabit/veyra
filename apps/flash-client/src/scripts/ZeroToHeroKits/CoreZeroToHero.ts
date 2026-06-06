@@ -11,7 +11,7 @@ export const meta = {
   name: "CoreZeroToHero",
   description: "Veyra ZeroToHero progression, class setup, outfit, pet, and endgame flow.",
   tags: ["zero-to-hero", "progression", "core"],
-  version: "2026.06.06.2"
+  version: "2026.06.06.3"
 };
 
 const soloClasses = [
@@ -384,6 +384,10 @@ export class CoreZeroToHero {
   }
 
   private async ensureFarmerJoeBoosts(): Promise<void> {
+    const snapshot = await this.runtime.snapshot();
+    await this.runtime.farmFishingBoost("REP", 10);
+    if (snapshot.level < 100) await this.runtime.farmFishingBoost("XP", 10);
+
     const targets = [
       { label: "Gold", name: "GOLD Boost! (10 min)", quantity: 10 },
       { label: "Class", name: "CLASS Boost! (10 min)", quantity: 10 },
@@ -392,7 +396,6 @@ export class CoreZeroToHero {
     if (await this.freeBoostTargetsMet(targets)) return;
 
     this.runtime.log("GetBoosts: farming Zifwin 10-minute Gold/Class/Reputation boosts to 10.");
-    this.runtime.log("GetBoosts: Skua's fishing XP/REP boost quests are not mapped in Veyra yet.");
     let turnIns = 0;
     while (!(await this.freeBoostTargetsMet(targets))) {
       if (this.options.maxFarmLoops && turnIns >= this.options.maxFarmLoops) {

@@ -113,6 +113,15 @@ const STAFF_OF_INVERSION_MONSTER_ID = 2;
 const STALAGBITE_MAP = "stalagbite";
 const VATH_MONSTER_ID = 7;
 const STALAGBITE_MONSTER_ID = 8;
+const FISHING_FACTION_NAME = "Fishing";
+const FISHING_BAIT_QUEST_ID = 1682;
+const FISHING_XP_BOOST_QUEST_ID = 1614;
+const FISHING_REP_BOOST_QUEST_ID = 1615;
+const FISHING_DYNAMITE = "Fishing Dynamite";
+const XP_BOOST_10_MIN = "XP Boost! (10 min)";
+const REP_BOOST_10_MIN = "REPUTATION Boost! (10 min)";
+const FISHING_XP_BOOST_ITEM_ID = 10850;
+const FISHING_REP_BOOST_ITEM_ID = 10997;
 
 const questDataFallbacks: Record<number, Record<string, unknown>> = {
   10584: {
@@ -964,6 +973,121 @@ export class ZeroToHeroRuntime {
     });
     await this.bot.delay(900, this.signal);
     await this.skipCutsceneIfActive();
+  }
+
+  async farmFishingBoost(type: "XP" | "REP", quantity = 10): Promise<void> {
+    if (quantity <= 0) return;
+    const isXp = type === "XP";
+    const questId = isXp ? FISHING_XP_BOOST_QUEST_ID : FISHING_REP_BOOST_QUEST_ID;
+    const boostName = isXp ? XP_BOOST_10_MIN : REP_BOOST_10_MIN;
+    const fishItemId = isXp ? FISHING_XP_BOOST_ITEM_ID : FISHING_REP_BOOST_ITEM_ID;
+    const fishQuantity = isXp ? 30 : 5;
+
+    if ((await this.quantity(boostName, true)) >= quantity) {
+      this.log(`${boostName} is already stocked.`);
+      return;
+    }
+
+    this.log(`GetBoosts: farming Skua-style ${boostName} via fishing quest ${questId}.`);
+    await this.ensureFishingRank2();
+    await this.acceptDrops([FISHING_DYNAMITE, boostName]);
+
+    let turnIns = 0;
+    while (!this.signal?.aborted && (await this.quantity(boostName, true)) < quantity) {
+      if (this.options.maxFarmLoops && turnIns >= this.options.maxFarmLoops) {
+        this.log(`Stopped ${boostName} farm after ${turnIns} turn-ins due to maxFarmLoops.`);
+        return;
+      }
+      await this.ensureRepeatableQuestAccepted(questId);
+      await this.ensureFishingCatch(fishItemId, fishQuantity);
+      if (isXp)
+        await this.killMonster("greenguardwest", "West4", "Right", "Slime", "Slime Sauce", 1, true);
+      else
+        await this.killMonster("greenguardwest", "West3", "Right", "Frogzard", "Greenguard Seal", 1, true);
+      await this.completeQuest(questId);
+      await this.acceptDrops(boostName);
+      turnIns += 1;
+      this.log(`${boostName} progress: ${await this.quantity(boostName, true)}/${quantity}.`);
+    }
+  }
+
+  private async ensureRepeatableQuestAccepted(questId: number): Promise<void> {
+    if (await this.isQuestInProgress(questId).catch(() => false)) return;
+    await this.ensureQuestLoaded(questId, { allowFallback: false }).catch(() => undefined);
+    await this.throttleServerAction();
+    this.log(`Accepting quest ${questId}.`);
+    await this.bot.callGameFunction("world.acceptQuest", questId).catch(async () => {
+      await this.sendAcceptQuestPacket(questId);
+    });
+    await this.bot.delay(900, this.signal);
+  }
+
+  private async ensureFishingRank2(): Promise<void> {
+    if ((await this.factionRankByName(FISHING_FACTION_NAME)) >= 2) return;
+    this.log("Fishing Rank 2 required for boost quests; farming with dynamite.");
+    let casts = 0;
+    while (!this.signal?.aborted && (await this.factionRankByName(FISHING_FACTION_NAME)) < 2) {
+      if (this.options.maxFarmLoops && casts >= this.options.maxFarmLoops) {
+        this.log(`Stopped Fishing Rank 2 farm after ${casts} casts due to maxFarmLoops.`);
+        return;
+      }
+      await this.ensureFishingDynamite(20);
+      await this.join("fishing");
+      while (
+        !this.signal?.aborted &&
+        (await this.itemQuantityOf(FISHING_DYNAMITE, false)) > 0 &&
+        (await this.factionRankByName(FISHING_FACTION_NAME)) < 2
+      ) {
+        await this.castFishingDynamite();
+        casts += 1;
+      }
+    }
+  }
+
+  private async ensureFishingDynamite(quantity: number): Promise<void> {
+    if ((await this.itemQuantityOf(FISHING_DYNAMITE, false)) >= quantity) return;
+    await this.acceptDrops(FISHING_DYNAMITE);
+    await this.ensureRepeatableQuestAccepted(FISHING_BAIT_QUEST_ID);
+    await this.killMonster(
+      "greenguardwest",
+      "West4",
+      "Right",
+      "Slime",
+      FISHING_DYNAMITE,
+      quantity,
+      false,
+      [FISHING_DYNAMITE]
+    );
+  }
+
+  private async ensureFishingCatch(itemId: number, quantity: number): Promise<void> {
+    let casts = 0;
+    while (!this.signal?.aborted && (await this.itemQuantityOf(itemId, false)) < quantity) {
+      if (this.options.maxFarmLoops && casts >= this.options.maxFarmLoops) {
+        this.log(`Stopped fishing item ${itemId} after ${casts} casts due to maxFarmLoops.`);
+        return;
+      }
+      await this.ensureFishingDynamite(20);
+      await this.join("fishing");
+      while (
+        !this.signal?.aborted &&
+        (await this.itemQuantityOf(FISHING_DYNAMITE, false)) > 0 &&
+        (await this.itemQuantityOf(itemId, false)) < quantity
+      ) {
+        await this.castFishingDynamite();
+        casts += 1;
+        this.log(
+          `Fishing progress: item ${itemId} ${await this.itemQuantityOf(itemId, false)}/${quantity}, dynamite ${await this.itemQuantityOf(FISHING_DYNAMITE, false)}.`
+        );
+      }
+    }
+  }
+
+  private async castFishingDynamite(): Promise<void> {
+    await this.sendRoomPacket("FishCast", ["Dynamite", 30]);
+    await this.bot.delay(3500, this.signal);
+    await this.sendRoomPacket("getFish", ["false"]);
+    await this.bot.delay(1200, this.signal);
   }
 
   async isQuestCompleted(questId: number): Promise<boolean> {
