@@ -5,7 +5,7 @@ export const meta = {
   name: "DoomwoodREP",
   description: "Farms DoomWood reputation to Rank 10 from Shadowfall War repeatable quests.",
   tags: ["reputation", "rep", "doomwood", "shadowfallwar"],
-  version: "0.1.0"
+  version: "2026.06.06.1"
 };
 
 export interface DoomwoodRepOptions extends ZeroToHeroRuntimeOptions {
