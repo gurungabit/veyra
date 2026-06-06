@@ -172,7 +172,10 @@ async function allTypeScriptFiles(dir) {
 
 function modulePathForEntry(entry) {
   const absolute = resolve(repoRoot, entry);
-  if (!absolute.startsWith(`${scriptsRoot}/`)) throw new Error(`Script entry must live under apps/flash-client/src/scripts/: ${entry}`);
+  const normalizedAbsolute = normalizePath(absolute);
+  const normalizedScriptsRoot = normalizePath(scriptsRoot);
+  if (!normalizedAbsolute.startsWith(`${normalizedScriptsRoot}/`))
+    throw new Error(`Script entry must live under apps/flash-client/src/scripts/: ${entry}`);
   return normalizePath(relative(scriptsRoot, resolve(dirname(absolute), `${basename(absolute, ".ts")}.js`)));
 }
 

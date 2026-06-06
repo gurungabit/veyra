@@ -2802,23 +2802,23 @@ export class ZeroToHeroRuntime {
       await this.rankClass("DragonSoul Shinobi");
       return;
     }
+    await this.yokaiStory();
     while (!(await this.contains("Dragon Shinobi Token", 300))) {
       await this.acceptQuest(7924);
-      await this.killMonster(
-        "shadowfortress",
-        "Enter",
-        "Spawn",
-        "1st Head of Orochi",
-        "Perfect Orochi Scales",
-        10,
-        false
-      );
+      await this.hunt("shadowfortress", "1st Head of Orochi", "Perfect Orochi Scales", 10, false);
       await this.completeQuest(7924);
       await this.acceptDrops("Dragon Shinobi Token");
       if (this.options.maxFarmLoops) break;
     }
     await this.buyItem("shadowfortress", 1968, 59476, 1, 8078);
     await this.rankClass("DragonSoul Shinobi");
+  }
+
+  private async yokaiStory(): Promise<void> {
+    if (await this.isStoryQuestComplete(6494).catch(() => false)) return;
+    this.log("DragonSoul Shinobi requires Shadow Fortress access; completing Yokai story first.");
+    const { default: yokaiStory } = await import("../Story/Yokai.js");
+    await yokaiStory.run(this.bot, this.options);
   }
 
   private async glacialBerserker(): Promise<void> {
