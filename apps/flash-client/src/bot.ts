@@ -50,6 +50,8 @@ const publicOnlyMaps = new Set<string>();
 
 export class BrowserFlashBot implements Bot {
   private skillCursor = 0;
+  private readonly activeQuestIds = new Set<number>();
+  private readonly questPruneTimers = new Map<number, number>();
 
   constructor(
     private readonly flash: () => FlashObject,
@@ -92,9 +94,15 @@ export class BrowserFlashBot implements Bot {
           this.log(`Auto relogin failed: ${describeUnknownError(error)}`);
           return false;
         });
-        if (isPlayerSnapshot(result) && result.loggedIn) return result;
+        if (isPlayerSnapshot(result) && result.loggedIn) {
+          await this.restoreActiveQuestsAfterRelogin(signal);
+          return result;
+        }
         const afterRelogin = await this.snapshot().catch(() => undefined);
-        if (afterRelogin?.loggedIn) return afterRelogin;
+        if (afterRelogin?.loggedIn) {
+          await this.restoreActiveQuestsAfterRelogin(signal);
+          return afterRelogin;
+        }
       }
       this.log("Waiting for login.");
       await this.delay(1000, signal);
@@ -419,6 +427,7 @@ export class BrowserFlashBot implements Bot {
 
   async sendPacket(packet: string): Promise<void> {
     await this.callGameFunction("sfc.sendString", packet);
+    this.trackQuestPacket(packet);
   }
 
   async jump(cell: string, pad = "Spawn"): Promise<void> {
@@ -492,11 +501,15 @@ export class BrowserFlashBot implements Bot {
   async callGameFunction<T>(path: string, ...args: unknown[]): Promise<T> {
     const flashObject = this.flash();
     const safeName = args.length > 0 ? "callGameFunctionSafe" : "callGameFunction0Safe";
+    let result: T;
     if (typeof flashObject[safeName] === "function") {
       const raw = args.length > 0 ? await this.call<unknown>(safeName, path, ...args) : await this.call<unknown>(safeName, path);
-      return unwrapSafeFlashCall<T>(raw, path, args);
+      result = unwrapSafeFlashCall<T>(raw, path, args);
+    } else {
+      result = args.length > 0 ? await this.call<T>("callGameFunction", path, ...args) : await this.call<T>("callGameFunction0", path);
     }
-    return args.length > 0 ? this.call<T>("callGameFunction", path, ...args) : this.call<T>("callGameFunction0", path);
+    this.trackQuestGameFunction(path, args);
+    return result;
   }
 
   call<T>(name: string, ...args: unknown[]): Promise<T> {
@@ -508,6 +521,73 @@ export class BrowserFlashBot implements Bot {
     } catch (error) {
       return Promise.reject(new Error(`Flash callback ${name} failed: ${describeUnknownError(error)}`));
     }
+  }
+
+  private trackQuestGameFunction(path: string, args: unknown[]): void {
+    const questId = positiveInteger(args[0]);
+    if (questId <= 0) return;
+    if (path === "world.acceptQuest") this.rememberActiveQuest(questId);
+    else if (path === "world.tryQuestComplete") this.scheduleQuestPrune(questId);
+  }
+
+  private trackQuestPacket(packet: string): void {
+    const parts = packet.split("%").filter(Boolean);
+    const commandIndex = parts.findIndex((part) => part === "acceptQuest" || part === "tryQuestComplete");
+    if (commandIndex < 0) return;
+
+    const questId = positiveInteger(parts[commandIndex + 2]);
+    if (questId <= 0) return;
+    if (parts[commandIndex] === "acceptQuest") this.rememberActiveQuest(questId);
+    else this.scheduleQuestPrune(questId);
+  }
+
+  private rememberActiveQuest(questId: number): void {
+    this.activeQuestIds.add(questId);
+  }
+
+  private scheduleQuestPrune(questId: number): void {
+    const existing = this.questPruneTimers.get(questId);
+    if (existing !== undefined) window.clearTimeout(existing);
+    const timer = window.setTimeout(() => {
+      this.questPruneTimers.delete(questId);
+      void this.pruneInactiveQuest(questId);
+    }, 1800);
+    this.questPruneTimers.set(questId, timer);
+  }
+
+  private async pruneInactiveQuest(questId: number): Promise<void> {
+    const inProgress = await this.callGameFunction<unknown>("world.isQuestInProgress", questId).catch(() => undefined);
+    if (inProgress === undefined) return;
+    if (!toBoolean(inProgress)) this.activeQuestIds.delete(questId);
+  }
+
+  private async restoreActiveQuestsAfterRelogin(signal?: AbortSignal): Promise<void> {
+    const questIds = Array.from(this.activeQuestIds);
+    if (questIds.length === 0) return;
+
+    this.log(`Restoring ${questIds.length} active quest${questIds.length === 1 ? "" : "s"} after relogin.`);
+    for (const questId of questIds) {
+      if (signal?.aborted) return;
+      if (await this.isQuestCurrentlyAccepted(questId).catch(() => false)) continue;
+      await this.sendQuestPacket("getQuest", questId).catch(() => undefined);
+      await this.delay(250, signal);
+      await this.callGameFunction("world.acceptQuest", questId).catch(async () => {
+        await this.sendQuestPacket("acceptQuest", questId);
+      });
+      await this.delay(500, signal);
+      if (!(await this.isQuestCurrentlyAccepted(questId).catch(() => false))) {
+        this.log(`Quest ${questId} did not re-accept after relogin; continuing so the script can retry.`);
+      }
+    }
+  }
+
+  private async isQuestCurrentlyAccepted(questId: number): Promise<boolean> {
+    return toBoolean(await this.callGameFunction<unknown>("world.isQuestInProgress", questId));
+  }
+
+  private async sendQuestPacket(command: "getQuest" | "acceptQuest", questId: number): Promise<void> {
+    const room = (await this.snapshot().catch(() => undefined))?.room || 1;
+    await this.sendPacket(`%xt%zm%${command}%${room}%${questId}%`);
   }
 }
 
@@ -529,6 +609,11 @@ function toNumber(value: unknown): number {
     return Number.isFinite(parsed) ? parsed : 0;
   }
   return 0;
+}
+
+function positiveInteger(value: unknown): number {
+  const parsed = Math.floor(toNumber(value));
+  return parsed > 0 ? parsed : 0;
 }
 
 function toStringArray(value: unknown): string[] {
