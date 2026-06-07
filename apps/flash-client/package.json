@@ -31,9 +31,17 @@
     "appId": "app.veyra.client",
     "productName": "Veyra",
     "asar": false,
+    "artifactName": "${productName}-${version}-${os}-${arch}.${ext}",
     "directories": {
       "output": "release"
     },
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "gurungabit",
+        "repo": "veyra"
+      }
+    ],
     "files": [
       "main.cjs",
       "preload.cjs",
@@ -77,5 +85,8 @@
   "devDependencies": {
     "electron": "8.1.0",
     "electron-builder": "^26.8.1"
+  },
+  "dependencies": {
+    "electron-updater": "^6.8.9"
   }
 }

@@ -1,4 +1,5 @@
 const { app, BrowserWindow, dialog, ipcMain, Menu, shell } = require("electron");
+const { autoUpdater } = require("electron-updater");
 const { createServer: createHttpsServer, request: httpsRequest } = require("https");
 const { request: httpRequest } = require("http");
 const { execFileSync, spawn } = require("child_process");
@@ -56,12 +57,14 @@ let checkForScriptUpdatesMenuItem;
 let autoDownloadScriptUpdatesMenuItem;
 let scriptUpdateChecking = false;
 let latestUpdateRelease;
+let updateDownloadPromptOpen = false;
 let updateStatus = {
   state: "idle",
   message: "",
   currentVersion: app.getVersion(),
   version: "",
   percent: 0,
+  downloaded: false,
   canCheck: false,
   canOpen: false,
   releaseUrl: "",
@@ -1312,8 +1315,17 @@ function setupApplicationMenu() {
 
 function updateCheckForUpdatesMenuItem() {
   if (!checkForUpdatesMenuItem) return;
-  checkForUpdatesMenuItem.enabled = !updateChecking;
-  checkForUpdatesMenuItem.label = updateChecking ? "Checking For Updates..." : "Check For Updates";
+  const downloading = updateStatus.state === "downloading";
+  const downloaded = updateStatus.state === "downloaded";
+  checkForUpdatesMenuItem.enabled = !updateChecking && !downloading;
+  if (downloaded) {
+    checkForUpdatesMenuItem.label = "Install Downloaded Update";
+  } else if (downloading) {
+    const percent = Math.round(updateStatus.percent || 0);
+    checkForUpdatesMenuItem.label = percent > 0 ? `Downloading Update ${percent}%...` : "Downloading Update...";
+  } else {
+    checkForUpdatesMenuItem.label = updateChecking ? "Checking For Updates..." : "Check For Updates";
+  }
 }
 
 function updateScriptUpdatesMenuItems() {
@@ -1348,17 +1360,45 @@ async function checkForUpdatesFromMenu() {
 }
 
 async function showUpdateResult(status, parent) {
+  if (status.state === "downloaded") {
+    const result = await showUpdateDialog(parent, {
+      type: "info",
+      title: "Update Ready",
+      message: `Veyra ${status.version || "update"} is ready to install.`,
+      detail: "Restart Veyra now to apply the downloaded update.",
+      buttons: ["Restart Now", "Later"],
+      defaultId: 0,
+      cancelId: 1
+    });
+    if (result.response === 0) autoUpdater.quitAndInstall(false, true);
+    return;
+  }
+
+  if (status.state === "downloading") {
+    const percent = Math.round(status.percent || 0);
+    await showUpdateDialog(parent, {
+      type: "info",
+      title: "Downloading Update",
+      message: `Downloading Veyra ${status.version || "update"}...`,
+      detail: percent > 0 ? `Download progress: ${percent}%` : "Veyra will ask to restart when the download is ready.",
+      buttons: ["OK"],
+      defaultId: 0,
+      cancelId: 0
+    });
+    return;
+  }
+
   if (status.state === "available") {
     const result = await showUpdateDialog(parent, {
       type: "info",
       title: "Update Available",
       message: `Veyra ${status.version} is available.`,
-      detail: `You are running Veyra ${status.currentVersion}.`,
-      buttons: ["Open Downloads", "Later"],
+      detail: `You are running Veyra ${status.currentVersion}. The update will download in the background.`,
+      buttons: ["OK", "Open Releases"],
       defaultId: 0,
-      cancelId: 1
+      cancelId: 0
     });
-    if (result.response === 0) await openUpdateRelease();
+    if (result.response === 1) await openUpdateRelease();
     return;
   }
 
@@ -1651,12 +1691,99 @@ function setupUpdateChecker() {
     return;
   }
 
+  autoUpdater.autoDownload = true;
+  autoUpdater.autoInstallOnAppQuit = true;
+
+  autoUpdater.on("checking-for-update", () => {
+    updateChecking = true;
+    setUpdateStatus({
+      state: "checking",
+      message: "Checking GitHub for updates...",
+      canCheck: false,
+      canOpen: false,
+      releaseUrl: "",
+      percent: 0,
+      downloaded: false
+    });
+  });
+
+  autoUpdater.on("update-available", (info) => {
+    const update = rememberUpdateInfo(info);
+    setUpdateStatus({
+      state: "downloading",
+      message: `Downloading Veyra ${update.version}...`,
+      version: update.version,
+      canCheck: false,
+      canOpen: true,
+      releaseUrl: update.releaseUrl,
+      percent: 0,
+      downloaded: false
+    });
+  });
+
+  autoUpdater.on("download-progress", (progress) => {
+    const percent = Math.max(0, Math.min(100, Number(progress?.percent) || 0));
+    const version = updateStatus.version || latestUpdateRelease?.version || "";
+    setUpdateStatus({
+      state: "downloading",
+      message: `Downloading Veyra ${version || "update"} (${Math.round(percent)}%)...`,
+      version,
+      canCheck: false,
+      canOpen: true,
+      releaseUrl: updateStatus.releaseUrl || latestUpdateRelease?.url || githubReleasesUrl(),
+      percent,
+      downloaded: false
+    });
+  });
+
+  autoUpdater.on("update-downloaded", (info) => {
+    const update = rememberUpdateInfo(info);
+    setUpdateStatus({
+      state: "downloaded",
+      message: `Veyra ${update.version} is ready to install.`,
+      version: update.version,
+      canCheck: true,
+      canOpen: false,
+      releaseUrl: update.releaseUrl,
+      percent: 100,
+      downloaded: true
+    });
+    void promptToInstallDownloadedUpdate();
+  });
+
+  autoUpdater.on("update-not-available", (info) => {
+    const update = rememberUpdateInfo(info);
+    setUpdateStatus({
+      state: "not-available",
+      message: "Veyra is up to date.",
+      version: update.version || app.getVersion(),
+      canCheck: true,
+      canOpen: false,
+      releaseUrl: update.releaseUrl,
+      percent: 0,
+      downloaded: false
+    });
+  });
+
+  autoUpdater.on("error", (error) => {
+    updateChecking = false;
+    setUpdateStatus({
+      state: "error",
+      message: `Update check failed: ${error?.message || String(error)}`,
+      canCheck: true,
+      canOpen: true,
+      releaseUrl: githubReleasesUrl(),
+      downloaded: false
+    });
+  });
+
   setUpdateStatus({
     state: "idle",
     message: "Ready to check for updates.",
     canCheck: true,
     canOpen: false,
-    releaseUrl: ""
+    releaseUrl: "",
+    downloaded: false
   });
   setTimeout(() => void checkForUpdates(), 3500);
 }
@@ -1664,6 +1791,7 @@ function setupUpdateChecker() {
 async function checkForUpdates() {
   setupUpdateChecker();
   if (!updatesEnabled()) return updateStatus;
+  if (updateStatus.state === "downloaded" || updateStatus.state === "downloading") return updateStatus;
   if (updateChecking) return updateStatus;
 
   updateChecking = true;
@@ -1673,32 +1801,34 @@ async function checkForUpdates() {
     canCheck: false,
     canOpen: false,
     releaseUrl: "",
-    percent: 0
+    percent: 0,
+    downloaded: false
   });
 
   try {
-    const release = await fetchLatestGithubRelease();
-    const version = releaseVersion(release);
-    const releaseUrl = typeof release.html_url === "string" ? release.html_url : githubReleasesUrl();
-    latestUpdateRelease = { version, url: releaseUrl, name: release.name || release.tag_name || version };
-
-    if (compareVersions(version, app.getVersion()) > 0) {
+    const result = await autoUpdater.checkForUpdates();
+    if (result?.downloadPromise) {
+      result.downloadPromise.catch((error) => {
+        setUpdateStatus({
+          state: "error",
+          message: `Update download failed: ${error?.message || String(error)}`,
+          canCheck: true,
+          canOpen: true,
+          releaseUrl: githubReleasesUrl(),
+          downloaded: false
+        });
+      });
+    }
+    if (result?.updateInfo && updateStatus.state === "checking") {
+      const update = rememberUpdateInfo(result.updateInfo);
       setUpdateStatus({
         state: "available",
-        message: `Veyra ${version} is available.`,
-        version,
+        message: `Veyra ${update.version} is available.`,
+        version: update.version,
         canCheck: true,
         canOpen: true,
-        releaseUrl
-      });
-    } else {
-      setUpdateStatus({
-        state: "not-available",
-        message: "Veyra is up to date.",
-        version,
-        canCheck: true,
-        canOpen: false,
-        releaseUrl
+        releaseUrl: update.releaseUrl,
+        downloaded: false
       });
     }
   } catch (error) {
@@ -1707,7 +1837,8 @@ async function checkForUpdates() {
       message: `Update check failed: ${error?.message || String(error)}`,
       canCheck: true,
       canOpen: true,
-      releaseUrl: githubReleasesUrl()
+      releaseUrl: githubReleasesUrl(),
+      downloaded: false
     });
   } finally {
     updateChecking = false;
@@ -1722,44 +1853,48 @@ async function openUpdateRelease() {
   return updateStatus;
 }
 
-function fetchLatestGithubRelease() {
-  const path = `/repos/${updateRepo.owner}/${updateRepo.repo}/releases/latest`;
-  return new Promise((resolveRelease, rejectRelease) => {
-    const request = httpsRequest(
-      {
-        hostname: "api.github.com",
-        path,
-        method: "GET",
-        headers: {
-          Accept: "application/vnd.github+json",
-          "User-Agent": `Veyra/${app.getVersion()}`
-        }
-      },
-      (response) => {
-        let body = "";
-        response.setEncoding("utf8");
-        response.on("data", (chunk) => {
-          body += chunk;
-        });
-        response.on("end", () => {
-          if (response.statusCode < 200 || response.statusCode >= 300) {
-            rejectRelease(new Error(`GitHub returned HTTP ${response.statusCode}`));
-            return;
-          }
-          try {
-            resolveRelease(JSON.parse(body));
-          } catch (error) {
-            rejectRelease(error);
-          }
-        });
-      }
-    );
-    request.setTimeout(10000, () => {
-      request.destroy(new Error("GitHub update check timed out."));
-    });
-    request.on("error", rejectRelease);
-    request.end();
+function rememberUpdateInfo(info = {}) {
+  const version = updateVersionFromInfo(info);
+  const releaseUrl = updateReleaseUrlFromInfo(info);
+  latestUpdateRelease = {
+    version,
+    url: releaseUrl,
+    name: info.releaseName || info.version || version
+  };
+  return { version, releaseUrl };
+}
+
+function updateVersionFromInfo(info = {}) {
+  if (typeof info.version === "string" && info.version.trim()) return info.version.replace(/^v/iu, "");
+  const version = releaseVersion({
+    tag_name: info.tag,
+    name: info.releaseName
   });
+  return version === "0.0.0" ? app.getVersion() : version;
+}
+
+function updateReleaseUrlFromInfo(info = {}) {
+  return typeof info.releaseUrl === "string" && info.releaseUrl.trim() ? info.releaseUrl : githubReleasesUrl();
+}
+
+async function promptToInstallDownloadedUpdate() {
+  if (updateDownloadPromptOpen) return;
+  updateDownloadPromptOpen = true;
+  try {
+    const parent = activeDialogWindow();
+    const result = await showUpdateDialog(parent, {
+      type: "info",
+      title: "Update Ready",
+      message: `Veyra ${updateStatus.version || "update"} has been downloaded.`,
+      detail: "Restart Veyra now to apply it.",
+      buttons: ["Restart Now", "Later"],
+      defaultId: 0,
+      cancelId: 1
+    });
+    if (result.response === 0) autoUpdater.quitAndInstall(false, true);
+  } finally {
+    updateDownloadPromptOpen = false;
+  }
 }
 
 async function fetchJsonUrl(url) {

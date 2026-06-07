@@ -9,9 +9,10 @@
       {
         "assets": [
           "release-assets/**/*.dmg",
-          "release-assets/**/*-mac.zip",
+          "release-assets/**/*.zip",
           "release-assets/**/*.exe",
-          "release-assets/**/*-win.zip"
+          "release-assets/**/*.blockmap",
+          "release-assets/**/latest*.yml"
         ]
       }
     ]
