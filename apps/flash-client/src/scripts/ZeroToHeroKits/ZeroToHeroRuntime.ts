@@ -302,7 +302,9 @@ const knownDropItemIds: Record<string, number[]> = {
   "dracolich slain": [35956],
   "enchanted scale": [35957],
   "perfect orochi scales": [54105],
-  "scarlet sorceress": [42992]
+  "scarlet sorceress": [42992],
+  "unidentified 10": [4723],
+  "unidentified 13": [4762]
 };
 
 export class ZeroToHeroRuntime {
@@ -5390,18 +5392,78 @@ export class ZeroToHeroRuntime {
 
   private async farmUni13(quantity: number): Promise<void> {
     if (await this.contains("Unidentified 13", quantity)) return;
-    await this.farmQuestReward({
-      questId: 2566,
-      map: "boxes",
-      monster: "Sneevil Box",
-      item: "Escherion's Helm",
-      quantity: 1,
-      isTemp: false,
-      reward: "Unidentified 13",
-      targetQuantity: Math.min(quantity, 13)
-    });
+    await this.nulgathsRouletteOfMisfortune("Unidentified 13", Math.min(quantity, 13));
     if (!(await this.contains("Unidentified 13", quantity)))
       await this.nationSupplies("Unidentified 13", Math.min(quantity, 13));
+  }
+
+  private async nulgathsRouletteOfMisfortune(item: string, quantity: number): Promise<void> {
+    const targetQuantity = Math.max(1, quantity);
+    if (await this.contains(item, targetQuantity)) return;
+
+    const rewardId = this.knownDropItemId(item);
+    const dropWhitelist = uniqueDropNames([
+      item,
+      "Mana Energy for Nulgath",
+      "Charged Mana Energy for Nulgath"
+    ]);
+    let loops = 0;
+    let staleTurnIns = 0;
+
+    this.log(`Nulgath's Roulette: farming ${item} via Mana Golem and Mana Falcon.`);
+    while (!this.signal?.aborted && !(await this.contains(item, targetQuantity))) {
+      if (this.options.maxFarmLoops && loops >= this.options.maxFarmLoops) {
+        this.log(`Stopped ${item} Roulette farm after ${loops} loops due to maxFarmLoops.`);
+        return;
+      }
+      loops += 1;
+
+      await this.acceptDrops(dropWhitelist);
+      await this.acceptQuest(2566);
+      await this.hunt(
+        "elemental",
+        "Mana Golem",
+        "Mana Energy for Nulgath",
+        10,
+        false,
+        dropWhitelist
+      );
+
+      while (
+        !this.signal?.aborted &&
+        !(await this.contains(item, targetQuantity)) &&
+        (await this.contains("Mana Energy for Nulgath"))
+      ) {
+        await this.acceptQuest(2566);
+        const beforeReward = await this.quantity(item);
+        await this.hunt(
+          "elemental",
+          "Mana Falcon",
+          "Charged Mana Energy for Nulgath",
+          5,
+          true,
+          dropWhitelist
+        );
+        await this.completeQuest(2566, rewardId);
+        await this.waitForRewardDrop(
+          dropWhitelist,
+          rewardId > 0 ? rewardId : item,
+          Math.min(targetQuantity, beforeReward + 1),
+          6500
+        );
+
+        const afterReward = await this.quantity(item);
+        if (afterReward <= beforeReward && !(await this.contains(item, targetQuantity))) {
+          staleTurnIns += 1;
+          if (staleTurnIns >= 5) {
+            this.log(`Stopped ${item} Roulette farm after ${staleTurnIns} turn-ins without pickup.`);
+            return;
+          }
+        } else {
+          staleTurnIns = 0;
+        }
+      }
+    }
   }
 
   private async nationMaterials(detail?: string): Promise<void> {
