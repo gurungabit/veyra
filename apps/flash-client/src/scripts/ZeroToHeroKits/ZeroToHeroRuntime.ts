@@ -2331,15 +2331,15 @@ export class ZeroToHeroRuntime {
     let completed = 0;
     for (const questId of questIds) {
       if (!(await this.isQuestInProgress(questId).catch(() => false))) {
-        await this.acceptQuest(questId);
+        await this.ensureRepeatableQuestAccepted(questId);
       }
       const readiness = await this.questCompletionReadiness(questId).catch(() => undefined);
       if (!readiness?.ready) continue;
 
       await this.completeQuest(questId);
       completed += 1;
-      if (!(await this.isQuestCompleted(questId).catch(() => false))) {
-        await this.acceptQuest(questId);
+      if (!(await this.isQuestInProgress(questId).catch(() => false))) {
+        await this.ensureRepeatableQuestAccepted(questId);
       }
     }
     return completed;
@@ -7170,10 +7170,13 @@ export class ZeroToHeroRuntime {
       factionName: "Glacera",
       targetRank,
       questIds: [5597, 5598, 5599, 5600],
-      action: async () => {
+      action: async (completeReady) => {
         await this.killMonster("icewindwar", "r5", "Left", "*", "Frostspawn Medal", 10, true);
+        await completeReady();
         await this.killMonster("icewindwar", "r5", "Left", "*", "Mega Frostspawn Medal", 5, true);
+        await completeReady();
         await this.killMonster("icewindwar", "r5", "Left", "*", "World Ender Medal", 10, true);
+        await completeReady();
         await this.killMonster("icewindwar", "r5", "Left", "*", "Mega World Ender Medal", 5, true);
       }
     });
@@ -7551,7 +7554,7 @@ export class ZeroToHeroRuntime {
     factionName: string;
     targetRank: number;
     questIds: number[];
-    action: () => Promise<void>;
+    action: (completeReady: () => Promise<number>) => Promise<void>;
     afterComplete?: () => Promise<void>;
     getRep?: () => Promise<number>;
     getRank?: () => Promise<number>;
@@ -7571,8 +7574,16 @@ export class ZeroToHeroRuntime {
       loops += 1;
       const beforeRep = await readRep();
       for (const questId of options.questIds) await this.ensureRepeatableQuestAccepted(questId);
-      await options.action();
-      for (const questId of options.questIds) await this.completeQuest(questId);
+      let completedThisLoop = await this.completeReadyRepeatableQuests(options.questIds);
+      if ((await readRank()) < options.targetRank) {
+        const completeReady = async () => {
+          const completed = await this.completeReadyRepeatableQuests(options.questIds);
+          completedThisLoop += completed;
+          return completed;
+        };
+        await options.action(completeReady);
+        await completeReady();
+      }
       await options.afterComplete?.();
 
       const afterRep = await this.waitForRepUpdate(readRep, beforeRep);
@@ -7582,7 +7593,7 @@ export class ZeroToHeroRuntime {
         lastRank = rank;
       }
 
-      if (afterRep <= beforeRep) {
+      if (completedThisLoop <= 0 || afterRep <= beforeRep) {
         staleTurnIns += 1;
         if (staleTurnIns >= 3) {
           throw new Error(
