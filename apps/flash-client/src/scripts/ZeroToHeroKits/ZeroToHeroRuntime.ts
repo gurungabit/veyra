@@ -7164,6 +7164,11 @@ export class ZeroToHeroRuntime {
         continue;
       }
 
+      if (await this.advanceTowerOfDoomCell(floor)) {
+        idlePasses = 0;
+        continue;
+      }
+
       const target = await this.nextTowerOfDoomTarget();
       if (target) {
         idlePasses = 0;
@@ -7245,8 +7250,11 @@ export class ZeroToHeroRuntime {
     const next = orderedCells.find((cell) => this.towerOfDoomCellIndex(cell, orderedCells) > currentIndex);
     if (!next) return false;
 
-    this.log(`Tower of Doom floor ${floor}: advancing to ${next}/Auto.`);
-    await this.jump(next, "Auto");
+    await this.jump(next, "Auto").catch(() => undefined);
+    const after = await this.snapshot().catch(() => undefined);
+    if (!after?.cell || after.cell === snapshot.cell) return false;
+
+    this.log(`Tower of Doom floor ${floor}: advanced from ${snapshot.cell} to ${after.cell}.`);
     return true;
   }
 
