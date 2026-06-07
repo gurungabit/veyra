@@ -1141,11 +1141,7 @@ export class ZeroToHeroRuntime {
   }
 
   async isQuestCompleted(questId: number): Promise<boolean> {
-    const checks = await Promise.all([
-      this.bot.callGameFunction<unknown>("world.isQuestComplete", questId).catch(() => undefined),
-      this.bot.callGameFunction<unknown>("world.isQuestCompleted", questId).catch(() => undefined)
-    ]);
-    if (checks.some(toBoolean)) return true;
+    if (await this.isQuestCompletedDirect(questId)) return true;
 
     const quest = await this.ensureQuestLoaded(questId).catch(() => undefined);
     if (!quest) return false;
@@ -2777,6 +2773,8 @@ export class ZeroToHeroRuntime {
   }
 
   private async frozenTowerStory(): Promise<void> {
+    if (await this.isQuestCompletedDirect(FROZEN_TOWER_FINAL_QUEST_ID).catch(() => false)) return;
+    await this.join("frozentower");
     if (await this.isStoryQuestComplete(FROZEN_TOWER_FINAL_QUEST_ID).catch(() => false)) return;
     this.log("Running Frozen Tower story through quest 3937.");
 
@@ -7155,10 +7153,15 @@ export class ZeroToHeroRuntime {
       return;
     }
 
-    if (!(await this.isStoryQuestComplete(5601))) {
-      this.log("Glacera reputation quests are locked; running Glacera story first.");
-      const { default: glaceraStory } = await import("../Story/Glacera.js");
-      await glaceraStory.run(this.bot, this.options);
+    if (!(await this.isGlaceraReputationUnlocked())) {
+      this.log("Glacera reputation quests are locked; running Glacera unlock story first.");
+      await this.glaceraReputationUnlockStory();
+      await this.clearQuestTree().catch(() => undefined);
+      await this.bot.delay(1000, this.signal);
+    }
+
+    if (!(await this.isGlaceraReputationUnlocked())) {
+      throw new Error("Glacera reputation quests are still locked after completing the Glacera unlock route.");
     }
 
     this.log(`Farming Glacera reputation from Rank ${startRank} to Rank ${targetRank}.`);
@@ -7174,6 +7177,55 @@ export class ZeroToHeroRuntime {
         await this.killMonster("icewindwar", "r5", "Left", "*", "Mega World Ender Medal", 5, true);
       }
     });
+  }
+
+  private async isGlaceraReputationUnlocked(): Promise<boolean> {
+    if (await this.isQuestCompletedDirect(5601).catch(() => false)) return true;
+    await this.join("icewindwar", "r5", "Left").catch(() => undefined);
+    const snapshot = await this.snapshot().catch(() => undefined);
+    if (snapshot?.map.toLowerCase() !== "icewindwar") return false;
+    if (await this.isQuestUnlocked(5597).catch(() => false)) return true;
+    return this.isStoryQuestComplete(5601).catch(() => false);
+  }
+
+  private async glaceraReputationUnlockStory(): Promise<void> {
+    await this.frozenTowerStory();
+    if (await this.isGlaceraReputationUnlocked()) return;
+
+    this.log("Running Glacera story through IceWindWar quest 5601.");
+    await this.storyKillQuest(3941, "frozenruins", "Frost Fangbeast");
+    await this.storyKillQuest(3942, "frozenruins", "Frost Reaper");
+    await this.storyKillQuest(3943, "frozenruins", "Frost Reaper");
+    await this.storyKillQuest(3944, "frozenruins", "Frost Reaper");
+    await this.storyQuestPlan(3945, async () => {
+      await this.getMapItem("frozenruins", 3050, 10);
+      await this.attackUntilQuestReady(3945, "frozenruins", ["Frozen Moglinster"]);
+    });
+    await this.completeQuestPlan(3946, [
+      { kind: "hunt", map: "frozenruins", monster: "Frost Reaper", item: "Mercury" }
+    ]);
+    await this.storyMapItemQuest(3947, "glacera", 3048);
+    await this.storyKillQuest(3948, "glacera", "Frost Invader");
+    await this.storyMapItemQuest(3949, "glacera", 3049, 6);
+    await this.storyMapItemQuest(3950, "glacera", 3047);
+    await this.storyKillQuest(3951, "frozenruins", "Frost Invader");
+    await this.storyKillQuest(3952, "frozenruins", "Frost Fangbeast");
+    await this.storyKillQuest(3953, "frozenruins", "Frost Reaper");
+    await this.storyKillQuest(3954, "frozenruins", "Frost General");
+    await this.storyMapItemQuest(5587, "icewindpass", 5074, 5);
+    await this.storyKillQuest(5588, "icewindpass", "Glacial Elemental");
+    await this.storyQuestPlan(5589, async () => {
+      await this.getMapItem("icewindpass", 5075, 5);
+      await this.attackUntilQuestReady(5589, "icewindpass", ["Glacial Elemental"]);
+    });
+    await this.storyKillQuest(5590, "icewindpass", "Polar Golem");
+    await this.storyKillQuest(5591, "icewindpass", "Frost Invader");
+    await this.storyKillQuest(5592, "icewindpass", "Frostspawn Symbiote");
+    await this.storyKillQuest(5593, "icewindpass", "Frost Invader");
+    await this.storyKillQuest(5594, "icewindpass", "Frostspawn Horror");
+    await this.storyKillQuest(5595, "icewindpass", ["Frostspawn Troll", "Frost Invader"]);
+    await this.storyKillQuest(5596, "icewindpass", ["Polar Golem", "Glacial Elemental"]);
+    await this.storyKillQuest(5601, "icewindwar", "Soricomorpha");
   }
 
   private async ensureMassiveHorcCleaver(): Promise<void> {
@@ -7401,6 +7453,8 @@ export class ZeroToHeroRuntime {
     mapItemIds: number | number[],
     quantity = 1
   ): Promise<void> {
+    if (await this.isQuestCompletedDirect(questId).catch(() => false)) return;
+    await this.join(map);
     if (await this.isStoryQuestComplete(questId)) return;
     await this.acceptQuest(questId);
     const ids = Array.isArray(mapItemIds) ? mapItemIds : [mapItemIds];
@@ -7417,6 +7471,8 @@ export class ZeroToHeroRuntime {
     quantity = 1,
     isTemp = true
   ): Promise<void> {
+    if (await this.isQuestCompletedDirect(questId).catch(() => false)) return;
+    await this.join(map);
     if (await this.isStoryQuestComplete(questId)) return;
     await this.acceptQuest(questId);
     if (item) {
@@ -7435,6 +7491,9 @@ export class ZeroToHeroRuntime {
     rewardId = -1,
     repeatable = false
   ): Promise<void> {
+    if (!repeatable && (await this.isQuestCompletedDirect(questId).catch(() => false))) return;
+    const startLocation = this.questActionStartLocation(actions);
+    if (startLocation) await this.join(startLocation.map, startLocation.cell, startLocation.pad);
     if (!repeatable && (await this.isStoryQuestComplete(questId))) return;
     await this.acceptQuest(questId);
     for (const action of actions) await this.runQuestAction(action, questId);
@@ -7935,6 +7994,7 @@ export class ZeroToHeroRuntime {
   }
 
   async isStoryQuestComplete(questId: number): Promise<boolean> {
+    if (await this.isQuestCompletedDirect(questId).catch(() => false)) return true;
     const quest = await this.ensureQuestLoaded(questId).catch(() => undefined);
     if (!quest) return this.isQuestCompleted(questId);
     const slot = numberFrom(quest, ["iSlot", "Slot", "slot", "iIndex"]);
@@ -7945,6 +8005,14 @@ export class ZeroToHeroRuntime {
       await this.bot.callGameFunction<unknown>("world.getQuestValue", slot).catch(() => 0)
     );
     return current >= value;
+  }
+
+  private async isQuestCompletedDirect(questId: number): Promise<boolean> {
+    const checks = await Promise.all([
+      this.bot.callGameFunction<unknown>("world.isQuestComplete", questId).catch(() => undefined),
+      this.bot.callGameFunction<unknown>("world.isQuestCompleted", questId).catch(() => undefined)
+    ]);
+    return checks.some(toBoolean);
   }
 
   private async findQuestInTree(questId: number): Promise<Record<string, unknown> | undefined> {
@@ -8006,6 +8074,29 @@ export class ZeroToHeroRuntime {
     const room = (await this.snapshot()).room || 1;
     await this.throttleServerAction();
     await this.bot.sendPacket(`%xt%zm%acceptQuest%${room}%${questId}%`);
+  }
+
+  private questActionStartLocation(actions: VeyraQuestAction[]): CombatLocation | undefined {
+    for (const action of actions) {
+      switch (action.kind) {
+        case "hunt":
+          return this.combatLocation(action.map, action.cell, action.pad);
+        case "mapItem":
+        case "buy":
+          if (action.map) return { map: action.map };
+          break;
+        case "join":
+          return this.combatLocation(action.map, action.cell, action.pad);
+      }
+    }
+    return undefined;
+  }
+
+  private combatLocation(map: string, cell?: string, pad?: string): CombatLocation {
+    const location: CombatLocation = { map };
+    if (cell) location.cell = cell;
+    if (pad) location.pad = pad;
+    return location;
   }
 
   private throwMissingTask(name: string, detail?: string): never {
