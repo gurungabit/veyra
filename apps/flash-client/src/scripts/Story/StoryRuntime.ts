@@ -37,6 +37,10 @@ export async function runStoryStep(runtime: ZeroToHeroRuntime, step: StoryStep):
       await runtime.chainQuest(step.questId, step.rewardId ?? -1);
       return;
     case "kill":
+      if (isTowerOfDoomStep(step)) {
+        await runtime.towerOfDoomFloor(step.questId - 3474);
+        return;
+      }
       await runtime.storyKillQuest(
         step.questId,
         step.map,
@@ -56,6 +60,18 @@ export async function runStoryStep(runtime: ZeroToHeroRuntime, step: StoryStep):
       await runAchievementStep(runtime, step);
       return;
   }
+}
+
+function isTowerOfDoomStep(step: Extract<StoryStep, { kind: "kill" }>): boolean {
+  const normalizedMap = step.map.trim().toLowerCase();
+  const monsters = Array.isArray(step.monsters) ? step.monsters : [step.monsters];
+  return (
+    step.questId >= 3475 &&
+    step.questId <= 3484 &&
+    /^towerofdoom\d*$/.test(normalizedMap) &&
+    monsters.length === 1 &&
+    monsters[0] === "*"
+  );
 }
 
 async function runAchievementStep(

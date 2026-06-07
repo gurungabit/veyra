@@ -53,6 +53,7 @@ interface CombatLocation {
 
 interface MonsterPosition {
   id?: number | undefined;
+  name?: string | undefined;
   cell: string;
   pad: string;
 }
@@ -7108,12 +7109,167 @@ export class ZeroToHeroRuntime {
     const finalQuestId = 3474 + floor;
     if (await this.isQuestCompletedDirect(finalQuestId).catch(() => false)) return;
 
-    this.log(`Tower of Doom floor ${floor} is locked; clearing previous floors first.`);
+    this.log(`Tower of Doom floor ${floor} is locked; clearing floors 1 through ${floor} in order.`);
     for (let currentFloor = 1; currentFloor <= floor; currentFloor += 1) {
-      const questId = 3474 + currentFloor;
-      const map = currentFloor === 1 ? "towerofdoom" : `towerofdoom${currentFloor}`;
-      await this.storyKillQuest(questId, map, "*");
+      await this.completeTowerOfDoomFloor(currentFloor);
     }
+  }
+
+  async towerOfDoomFloor(floor: number): Promise<void> {
+    await this.completeTowerOfDoomFloor(clamp(floor, 1, 10));
+  }
+
+  private async completeTowerOfDoomFloor(floor: number): Promise<void> {
+    const questId = 3474 + floor;
+    const map = floor === 1 ? "towerofdoom" : `towerofdoom${floor}`;
+    if (await this.isQuestCompletedDirect(questId).catch(() => false)) return;
+
+    await this.join(map);
+    if (await this.isStoryQuestComplete(questId).catch(() => false)) return;
+    await this.acceptQuest(questId);
+    this.log(`Tower of Doom floor ${floor}: advancing until quest ${questId} completes.`);
+
+    let loops = 0;
+    let idlePasses = 0;
+    let lastRequirementSummary = "";
+    while (!this.signal?.aborted) {
+      if (this.options.maxFarmLoops && loops >= this.options.maxFarmLoops) {
+        this.log(`Stopped Tower of Doom floor ${floor} after ${loops} loops due to maxFarmLoops.`);
+        return;
+      }
+      loops += 1;
+
+      const readiness = await this.questCompletionReadiness(questId).catch(() => undefined);
+      if (readiness?.ready) {
+        await this.completeQuest(questId);
+        await this.acceptQuestDrops(questId);
+        if (
+          (await this.isQuestCompletedDirect(questId).catch(() => false)) ||
+          (await this.isStoryQuestComplete(questId).catch(() => false))
+        ) {
+          return;
+        }
+      } else if (readiness?.summary && readiness.summary !== lastRequirementSummary) {
+        lastRequirementSummary = readiness.summary;
+        this.log(`Tower of Doom floor ${floor} requirements: ${readiness.summary}.`);
+      }
+
+      if (await this.recoverIfDead({ map })) {
+        idlePasses = 0;
+        await this.bot.delay(500, this.signal);
+        continue;
+      }
+      if (await this.clickFightPromptIfVisible()) {
+        idlePasses = 0;
+        continue;
+      }
+
+      const target = await this.nextTowerOfDoomTarget();
+      if (target) {
+        idlePasses = 0;
+        await this.jumpToTowerOfDoomTarget(target, floor);
+        await this.attackQuestMonsterUntilClear(questId, target.id ?? target.name ?? "*", { map });
+        await this.acceptQuestDrops(questId);
+        continue;
+      }
+
+      if (await this.advanceTowerOfDoomCell(floor)) {
+        idlePasses = 0;
+        continue;
+      }
+
+      idlePasses += 1;
+      if (idlePasses >= 3) {
+        this.log(`Tower of Doom floor ${floor}: no live monster ahead; reloading ${map}.`);
+        await this.join(map);
+        idlePasses = 0;
+      } else {
+        await this.bot.delay(750, this.signal);
+      }
+    }
+  }
+
+  private async nextTowerOfDoomTarget(): Promise<MonsterPosition | undefined> {
+    const [snapshot, cells, monsters] = await Promise.all([
+      this.snapshot().catch(() => undefined),
+      this.bot.cells().catch(() => []),
+      this.bot.call<unknown>("getMonsters").catch(() => [])
+    ]);
+    const orderedCells = this.orderedTowerOfDoomCells(cells);
+    const currentIndex = snapshot?.cell ? this.towerOfDoomCellIndex(snapshot.cell, orderedCells) : -1;
+    const candidates = recordsFrom(monsters)
+      .filter((record) => this.monsterHp(record) > 0)
+      .map((record) => this.monsterPositionFromRecord(record))
+      .filter((position): position is MonsterPosition => Boolean(position?.cell))
+      .map((position) => ({
+        position,
+        index: this.towerOfDoomCellIndex(position.cell, orderedCells)
+      }))
+      .filter(({ index }) => currentIndex < 0 || index >= currentIndex)
+      .sort((left, right) => left.index - right.index);
+
+    return candidates[0]?.position;
+  }
+
+  private monsterPositionFromRecord(record: Record<string, unknown>): MonsterPosition | undefined {
+    const cell = stringFrom(firstFrom(record, ["strFrame", "frame", "Frame", "cell", "Cell"])).trim();
+    if (!cell) return undefined;
+
+    return {
+      id: optionalNumberFrom(record, ["MonMapID", "MapID", "monMapId"]),
+      name: stringFrom(firstFrom(record, ["strMonName", "sName", "Name", "name"])).trim() || undefined,
+      cell,
+      pad: stringFrom(firstFrom(record, ["strPad", "pad", "Pad"])).trim() || "Auto"
+    };
+  }
+
+  private async jumpToTowerOfDoomTarget(target: MonsterPosition, floor: number): Promise<void> {
+    const snapshot = await this.snapshot().catch(() => undefined);
+    const alreadyThere =
+      snapshot?.cell === target.cell && (!target.pad || target.pad === "Auto" || snapshot.pad === target.pad);
+    if (alreadyThere) return;
+
+    this.log(`Tower of Doom floor ${floor}: moving to ${target.cell}/${target.pad || "Auto"}.`);
+    await this.jump(target.cell, target.pad || "Auto");
+  }
+
+  private async advanceTowerOfDoomCell(floor: number): Promise<boolean> {
+    const [snapshot, cells] = await Promise.all([
+      this.snapshot().catch(() => undefined),
+      this.bot.cells().catch(() => [])
+    ]);
+    if (!snapshot?.cell) return false;
+
+    const orderedCells = this.orderedTowerOfDoomCells(cells);
+    const currentIndex = this.towerOfDoomCellIndex(snapshot.cell, orderedCells);
+    const next = orderedCells.find((cell) => this.towerOfDoomCellIndex(cell, orderedCells) > currentIndex);
+    if (!next) return false;
+
+    this.log(`Tower of Doom floor ${floor}: advancing to ${next}/Auto.`);
+    await this.jump(next, "Auto");
+    return true;
+  }
+
+  private orderedTowerOfDoomCells(cells: string[]): string[] {
+    return cells
+      .map((cell) => cell.trim())
+      .filter(Boolean)
+      .filter((cell, index, list) => list.findIndex((entry) => entry.toLowerCase() === cell.toLowerCase()) === index)
+      .filter((cell) => {
+        const normalized = cell.toLowerCase();
+        return normalized !== "blank" && !normalized.startsWith("cut") && !["init", "intro"].includes(normalized);
+      });
+  }
+
+  private towerOfDoomCellIndex(cell: string, orderedCells: string[]): number {
+    const normalized = cell.trim().toLowerCase();
+    const explicitIndex = orderedCells.findIndex((entry) => entry.toLowerCase() === normalized);
+    if (explicitIndex >= 0) return explicitIndex;
+    if (normalized === "enter" || normalized === "spawn") return 0;
+
+    const match = /(\d+)/.exec(normalized);
+    if (match) return Number(match[1]);
+    return Number.MAX_SAFE_INTEGER;
   }
 
   private async unlockBladeOfAwe(): Promise<void> {
