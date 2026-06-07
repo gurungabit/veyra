@@ -3799,6 +3799,7 @@ export class ZeroToHeroRuntime {
     ]);
 
     await this.farmExperience(65);
+    await this.ensureTowerOfDoomFloor(9);
     await this.completeQuestPlan(7722, [
       {
         kind: "hunt",
@@ -3891,6 +3892,7 @@ export class ZeroToHeroRuntime {
     await this.farmExperience(75);
     await this.bladeOfAweRep();
     await this.mysteriousEgg();
+    await this.ensureTowerOfDoomFloor(10);
     await this.completeQuestPlan(7724, [
       {
         kind: "hunt",
@@ -7062,7 +7064,7 @@ export class ZeroToHeroRuntime {
     await this.acceptQuest(8824);
     await this.buyItem("classhalla", 172, "Rogue");
     await this.rankClass("Rogue");
-    await this.killMonster("towerofdoom10", "r8", "Left", "*", "Ethereal Essence", 250, false);
+    await this.farmTowerOfDoomEtherealEssence(250);
     await this.completeQuest(8824);
   }
 
@@ -7072,7 +7074,7 @@ export class ZeroToHeroRuntime {
     await this.acceptQuest(8825);
     await this.buyItem("classhalla", 176, "Healer");
     await this.rankClass("Healer");
-    await this.killMonster("towerofdoom10", "r8", "Left", "*", "Ethereal Essence", 250, false);
+    await this.farmTowerOfDoomEtherealEssence(250);
     await this.completeQuest(8825);
   }
 
@@ -7082,7 +7084,7 @@ export class ZeroToHeroRuntime {
     await this.acceptQuest(8826);
     await this.buyItem("classhalla", 170, "Warrior");
     await this.rankClass("Warrior");
-    await this.killMonster("towerofdoom10", "r8", "Left", "*", "Ethereal Essence", 650, false);
+    await this.farmTowerOfDoomEtherealEssence(650);
     await this.completeQuest(8826);
   }
 
@@ -7092,8 +7094,26 @@ export class ZeroToHeroRuntime {
     await this.acceptQuest(8827);
     await this.buyItem("classhalla", 174, "Mage");
     await this.rankClass("Mage");
-    await this.killMonster("towerofdoom10", "r8", "Left", "*", "Ethereal Essence", 650, false);
+    await this.farmTowerOfDoomEtherealEssence(650);
     await this.completeQuest(8827);
+  }
+
+  private async farmTowerOfDoomEtherealEssence(quantity: number): Promise<void> {
+    await this.ensureTowerOfDoomFloor(10);
+    await this.killMonster("towerofdoom10", "r8", "Left", "*", "Ethereal Essence", quantity, false);
+  }
+
+  private async ensureTowerOfDoomFloor(targetFloor: number): Promise<void> {
+    const floor = clamp(targetFloor, 1, 10);
+    const finalQuestId = 3474 + floor;
+    if (await this.isQuestCompletedDirect(finalQuestId).catch(() => false)) return;
+
+    this.log(`Tower of Doom floor ${floor} is locked; clearing previous floors first.`);
+    for (let currentFloor = 1; currentFloor <= floor; currentFloor += 1) {
+      const questId = 3474 + currentFloor;
+      const map = currentFloor === 1 ? "towerofdoom" : `towerofdoom${currentFloor}`;
+      await this.storyKillQuest(questId, map, "*");
+    }
   }
 
   private async unlockBladeOfAwe(): Promise<void> {
