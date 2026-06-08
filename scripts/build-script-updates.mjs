@@ -37,6 +37,12 @@ const officialCoreScripts = [
     entry: "apps/flash-client/src/scripts/DoomwoodRep.ts"
   },
   {
+    id: "reputation.horc",
+    category: "Reputation",
+    map: "bloodtuskwar",
+    entry: "apps/flash-client/src/scripts/HorcRep.ts"
+  },
+  {
     id: "story.complete-all-stories",
     category: "Story",
     map: "all",

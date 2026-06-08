@@ -2250,7 +2250,7 @@ export class ZeroToHeroRuntime {
     });
   }
 
-  private async horcRep(targetRank = 10, reason = "Horc item"): Promise<void> {
+  async horcRep(targetRank = 10, reason = "Horc item"): Promise<void> {
     const startRank = await this.factionRank(HORC_FACTION_ID);
     if (startRank >= targetRank) {
       this.log(`Horc reputation is already Rank ${startRank}; skipping reputation farm.`);
