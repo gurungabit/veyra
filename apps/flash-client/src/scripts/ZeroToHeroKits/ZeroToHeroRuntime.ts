@@ -7123,6 +7123,7 @@ export class ZeroToHeroRuntime {
 
   private async smite(): Promise<void> {
     if (await this.isQuestCompleted(8740)) return;
+    await this.ensureSmiteUnlocked();
     await this.acceptQuest(8740);
     await this.hunt("shadowattack", "Death", "Death's Power", 3, false);
     await this.hunt("escherion", "Escherion", "Chaotic Power", 7, false);
@@ -7130,6 +7131,19 @@ export class ZeroToHeroRuntime {
     await this.killMonster("undergroundlabb", "Enter", "Spawn", "Ultra Battle Gem", "Gem Power", 25, false);
     await this.buyItem("alchemyacademy", 2116, "Power Tonic", 10);
     await this.completeQuest(8740);
+  }
+
+  private async ensureSmiteUnlocked(): Promise<void> {
+    if (await this.isQuestUnlocked(8740).catch(() => false)) return;
+
+    this.log("Smite quest is locked; running Sepulchure Saga Shadowfall Rise first.");
+    const { default: shadowfallRiseStory } = await import("../Story/SepulchureSaga/04ShadowfallRise.js");
+    await shadowfallRiseStory.run(this.bot, this.options);
+    await this.clearQuestTree().catch(() => undefined);
+    await this.bot.delay(1200, this.signal);
+
+    if (await this.isQuestUnlocked(8740).catch(() => false)) return;
+    throw new Error("Smite quest 8740 is still locked after Sepulchure Saga Shadowfall Rise.");
   }
 
   private async vim(): Promise<void> {
