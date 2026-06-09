@@ -271,7 +271,41 @@ const forgeEnhancementBlacksmithingRanks: Record<string, number> = {
   ForgeCape: 4,
   ForgeHelmEnhancement: 4,
   ForgeHelm: 4,
-  Lacerate: 5
+  Lacerate: 5,
+  Smite: 6,
+  Praxis: 6,
+  Vim: 7,
+  Examen: 7,
+  Anima: 7,
+  Pneuma: 7,
+  Absolution: 9,
+  Vainglory: 9,
+  Avarice: 9,
+  Penitence: 9,
+  Lament: 9,
+  HerosValiance: 10,
+  Valiance: 10,
+  ArcanasConcerto: 10,
+  Elysium: 10,
+  Dauntless: 10
+};
+
+const forgeEnhancementLevels: Record<string, number> = {
+  ForgeWeaponEnhancement: 30,
+  ForgeWeapon: 30,
+  ForgeCapeEnhancement: 30,
+  ForgeCape: 30,
+  ForgeHelmEnhancement: 30,
+  ForgeHelm: 30,
+  Lacerate: 40,
+  Smite: 60,
+  Absolution: 90,
+  HerosValiance: 100,
+  Valiance: 100,
+  ArcanasConcerto: 100,
+  Elysium: 100,
+  Dauntless: 100,
+  Ravenous: 100
 };
 
 const questClassNames: Record<number, string> = {
@@ -922,6 +956,11 @@ export class ZeroToHeroRuntime {
       case "doomwoodrep":
       case "doomwoodreputation":
         await this.doomwoodRep(requiredRank, label);
+        return true;
+      case "good":
+      case "goodrep":
+      case "goodreputation":
+        await this.goodRep(requiredRank, label);
         return true;
       default:
         return false;
@@ -2373,6 +2412,47 @@ export class ZeroToHeroRuntime {
     );
   }
 
+  async goodRep(targetRank = 10, reason = "Good item"): Promise<void> {
+    const cappedRank = clamp(targetRank, 1, 10);
+    const startRank = await this.factionRankByName("Good");
+    if (startRank >= cappedRank) {
+      this.log(`Good reputation is already Rank ${startRank}; skipping reputation farm.`);
+      return;
+    }
+
+    this.log(`${reason} requires Good Rank ${cappedRank}; farming Good from Rank ${startRank}.`);
+    const goodRep = () => this.factionRepByName("Good");
+    const goodRank = () => this.factionRankByName("Good");
+
+    if ((await goodRank()) < Math.min(cappedRank, 4)) {
+      await this.farmRepeatableFaction({
+        factionId: 0,
+        factionName: "Good",
+        targetRank: Math.min(cappedRank, 4),
+        questIds: [369],
+        getRep: goodRep,
+        getRank: goodRank,
+        action: async () => {
+          await this.attackUntilQuestReady(369, "swordhavenbridge", ["*"]);
+        }
+      });
+    }
+
+    if ((await goodRank()) < cappedRank) {
+      await this.farmRepeatableFaction({
+        factionId: 0,
+        factionName: "Good",
+        targetRank: cappedRank,
+        questIds: [372],
+        getRep: goodRep,
+        getRank: goodRank,
+        action: async () => {
+          await this.attackUntilQuestReady(372, "castleundead", ["*"]);
+        }
+      });
+    }
+  }
+
   private async blacksmithingRep(targetRank = 4): Promise<void> {
     const cappedRank = Math.max(1, Math.min(targetRank, 10));
     const startRank = await this.factionRankByName(BLACKSMITHING_FACTION_NAME);
@@ -2967,6 +3047,22 @@ export class ZeroToHeroRuntime {
     for (const step of chaosStoryPlan) {
       if (!withExtras && this.isChaosBonusStep(step)) continue;
       await this.runChaosPlanStep(step);
+    }
+  }
+
+  private async ensureChaosStoryThroughQuest(targetQuestId: number, label: string): Promise<void> {
+    if (await this.isStoryQuestComplete(targetQuestId).catch(() => false)) return;
+    this.log(`${label} prerequisite is locked; running 13 Lords of Chaos story through quest ${targetQuestId}.`);
+
+    for (const step of chaosStoryPlan) {
+      await this.runChaosPlanStep(step);
+      if (step.questId === targetQuestId) break;
+    }
+
+    await this.clearQuestTree().catch(() => undefined);
+    await this.bot.delay(1000, this.signal);
+    if (!(await this.isStoryQuestComplete(targetQuestId).catch(() => false))) {
+      throw new Error(`${label} prerequisite quest ${targetQuestId} is still not complete.`);
     }
   }
 
@@ -6791,7 +6887,7 @@ export class ZeroToHeroRuntime {
       return;
     }
 
-    await this.ensureForgeBlacksmithingRank(name);
+    await this.ensureForgePrerequisites(name);
 
     switch (name) {
       case "ForgeWeaponEnhancement":
@@ -6813,6 +6909,9 @@ export class ZeroToHeroRuntime {
       case "Valiance":
         await this.herosValiance();
         return;
+      case "ArcanasConcerto":
+        await this.arcanasConcerto();
+        return;
       case "Absolution":
         await this.absolution();
         return;
@@ -6824,6 +6923,12 @@ export class ZeroToHeroRuntime {
         return;
       case "Elysium":
         await this.elysium();
+        return;
+      case "Dauntless":
+        await this.dauntless();
+        return;
+      case "Penitence":
+        await this.penitence();
         return;
       case "Lament":
         await this.lament();
@@ -6861,6 +6966,22 @@ export class ZeroToHeroRuntime {
     return 0;
   }
 
+  private forgeMinimumLevel(name: string): number {
+    for (const [enhancement, level] of Object.entries(forgeEnhancementLevels)) {
+      if (sameName(enhancement, name)) return level;
+    }
+    return 0;
+  }
+
+  private async ensureForgePrerequisites(name: string): Promise<void> {
+    const requiredLevel = this.forgeMinimumLevel(name);
+    if (requiredLevel > 0 && (await this.snapshot()).level < requiredLevel) {
+      this.log(`${name} requires level ${requiredLevel}; farming XP first.`);
+      await this.farmExperience(requiredLevel);
+    }
+    await this.ensureForgeBlacksmithingRank(name);
+  }
+
   private async ensureForgeBlacksmithingRank(name: string): Promise<void> {
     const requiredRank = this.forgeBlacksmithingRank(name);
     if (requiredRank <= 0) return;
@@ -6873,6 +6994,7 @@ export class ZeroToHeroRuntime {
   private async forgeWeaponEnhancement(): Promise<void> {
     await this.blacksmithingRep(4);
     if (await this.isQuestCompleted(8738)) return;
+    await this.ensureChaosStoryThroughQuest(272, "Escherion");
     await this.acceptQuest(8738);
     await this.hunt("escherion", "Escherion", "1st Lord Of Chaos Helm", 1, false);
     await this.hunt("stalagbite", "Vath", "Chaos Dragonlord Helm", 1, false);
@@ -7018,6 +7140,7 @@ export class ZeroToHeroRuntime {
   private async forgeCapeEnhancement(): Promise<void> {
     await this.blacksmithingRep(4);
     if (await this.isQuestCompleted(8758)) return;
+    await this.ensureChaosStoryThroughQuest(488, "Kitsune");
     await this.acceptQuest(8758);
     await this.hunt("lostruinswar", "Diabolical Warlord", "Prismatic Celestial Wings", 1, false);
     await this.hunt("lostruins", "Infernal Warlord", "Broken Wings", 1, false);
@@ -7042,20 +7165,185 @@ export class ZeroToHeroRuntime {
   private async herosValiance(): Promise<void> {
     if (await this.isQuestCompleted(8741)) return;
     await this.farmExperience(100);
+    await this.fireChampionsArmor();
+    await this.dragonOfTime();
+    await this.ensureDrakathTheEternal();
     await this.archPaladin();
     await this.lordOfOrder();
+    await this.ensureEternityBlade();
     await this.acceptQuest(8741);
     await this.hunt("doomwood", "Doomwood Ectomancer", "Gravelyn's DoomFire Token", 1, false);
     await this.buyItem("darkthronehub", 1303, "ArchPaladin Armor");
+    if (!(await this.isStoryQuestComplete(7165).catch(() => false))) {
+      this.log("Hero's Valiance requires the final Lord of Order daily quest (7165); resume after that daily is complete.");
+      return;
+    }
+    if (!(await this.contains("Drakath the Eternal"))) {
+      this.log("Hero's Valiance requires Drakath the Eternal; resume after the Drakath daily chain can finish it.");
+      return;
+    }
     await this.completeQuest(8741);
+  }
+
+  private async fireChampionsArmor(): Promise<void> {
+    if ((await this.contains("Fire Champion's Armor")) || (await this.contains(62570))) return;
+    await this.polishedDragonslayer();
+    await this.farmQuestReward({
+      questId: 5294,
+      map: "dragontown",
+      cell: "r4",
+      pad: "Right",
+      monster: "Tempest Dracolich",
+      item: "Dracolich Slain",
+      quantity: 12,
+      isTemp: true,
+      reward: "Enchanted Scale",
+      targetQuantity: 125
+    });
+    await this.warfuryEmblems(60);
+    await this.flameForgedMetal(10);
+    await this.hunt("underlair", "ArchFiend DragonLord", "Void Scale", 13, false);
+    await this.buyItem("wartraining", 2035, "Fire Champion's Armor", 1, 8759);
+  }
+
+  private async polishedDragonslayer(): Promise<void> {
+    if ((await this.contains("Polished DragonSlayer")) || (await this.contains(58462))) return;
+    await this.dragonslayer();
+    await this.rankClass("Dragonslayer", 582);
+    await this.warfuryEmblems(30);
+    await this.farmQuestReward({
+      questId: 5294,
+      map: "dragontown",
+      cell: "r4",
+      pad: "Right",
+      monster: "Tempest Dracolich",
+      item: "Dracolich Slain",
+      quantity: 12,
+      isTemp: true,
+      reward: "Enchanted Scale",
+      targetQuantity: 30
+    });
+    await this.killMonster("lair", "Hole", "Center", "*", "Dragon Scale", 30, false);
+    await this.buyItem("wartraining", 2035, "Polished DragonSlayer");
+  }
+
+  private async warfuryEmblems(quantity: number): Promise<void> {
+    if (await this.contains("Warfury Emblem", quantity)) return;
+    const { default: tyndariusStory } = await import("../Story/ShadowsOfWar/15Tyndarius.js");
+    await tyndariusStory.run(this.bot, this.options);
+    await this.acceptDrops("Warfury Emblem");
+
+    let attempts = 0;
+    while (!this.signal?.aborted && !(await this.contains("Warfury Emblem", quantity))) {
+      if (this.options.maxFarmLoops && attempts >= this.options.maxFarmLoops) {
+        this.log(`Stopped Warfury Emblem farm after ${attempts} turn-ins due to maxFarmLoops.`);
+        return;
+      }
+      attempts += 1;
+      await this.ensureRepeatableQuestAccepted(8204);
+      await this.attackUntilQuestReady(8204, "wartraining", ["Warfury Soldier"]);
+      await this.completeQuest(8204);
+      await this.acceptDrops("Warfury Emblem");
+    }
+  }
+
+  private async flameForgedMetal(quantity: number): Promise<void> {
+    if (await this.contains("Flame-Forged Metal", quantity)) return;
+    await this.acceptDrops("Flame-Forged Metal");
+    let attempts = 0;
+    while (!this.signal?.aborted && !(await this.contains("Flame-Forged Metal", quantity))) {
+      if (this.options.maxFarmLoops && attempts >= this.options.maxFarmLoops) {
+        this.log(`Stopped Flame-Forged Metal farm after ${attempts} turn-ins due to maxFarmLoops.`);
+        return;
+      }
+      attempts += 1;
+      await this.ensureRepeatableQuestAccepted(6975);
+      await this.hunt("underworld", "Frozen Pyromancer", "Stolen Flame", 1, true);
+      await this.completeQuest(6975);
+      await this.acceptDrops("Flame-Forged Metal");
+    }
+  }
+
+  private async ensureDrakathTheEternal(): Promise<void> {
+    if (await this.contains("Drakath the Eternal")) return;
+    await this.complete13LordsOfChaos();
+    if (!(await this.contains("Drakath Armor"))) {
+      this.log("Drakath the Eternal requires Drakath Armor; Skua also stops if the Drakath daily chain is not ready.");
+      return;
+    }
+
+    await this.acceptQuest(8457);
+    const missing = [];
+    const requirements: Array<[string, number]> = [
+      ["Spirit Orb", 2000],
+      ["Crystallized Chaos", 800],
+      ["Star Fragment", 33],
+      ["Death's Oversight", 5],
+      ["Reality Shard", 300]
+    ];
+    for (const [item, quantity] of requirements) {
+      if (!(await this.contains(item, quantity))) missing.push(`${item} x${quantity}`);
+    }
+    if (missing.length > 0) {
+      this.log(`Drakath the Eternal still needs: ${missing.join(", ")}.`);
+      return;
+    }
+
+    await this.completeQuest(8457);
+    await this.acceptDrops("Drakath the Eternal");
+  }
+
+  private async ensureEternityBlade(): Promise<void> {
+    if ((await this.contains("Eternity Blade")) || (await this.contains(23689))) return;
+    await this.ensureTowerOfDoomFloor(10);
+    await this.acceptDrops("Eternity Blade");
+    await this.completeQuestPlan(
+      3485,
+      [
+        {
+          kind: "hunt",
+          map: "towerofdoom10",
+          monster: "Slugbutter",
+          item: "Eternity Blade",
+          isTemp: true
+        }
+      ],
+      -1,
+      true
+    );
+    await this.acceptDrops("Eternity Blade");
+  }
+
+  private async arcanasConcerto(): Promise<void> {
+    if (await this.isQuestCompleted(8742)) return;
+    const { default: astraviaStory } = await import("../Story/ElegyofMadnessDarkon/CoreAstravia.js");
+    await astraviaStory.run(this.bot, this.options);
+
+    if (!(await this.isStoryQuestComplete(8746).catch(() => false))) {
+      this.log("Arcana's Concerto requires the Darkon the Conductor weekly quest (8746); resume after that weekly is complete.");
+      return;
+    }
+
+    const hasReconstructedDebris = await this.contains("Darkon's Debris 2 (Reconstructed)");
+    if (!hasReconstructedDebris) {
+      this.log("Arcana's Concerto requires Darkon's Debris 2 (Reconstructed); Skua also stops here unless the ultra insignia path is ready.");
+      return;
+    }
+    if (!(await this.contains("King Drago Insignia", 5)) || !(await this.contains("Darkon Insignia", 5))) {
+      this.log("Arcana's Concerto requires 5 King Drago Insignia and 5 Darkon Insignia.");
+      return;
+    }
+
+    await this.acceptQuest(8742);
+    await this.completeQuest(8742);
   }
 
   private async absolution(): Promise<void> {
     if (await this.isQuestCompleted(8743)) return;
+    await this.goodRep(10, "Absolution");
     await this.acceptQuest(8743);
     await this.hunt("charredpath", "Plague Spreader", "Slimed Sigil", 150, false);
     await this.buyItem("therift", 1399, "Ascended Paladin");
-    await this.buyItem("therift", 1399, "Ascended Paladin Staff");
     await this.buyItem("therift", 1399, "Ascended Paladin Sword");
     await this.completeQuest(8743);
   }
@@ -7081,6 +7369,17 @@ export class ZeroToHeroRuntime {
     await this.completeQuest(8745);
   }
 
+  private async penitence(): Promise<void> {
+    if (await this.isQuestCompleted(8822)) return;
+    await this.avarice();
+    await this.acceptQuest(8822);
+    await this.ensureNightMareScythe();
+    await this.hunt("frozenlair", "Legion Lich Lord", "Sapphire Orb", 100, false);
+    await this.hunt("icewing", "Warlord Icewing", "Boreal Cavalier Bardiche", 1, false);
+    await this.hunt("underlair", "ArchFiend DragonLord", "Void Scale", 13, false);
+    await this.completeQuest(8822);
+  }
+
   private async elysium(): Promise<void> {
     if (await this.isQuestCompleted(8821)) return;
     await this.acceptQuest(8821);
@@ -7093,12 +7392,77 @@ export class ZeroToHeroRuntime {
 
   private async lament(): Promise<void> {
     if (await this.isQuestCompleted(8823)) return;
+    await this.penitence();
     await this.acceptQuest(8823);
     await this.hunt("sepulchurebattle", "ULTRA Sepulchure", "Doom Heart", 1, false);
+    if (!(await this.contains("Heart of the Sun"))) {
+      const { default: timestreamStory } = await import("../Story/ShadowsOfWar/03Timestream.js");
+      await timestreamStory.run(this.bot, this.options);
+    }
     await this.hunt("ashfallcamp", "Smoldur", "Flame Heart", 10, false);
+    const { default: slothStory } = await import("../Story/7DeadlyDragons/04Sloth.js");
+    await slothStory.run(this.bot, this.options);
     await this.hunt("sloth", "Mutated Plague", "Bloodless Heart", 3, false);
     await this.hunt("thespan", "Chaos Lord Iadoa", "Heart of the Sun", 1, false);
     await this.completeQuest(8823);
+  }
+
+  private async dauntless(): Promise<void> {
+    if (await this.isQuestCompleted(9172)) return;
+    await this.acceptQuest(9172);
+    const { default: shadowsOfWarStory } = await import("../Story/ShadowsOfWar/CoreSoW.js");
+    await shadowsOfWarStory.run(this.bot, this.options);
+
+    const requiredItems = [
+      "ShadowLord's Helm",
+      "Malgor the ShadowLord",
+      "Malgor's ShadowFlame Blade",
+      "Infernal Flame Pyromancer"
+    ];
+    const missingItems = [];
+    for (const item of requiredItems) {
+      if (!(await this.contains(item))) missingItems.push(item);
+    }
+    if (missingItems.length > 0) {
+      this.log(`Dauntless still needs manual/ultra-gated items: ${missingItems.join(", ")}.`);
+      return;
+    }
+    if (!(await this.contains("Malgor Insignia", 5)) || !(await this.contains("Avatar Tyndarius Insignia", 10))) {
+      this.log("Dauntless requires 5 Malgor Insignia and 10 Avatar Tyndarius Insignia.");
+      return;
+    }
+
+    await this.completeQuest(9172);
+  }
+
+  private async ensureNightMareScythe(): Promise<void> {
+    if (await this.contains("Night Mare Scythe")) return;
+    await this.acceptDrops("Night Mare Scythe");
+    let attempts = 0;
+    while (!this.signal?.aborted && !(await this.contains("Night Mare Scythe"))) {
+      if (this.options.maxFarmLoops && attempts >= this.options.maxFarmLoops) {
+        this.log(`Stopped Night Mare Scythe farm after ${attempts} attempts due to maxFarmLoops.`);
+        return;
+      }
+      attempts += 1;
+      await this.completeQuestPlan(
+        3270,
+        [
+          {
+            kind: "hunt",
+            map: "doomvault",
+            cell: "r5",
+            pad: "Left",
+            monster: "Binky",
+            item: "Yulgar's Lost Scythe",
+            isTemp: true
+          }
+        ],
+        -1,
+        true
+      );
+      await this.acceptDrops("Night Mare Scythe");
+    }
   }
 
   private async ravenous(): Promise<void> {

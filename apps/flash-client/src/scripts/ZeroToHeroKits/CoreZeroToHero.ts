@@ -11,7 +11,7 @@ export const meta = {
   name: "CoreZeroToHero",
   description: "Veyra ZeroToHero progression, class setup, outfit, pet, and endgame flow.",
   tags: ["zero-to-hero", "progression", "core"],
-  version: "2026.06.07.20"
+  version: "2026.06.08.2"
 };
 
 const soloClasses = [
@@ -176,9 +176,11 @@ export class CoreZeroToHero {
     await this.runtime.unlockEnhancement("HerosValiance");
     if (await this.runtime.contains("The Divine Will")) await this.runtime.unlockEnhancement("Elysium");
     else this.runtime.log("Skipping Elysium; The Divine Will is not owned.");
+    await this.runtime.unlockEnhancement("ArcanasConcerto");
     if ((await this.runtime.contains("Void Highlord")) && (await this.runtime.contains("Roentgenium of Nulgath", 10)))
       await this.runtime.unlockEnhancement("Ravenous");
     else this.runtime.log("Skipping Ravenous; Void Highlord and 10 Roentgenium of Nulgath are required.");
+    await this.runtime.unlockEnhancement("Dauntless");
     await this.runtime.runTask("ExaltedApotheosisPreReqs.PreReqs");
     this.runtime.log("P6: Max nation materials via Supplies.");
     await this.runtime.runTask("CoreNation.Supplies");
