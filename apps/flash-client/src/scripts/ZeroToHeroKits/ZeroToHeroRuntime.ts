@@ -1902,6 +1902,24 @@ export class ZeroToHeroRuntime {
     await this.goldBerserkerBunny(targetGold);
   }
 
+  async battleGroundEGold(targetGold = 100000000, minLevel = 61): Promise<void> {
+    targetGold = Math.max(1, Math.floor(targetGold));
+    const requiredLevel = Math.max(1, Math.floor(minLevel));
+    const snapshot = await this.snapshot();
+    if (snapshot.level < requiredLevel) {
+      this.log(`BattleGroundE gold route requires level ${requiredLevel}; current level is ${snapshot.level}.`);
+      return;
+    }
+
+    const currentGold = await this.currentGold();
+    if (currentGold >= targetGold) {
+      this.log(`Current gold ${formatGold(currentGold)} already meets target ${formatGold(targetGold)}.`);
+      return;
+    }
+
+    await this.goldBattleGroundE(targetGold, requiredLevel);
+  }
+
   private async goldHonorHall(targetGold: number): Promise<void> {
     const snapshot = await this.snapshot();
     if (snapshot.level < 61 || !(await this.isMember()) || (await this.currentGold()) >= targetGold) return;
@@ -1919,9 +1937,9 @@ export class ZeroToHeroRuntime {
     });
   }
 
-  private async goldBattleGroundE(targetGold: number): Promise<void> {
+  private async goldBattleGroundE(targetGold: number, minLevel = 61): Promise<void> {
     const snapshot = await this.snapshot();
-    if (snapshot.level < 61 || (await this.currentGold()) >= targetGold) return;
+    if (snapshot.level < minLevel || (await this.currentGold()) >= targetGold) return;
     this.log(`Farming ${formatGold(targetGold)} using BattleGroundE gold route.`);
     await this.farmGoldQuestRoute({
       label: "BattleGroundE",

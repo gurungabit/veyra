@@ -25,6 +25,12 @@ const officialCoreScripts = [
     entry: "apps/flash-client/src/scripts/ClassXP.ts"
   },
   {
+    id: "gold.battlegrounde",
+    category: "Gold",
+    map: "battlegrounde",
+    entry: "apps/flash-client/src/scripts/BattleGroundEGold.ts"
+  },
+  {
     id: "reputation.embersea",
     category: "Reputation",
     map: "fireforge / pyrewatch",
