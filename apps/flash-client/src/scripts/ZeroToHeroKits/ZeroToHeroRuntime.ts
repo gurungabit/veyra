@@ -851,9 +851,11 @@ export class ZeroToHeroRuntime {
     shopId: number,
     item: string | number,
     quantity = -1,
-    shopItemId = -1
+    shopItemId = -1,
+    depth = 0
   ): Promise<void> {
     this.throwIfAborted();
+    if (depth > 8) throw new Error(`Shop ${shopId} requirement chain is too deep while buying ${displayItem(item)}.`);
     if (quantity <= 1 && (await this.contains(item, 1, false, true))) {
       this.log(`${displayItem(item)} is already owned; skipping shop ${shopId}.`);
       return;
@@ -878,13 +880,22 @@ export class ZeroToHeroRuntime {
       if (itemId <= 0) throw new Error(`Shop ${shopId} item ${displayItem(item)} has no usable ItemID.`);
 
       const label = itemName(toItemRecord(shopItem)) || displayItem(item);
+      const shopQuantity = shopItemQuantity(shopItem);
+      const targetOwned = quantity > 0 ? quantity : lastOwned + shopQuantity;
+      if (lastOwned >= targetOwned) return;
       if (await this.ensureShopItemPrerequisites(shopItem, label)) {
         lastOwned = await this.itemQuantityOf(item, false);
         continue;
       }
 
-      const buyQuantity = quantity > 0 ? quantity : -1;
-      const expectedOwned = Math.max(1, lastOwned + (quantity > 0 ? quantity : 1));
+      const missingQuantity = Math.max(1, targetOwned - lastOwned);
+      const buyQuantity = Math.max(shopQuantity, Math.ceil(missingQuantity / shopQuantity) * shopQuantity);
+      if (await this.ensureShopItemMergeRequirements(map, shopId, shopInfo, shopItem, buyQuantity, label, depth)) {
+        lastOwned = await this.itemQuantityOf(item, false);
+        continue;
+      }
+
+      const expectedOwned = Math.max(1, targetOwned);
       this.log(`Buying ${label} from shop ${shopId}${attempt > 1 ? ` (retry ${attempt})` : ""}.`);
       await this.throttleServerAction();
       await this.bot.call("buyItemByID", itemId, resolvedShopItemId > 0 ? resolvedShopItemId : -1, buyQuantity);
@@ -896,6 +907,71 @@ export class ZeroToHeroRuntime {
     }
 
     throw new Error(`${displayItem(item)} was not added to inventory after buying from shop ${shopId}.`);
+  }
+
+  private async ensureShopItemMergeRequirements(
+    map: string | undefined,
+    shopId: number,
+    shopInfo: Record<string, unknown>,
+    shopItem: Record<string, unknown>,
+    buyQuantity: number,
+    label: string,
+    depth: number
+  ): Promise<boolean> {
+    const requirements = shopItemRequirementRecords(shopItem);
+    if (requirements.length === 0) return false;
+
+    const shopQuantity = shopItemQuantity(shopItem);
+    const stacksNeeded = Math.max(1, Math.ceil(buyQuantity / shopQuantity));
+    let acquiredAny = false;
+
+    for (const requirement of requirements) {
+      const requirementId = shopItemItemId(requirement);
+      const requirementLabel = itemName(toItemRecord(requirement)) || (requirementId > 0 ? `item id ${requirementId}` : "requirement");
+      const requirementQuantity = shopItemQuantity(requirement);
+      const neededQuantity = Math.max(1, stacksNeeded * requirementQuantity);
+      const ownedQuantity =
+        requirementId > 0
+          ? await this.itemQuantityOf(requirementId, false)
+          : await this.itemQuantityOf(requirementLabel, false);
+      if (ownedQuantity >= neededQuantity) continue;
+
+      const missingQuantity = neededQuantity - ownedQuantity;
+      const requirementRef: string | number = requirementId > 0 ? requirementId : requirementLabel;
+      const requirementShopItem = findShopItem(shopInfo, requirementRef);
+      const sameShopItem =
+        requirementShopItem &&
+        shopItemItemId(requirementShopItem) === shopItemItemId(shopItem) &&
+        shopItemShopItemId(requirementShopItem) === shopItemShopItemId(shopItem);
+
+      if (requirementShopItem && !sameShopItem) {
+        const requirementShopItemId = shopItemShopItemId(requirementShopItem);
+        this.log(`Buying ${requirementLabel} requirement for ${label}: ${ownedQuantity}/${neededQuantity}.`);
+        await this.buyItem(map, shopId, requirementRef, neededQuantity, requirementShopItemId, depth + 1);
+        const afterQuantity =
+          requirementId > 0
+            ? await this.itemQuantityOf(requirementId, false)
+            : await this.itemQuantityOf(requirementLabel, false);
+        if (afterQuantity < neededQuantity)
+          throw new Error(
+            `${label} still needs ${requirementLabel} ${afterQuantity}/${neededQuantity} after buying shop requirement.`
+          );
+        acquiredAny = true;
+        continue;
+      }
+
+      if (sameName(requirementLabel, BLACKSMITHING_VOUCHER)) {
+        await this.ensureGoldVouchers(missingQuantity);
+        acquiredAny = true;
+        continue;
+      }
+
+      throw new Error(
+        `${label} needs ${requirementLabel} ${ownedQuantity}/${neededQuantity}, but Veyra could not find that requirement in shop ${shopId}.`
+      );
+    }
+
+    return acquiredAny;
   }
 
   private async ensureShopItemPrerequisites(
@@ -9157,6 +9233,25 @@ function shopItemItemId(record: Record<string, unknown>): number {
 
 function shopItemShopItemId(record: Record<string, unknown>): number {
   return firstPositiveNumberFrom(record, ["ShopItemID", "iShopItemID", "shopItemId", "iSel"]);
+}
+
+function shopItemQuantity(record: Record<string, unknown>): number {
+  return Math.max(1, firstPositiveNumberFrom(record, ["Quantity", "iQty", "Qty", "quantity", "qty"]));
+}
+
+function shopItemRequirementRecords(record: Record<string, unknown>): Record<string, unknown>[] {
+  const candidates = [
+    record.turnin,
+    record.TurnIn,
+    record.TurnIns,
+    record.Requirements,
+    record.requirements,
+    record.reqs,
+    record.Reqs,
+    record.requiredItems,
+    record.RequiredItems
+  ];
+  return candidates.flatMap(recordsFrom);
 }
 
 function shopItemRequiredLevel(record: Record<string, unknown>): number {
