@@ -28,12 +28,20 @@ public class Shop {
             return;
         }
 
-        var buyItem:* = {};
-        buyItem.iSel = item;
+        var buyItem:* = cloneDynamic(item);
+        buyItem.iSel = cloneDynamic(item);
         buyItem.iQty = quantity;
         buyItem.iSel.iQty = quantity;
         buyItem.accept = 1;
         Main.instance.game.world.sendBuyItemRequestWithQuantity(buyItem);
+    }
+
+    private static function cloneDynamic(source:*):* {
+        var clone:* = {};
+        for (var key:String in source) {
+            clone[key] = source[key];
+        }
+        return clone;
     }
 
     public static function getShopItem(name:String):* {
