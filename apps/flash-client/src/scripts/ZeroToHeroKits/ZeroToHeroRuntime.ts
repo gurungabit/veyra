@@ -7492,7 +7492,7 @@ export class ZeroToHeroRuntime {
     await this.hunt("shadowattack", "Death", "Death's Power", 3, false);
     await this.hunt("escherion", "Escherion", "Chaotic Power", 7, false);
     await this.hunt("shadowrealmpast", "Pure Shadowscythe", "Empowered Essence", 50, false);
-    await this.killMonster("undergroundlabb", "Enter", "Spawn", "Ultra Battle Gem", "Gem Power", 25, false);
+    await this.hunt("undergroundlabb", "Ultra Battle Gem", "Gem Power", 25, false);
     await this.buyItem("alchemyacademy", 2116, "Power Tonic", 10);
     await this.completeQuest(8740);
   }
