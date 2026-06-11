@@ -2460,7 +2460,7 @@ export class ZeroToHeroRuntime {
     ]);
     await this.storyKillQuest(92, "greenguardwest", ["Breken the Vile", "Ogug Stoneaxe"]);
 
-    if (!(await this.isStoryQuestComplete(92))) {
+    if (!(await this.waitForStoryQuestComplete(92, 10000))) {
       throw new Error("Ninja prerequisite quest Hit Job (92) is still incomplete; shop 178 will not unlock Ninja yet.");
     }
   }
@@ -7694,7 +7694,7 @@ export class ZeroToHeroRuntime {
 
   private async lacerate(): Promise<void> {
     if (await this.isQuestCompleted(8739)) return;
-    await this.mazumiQuests();
+    await this.ensureLacerateUnlocked();
     await this.acceptQuest(8739);
     await this.hunt("graveyard", "Big Jack Sprat", "Undead Plague Spear", 1, false);
     await this.hunt("river", "Kuro", "Kuro's Wrath", 1, false);
@@ -7703,6 +7703,25 @@ export class ZeroToHeroRuntime {
     await this.ensureForestAxe();
     await this.blackKnightOrb();
     await this.completeQuest(8739);
+  }
+
+  private async ensureLacerateUnlocked(): Promise<void> {
+    await this.ensureForgePrerequisites("Lacerate");
+    if (await this.isQuestUnlocked(8739).catch(() => false)) return;
+
+    this.log("Lacerate quest is locked; running Mazumi story prerequisite through Hit Job.");
+    await this.mazumiQuests();
+    await this.clearQuestTree().catch(() => undefined);
+    await this.bot.delay(1200, this.signal);
+
+    if (await this.isQuestUnlocked(8739).catch(() => false)) return;
+
+    const rank = await this.factionRankByName(BLACKSMITHING_FACTION_NAME).catch(() => 0);
+    throw new Error(
+      `Lacerate quest 8739 is still locked after Mazumi Hit Job${
+        rank > 0 ? ` and Blacksmithing Rank ${rank}` : ""
+      }.`
+    );
   }
 
   private async smite(): Promise<void> {
@@ -8805,6 +8824,16 @@ export class ZeroToHeroRuntime {
       await this.bot.callGameFunction<unknown>("world.getQuestValue", slot).catch(() => 0)
     );
     return current >= value;
+  }
+
+  private async waitForStoryQuestComplete(questId: number, timeoutMs = 8000): Promise<boolean> {
+    const deadline = Date.now() + timeoutMs;
+    while (!this.signal?.aborted && Date.now() < deadline) {
+      if (await this.isStoryQuestComplete(questId).catch(() => false)) return true;
+      await this.sendGetQuestPacket(questId).catch(() => undefined);
+      await this.bot.delay(500, this.signal);
+    }
+    return this.isStoryQuestComplete(questId).catch(() => false);
   }
 
   private async isQuestCompletedDirect(questId: number): Promise<boolean> {
