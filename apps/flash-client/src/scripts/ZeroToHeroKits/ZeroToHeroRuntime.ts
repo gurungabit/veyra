@@ -734,6 +734,11 @@ export class ZeroToHeroRuntime {
       b: { r: -1, o: { cmd: "updateQuest", iValue: bypass.value, iIndex: bypass.index } }
     });
     await this.bot.call("sendClientPacket", packet, "json").catch(() => undefined);
+
+    const snapshot = await this.snapshot().catch(() => undefined);
+    if (snapshot?.room && runtimeBaseMapName(snapshot.map) === runtimeBaseMapName(normalizedMap)) {
+      await this.bot.sendPacket(`%xt%zm%updateQuest%${snapshot.room}%${bypass.index}%${bypass.value}%`).catch(() => undefined);
+    }
     await this.bot.delay(200, this.signal);
   }
 
@@ -7799,10 +7804,63 @@ export class ZeroToHeroRuntime {
 
     this.log(`Tower of Doom floor ${floor}: killing ${boss} for quest ${questId}.`);
     await this.acceptQuest(questId);
-    await this.join(map, "r10", "Left");
-    await this.killMonster(map, "r10", "Left", boss, `${boss} Defeated`, 1, true, [`${boss} Defeated`]);
+    await this.join(map);
+    await this.applySkuaMapBypass(map);
+    await this.advanceTowerOfDoomFloor(floor, map, boss, questId);
     await this.completeQuest(questId);
     await this.acceptQuestDrops(questId);
+  }
+
+  private async advanceTowerOfDoomFloor(floor: number, map: string, boss: string, questId: number): Promise<void> {
+    this.log(`Tower of Doom floor ${floor}: advancing room by room.`);
+    for (let room = 1; room <= 10; room += 1) {
+      const cell = `r${room}`;
+      const pad = room === 10 ? "Left" : "Auto";
+      await this.advanceTowerOfDoomRoom(floor, cell, pad, questId);
+      if (room < 10) await this.clearTowerOfDoomCurrentRoom(floor, questId);
+    }
+
+    const drop = `${boss} Defeated`;
+    await this.farmMonster(boss, drop, 1, true, { map, cell: "r10", pad: "Left" }, [drop]);
+  }
+
+  private async advanceTowerOfDoomRoom(floor: number, cell: string, pad: string, questId: number): Promise<void> {
+    for (let attempt = 1; attempt <= 8; attempt += 1) {
+      const snapshot = await this.snapshot().catch(() => undefined);
+      if (snapshot?.cell === cell) return;
+
+      this.log(
+        `Tower of Doom floor ${floor}: moving to ${cell}/${pad}${attempt > 1 ? ` (retry ${attempt})` : ""}.`
+      );
+      await this.jump(cell, pad).catch(() => undefined);
+      await this.bot.delay(700, this.signal);
+
+      const afterJump = await this.snapshot().catch(() => undefined);
+      if (afterJump?.cell === cell) return;
+
+      await this.clearTowerOfDoomCurrentRoom(floor, questId);
+    }
+
+    const last = await this.snapshot().catch(() => undefined);
+    throw new Error(
+      `Tower of Doom floor ${floor} could not advance to ${cell}/${pad}. Last location: ${
+        last ? `${last.map}-${last.room} ${last.cell}/${last.pad}` : "unknown"
+      }.`
+    );
+  }
+
+  private async clearTowerOfDoomCurrentRoom(floor: number, questId: number): Promise<void> {
+    for (let guard = 0; guard < 12; guard += 1) {
+      if ((await this.questCompletionReadiness(questId).catch(() => undefined))?.ready) return;
+
+      const target = await this.findAliveMonsterInCurrentCell("*");
+      if (!target) return;
+
+      await this.safeAttack(target.id ?? "*", `clearing Tower of Doom floor ${floor}`);
+      await this.bot.useAvailableSkills().catch(() => undefined);
+      await this.acceptQuestDrops(questId).catch(() => undefined);
+      await this.bot.delay(650, this.signal);
+    }
   }
 
   private async unlockBladeOfAwe(): Promise<void> {
@@ -8976,6 +9034,10 @@ export function isClassItem(item: ItemRecord): boolean {
 
 export function sameName(left: string, right: string): boolean {
   return left.trim().toLowerCase() === right.trim().toLowerCase();
+}
+
+function runtimeBaseMapName(map: string): string {
+  return map.trim().toLowerCase().replace(/-\d+$/, "");
 }
 
 export function normalizedClassRank(snapshot: PlayerSnapshot): number {
