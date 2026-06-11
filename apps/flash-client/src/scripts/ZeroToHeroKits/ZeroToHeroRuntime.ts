@@ -57,6 +57,12 @@ interface MonsterPosition {
   pad: string;
 }
 
+interface GoldQuestObjective {
+  questId: number;
+  item: string;
+  quantity: number;
+}
+
 export type VeyraQuestAction =
   | { kind: "accept"; questId?: number }
   | { kind: "complete"; questId?: number; rewardId?: number; turnIns?: number }
@@ -1902,7 +1908,7 @@ export class ZeroToHeroRuntime {
     await this.goldBerserkerBunny(targetGold);
   }
 
-  async battleGroundEGold(targetGold = 100000000, minLevel = 61): Promise<void> {
+  async battleGroundEGold(targetGold = 100000000, minLevel = 46): Promise<void> {
     targetGold = Math.max(1, Math.floor(targetGold));
     const requiredLevel = Math.max(1, Math.floor(minLevel));
     const snapshot = await this.snapshot();
@@ -1940,18 +1946,74 @@ export class ZeroToHeroRuntime {
   private async goldBattleGroundE(targetGold: number, minLevel = 61): Promise<void> {
     const snapshot = await this.snapshot();
     if (snapshot.level < minLevel || (await this.currentGold()) >= targetGold) return;
-    this.log(`Farming ${formatGold(targetGold)} using BattleGroundE gold route.`);
-    await this.farmGoldQuestRoute({
-      label: "BattleGroundE",
+
+    const objectives = battleGroundEQuestObjectives(snapshot.level);
+    if (objectives.length === 0) {
+      this.log(`BattleGroundE gold route has no quest bracket for level ${snapshot.level}.`);
+      return;
+    }
+    const primaryObjective = objectives.find((objective) => objective.questId === 3992) ?? objectives[0]!;
+    this.log(
+      `Farming ${formatGold(targetGold)} using BattleGroundE gold route (${objectives.map((objective) => objective.questId).join(", ")}).`
+    );
+    await this.farmBattleGroundEGoldQuestRoute({
       targetGold,
-      questId: 3992,
-      map: "battlegrounde",
-      cell: "r2",
-      pad: "Left",
-      monster: "*",
-      item: "Battleground E Opponent Defeated",
-      quantity: 10
+      objectives,
+      primaryQuestId: primaryObjective.questId
     });
+  }
+
+  private async farmBattleGroundEGoldQuestRoute(options: {
+    targetGold: number;
+    objectives: GoldQuestObjective[];
+    primaryQuestId: number;
+  }): Promise<void> {
+    let loops = 0;
+    while (!this.signal?.aborted && (await this.currentGold()) < options.targetGold) {
+      if (this.options.maxFarmLoops && loops >= this.options.maxFarmLoops) {
+        this.log(`Stopped BattleGroundE gold route after ${loops} loops due to maxFarmLoops.`);
+        return;
+      }
+
+      loops += 1;
+      const activeObjectives: GoldQuestObjective[] = [];
+      for (const objective of options.objectives) {
+        await this.acceptQuest(objective.questId).catch((error) => {
+          this.log(`BattleGroundE quest ${objective.questId} skipped: ${errorSummary(error)}`);
+        });
+        if (await this.isQuestInProgress(objective.questId).catch(() => false)) activeObjectives.push(objective);
+      }
+      if (activeObjectives.length === 0) throw new Error("No BattleGroundE gold quests could be accepted.");
+
+      const primaryObjective =
+        activeObjectives.find((objective) => objective.questId === options.primaryQuestId) ??
+        activeObjectives[activeObjectives.length - 1]!;
+      const dropWhitelist = activeObjectives.map((objective) => objective.item);
+      await this.killMonster(
+        "battlegrounde",
+        "r2",
+        "Left",
+        "*",
+        primaryObjective.item,
+        primaryObjective.quantity,
+        true,
+        dropWhitelist
+      );
+
+      for (const objective of activeObjectives) {
+        if (
+          objective.questId === primaryObjective.questId ||
+          (await this.itemQuantityOf(objective.item, false)) >= objective.quantity
+        ) {
+          await this.completeQuest(objective.questId);
+        }
+      }
+      await this.bot.delay(700, this.signal);
+
+      if (loops === 1 || loops % 5 === 0) {
+        this.log(`BattleGroundE gold progress: ${formatGold(await this.currentGold())}/${formatGold(options.targetGold)}.`);
+      }
+    }
   }
 
   private async farmGoldQuestRoute(options: {
@@ -8872,6 +8934,25 @@ function selectRoute(level: number): FarmRoute {
     if (level >= route.minLevel && level < route.maxLevel) return route;
   }
   return experienceRoutes[experienceRoutes.length - 1]!;
+}
+
+function battleGroundEQuestObjectives(level: number): GoldQuestObjective[] {
+  const objectives: GoldQuestObjective[] = [];
+  if (level >= 46) {
+    objectives.push({
+      questId: 3991,
+      item: "Battleground D Opponent Defeated",
+      quantity: 10
+    });
+  }
+  if (level >= 61) {
+    objectives.push({
+      questId: 3992,
+      item: "Battleground E Opponent Defeated",
+      quantity: 10
+    });
+  }
+  return objectives;
 }
 
 function clamp(value: number, min: number, max: number): number {

@@ -3,9 +3,9 @@ import { ZeroToHeroRuntime, type ZeroToHeroRuntimeOptions } from "./ZeroToHeroKi
 
 export const meta = {
   name: "BattleGroundEGold",
-  description: "Farms gold using ZeroToHero's BattleGroundE quest route. Requires level 61+.",
+  description: "Farms gold using ZeroToHero's BattleGroundE quest route. Supports level 46+ brackets.",
   tags: ["gold", "farm", "battlegrounde", "zero-to-hero"],
-  version: "2026.06.10.3"
+  version: "2026.06.10.4"
 };
 
 export interface BattleGroundEGoldOptions extends ZeroToHeroRuntimeOptions {
