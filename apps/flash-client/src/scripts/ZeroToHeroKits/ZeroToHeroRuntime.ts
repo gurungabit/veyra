@@ -1608,7 +1608,8 @@ export class ZeroToHeroRuntime {
       await this.recoverIfDead(location);
       if (await this.clickFightPromptIfVisible()) await this.bot.delay(500, this.signal);
       const target = location?.map && !location.cell ? await this.jumpToMonsterCell(monster, `fighting ${monster}`) : undefined;
-      const attackTarget = await this.resolvePriorityCombatTarget(target?.id ?? monster, monster, location);
+      const cellTarget = location?.cell ? await this.findAliveMonsterInCurrentCell(monster) : undefined;
+      const attackTarget = await this.resolvePriorityCombatTarget(cellTarget?.id ?? target?.id ?? monster, monster, location);
       if (await this.safeAttack(attackTarget, `fighting ${monster}`)) await this.bot.useAvailableSkills();
       await this.bot.delay(650, this.signal);
       return;
@@ -1658,9 +1659,10 @@ export class ZeroToHeroRuntime {
       if (location?.map && !location.cell) {
         target = await this.jumpToMonsterCell(monster, item ? `farming ${item}` : `fighting ${monster}`);
       }
-      const attackTarget = await this.resolvePriorityCombatTarget(target?.id ?? monster, monster, location);
+      const cellTarget = location?.cell ? await this.findAliveMonsterInCurrentCell(monster) : undefined;
+      const attackTarget = await this.resolvePriorityCombatTarget(cellTarget?.id ?? target?.id ?? monster, monster, location);
       if (!(await this.safeAttack(attackTarget, item ? `farming ${item}` : `fighting ${monster}`))) {
-        await this.bot.delay(650, this.signal);
+        await this.bot.delay(300, this.signal);
         continue;
       }
       await this.bot.useAvailableSkills();
@@ -1671,7 +1673,8 @@ export class ZeroToHeroRuntime {
 
   private async safeAttack(monster: MonsterTarget, context: string): Promise<boolean> {
     try {
-      await this.bot.attack(monster);
+      const attacked = await this.bot.attack(monster);
+      if (!attacked) return false;
       this.consecutiveAttackErrors = 0;
       return true;
     } catch (error) {
@@ -1705,6 +1708,36 @@ export class ZeroToHeroRuntime {
     return position;
   }
 
+  private async findAliveMonsterInCurrentCell(monster: string | number): Promise<MonsterPosition | undefined> {
+    const [snapshot, rawCellMonsters, rawMapMonsters] = await Promise.all([
+      this.snapshot().catch(() => undefined),
+      this.bot.call<unknown>("availableMonsters").catch(() => []),
+      this.bot.call<unknown>("getMonsters").catch(() => [])
+    ]);
+    const currentCell = snapshot?.cell?.trim().toLowerCase() ?? "";
+    const cellMonsters = recordsFrom(rawCellMonsters);
+    const mapMonsters = recordsFrom(rawMapMonsters).filter((record) => {
+      const cell = stringFrom(firstFrom(record, ["strFrame", "frame", "Frame", "cell", "Cell"])).trim().toLowerCase();
+      return currentCell && cell === currentCell;
+    });
+    const candidates = [...cellMonsters, ...mapMonsters].filter((record) => {
+      if (!this.monsterRecordMatches(record, monster)) return false;
+      return this.monsterHp(record) > 0;
+    });
+    if (candidates.length === 0) return undefined;
+
+    const best = this.sortMonsterTargets(candidates)[0];
+    if (!best) return undefined;
+
+    const cell =
+      stringFrom(firstFrom(best, ["strFrame", "frame", "Frame", "cell", "Cell"])).trim() ||
+      snapshot?.cell ||
+      "";
+    const pad = stringFrom(firstFrom(best, ["strPad", "pad", "Pad"])).trim() || snapshot?.pad || "Auto";
+    const id = optionalNumberFrom(best, ["MonMapID", "MapID", "monMapId"]);
+    return cell ? { id, cell, pad } : undefined;
+  }
+
   private async findMonsterPosition(monster: string | number): Promise<MonsterPosition | undefined> {
     const monsters = recordsFrom(await this.bot.call<unknown>("getMonsters").catch(() => []));
     const targetId = typeof monster === "number" ? monster : 0;
@@ -1720,10 +1753,8 @@ export class ZeroToHeroRuntime {
     });
     if (candidates.length === 0) return undefined;
 
-    const aliveCandidates = candidates.filter((record) => numberFrom(record, ["intHP", "HP", "hp"]) > 0);
-    const sorted = (aliveCandidates.length > 0 ? aliveCandidates : candidates).sort(
-      (a, b) => numberFrom(a, ["intHP", "HP", "hp"]) - numberFrom(b, ["intHP", "HP", "hp"])
-    );
+    const aliveCandidates = candidates.filter((record) => this.monsterHp(record) > 0);
+    const sorted = this.sortMonsterTargets(aliveCandidates.length > 0 ? aliveCandidates : candidates);
     const best = sorted[0];
     if (!best) return undefined;
 
@@ -1731,6 +1762,16 @@ export class ZeroToHeroRuntime {
     const pad = stringFrom(firstFrom(best, ["strPad", "pad", "Pad"])).trim() || "Auto";
     const id = optionalNumberFrom(best, ["MonMapID", "MapID", "monMapId"]);
     return cell ? { id, cell, pad } : undefined;
+  }
+
+  private sortMonsterTargets(records: Record<string, unknown>[]): Record<string, unknown>[] {
+    return [...records].sort(
+      (a, b) =>
+        Number(this.monsterHp(a) <= 0) - Number(this.monsterHp(b) <= 0) ||
+        this.monsterHp(a) - this.monsterHp(b) ||
+        numberFrom(a, ["MonMapID", "MapID", "monMapId", "MonID", "MonsterID", "id", "ID"]) -
+          numberFrom(b, ["MonMapID", "MapID", "monMapId", "MonID", "MonsterID", "id", "ID"])
+    );
   }
 
   private async resolvePriorityCombatTarget(
@@ -8437,13 +8478,19 @@ export class ZeroToHeroRuntime {
 
       if (!hasTarget || hp <= 0) {
         if (engaged) {
-          await this.bot.delay(650, this.signal);
           await this.acceptQuestDrops(questId);
+          if (await this.retargetQuestMonsterInCell(questId, monster, location)) {
+            engaged = false;
+            await this.bot.delay(250, this.signal);
+            continue;
+          }
+          await this.bot.delay(450, this.signal);
           return;
         }
 
         await this.jumpToMonsterCell(monster, `quest ${questId}`);
-        await this.attackMonsterTarget(await this.resolvePriorityCombatTarget(monster, monster, location));
+        const cellTarget = await this.findAliveMonsterInCurrentCell(monster);
+        await this.attackMonsterTarget(await this.resolvePriorityCombatTarget(cellTarget?.id ?? monster, monster, location));
         await this.bot.delay(250, this.signal);
         target = await this.currentTargetMonster();
         hasTarget = Boolean(target && this.monsterRecordMatches(target, monster));
@@ -8457,13 +8504,29 @@ export class ZeroToHeroRuntime {
 
       const updatedTarget = await this.currentTargetMonster();
       if (engaged && (!updatedTarget || !this.monsterRecordMatches(updatedTarget, monster) || numberFrom(updatedTarget, ["intHP", "HP", "hp"]) <= 0)) {
-        await this.bot.delay(650, this.signal);
         await this.acceptQuestDrops(questId);
+        if (await this.retargetQuestMonsterInCell(questId, monster, location)) {
+          engaged = false;
+          await this.bot.delay(250, this.signal);
+          continue;
+        }
+        await this.bot.delay(450, this.signal);
         return;
       }
     }
 
     this.log(`Timed out fighting ${monster} for quest ${questId}; checking quest progress before retrying.`);
+  }
+
+  private async retargetQuestMonsterInCell(
+    questId: number,
+    monster: MonsterTarget,
+    location: CombatLocation
+  ): Promise<boolean> {
+    if ((await this.questCompletionReadiness(questId).catch(() => undefined))?.ready) return false;
+    const nextTarget = await this.findAliveMonsterInCurrentCell(monster);
+    if (!nextTarget) return false;
+    return this.attackMonsterTarget(await this.resolvePriorityCombatTarget(nextTarget.id ?? monster, monster, location));
   }
 
   private async attackMonsterTarget(monster: MonsterTarget): Promise<boolean> {

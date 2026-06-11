@@ -752,7 +752,7 @@ async function findMonsterPosition(bot: Bot, monster: string | number, aliveOnly
   if (candidates.length === 0) return undefined;
 
   const aliveCandidates = candidates.filter((entry) => monsterHp(entry) > 0);
-  const sorted = (aliveCandidates.length > 0 ? aliveCandidates : candidates).sort((a, b) => monsterHp(a) - monsterHp(b));
+  const sorted = sortMonsterTargets(aliveCandidates.length > 0 ? aliveCandidates : candidates);
   const best = sorted[0];
   if (!best) return undefined;
   const cell = stringFrom(firstFrom(best, ["strFrame", "frame", "Frame", "cell", "Cell"])).trim();
@@ -788,7 +788,11 @@ async function defeatOneMonster(bot: Bot, monster: string | number, signal?: Abo
         continue;
       }
       await jumpIfNeeded(bot, position.cell, position.pad || "Auto", signal, `hunting ${typeof monster === "number" ? `monster ID ${monster}` : monster}`);
-      await bot.attack(position.id !== undefined && typeof monster !== "number" ? position.id : monster).catch(() => undefined);
+      const attacked = await bot.attack(position.id !== undefined && typeof monster !== "number" ? position.id : monster).catch(() => false);
+      if (!attacked) {
+        await bot.delay(300, signal);
+        continue;
+      }
       await bot.delay(250, signal);
       parsed = currentTargetRecord(await bot.call<unknown>("getTargetMonster").catch(() => undefined));
       hasTarget = Object.keys(parsed).length > 0 && monsterRecordMatches(parsed, monster);
@@ -825,6 +829,16 @@ function monsterRecordMatches(record: Record<string, unknown>, monster: string |
 
 function monsterHp(record: Record<string, unknown>): number {
   return optionalNumberFrom(record, ["intHP", "HP", "hp"]) ?? 0;
+}
+
+function sortMonsterTargets(records: Record<string, unknown>[]): Record<string, unknown>[] {
+  return [...records].sort(
+    (a, b) =>
+      Number(monsterHp(a) <= 0) - Number(monsterHp(b) <= 0) ||
+      monsterHp(a) - monsterHp(b) ||
+      (optionalNumberFrom(a, ["MonMapID", "MapID", "monMapId", "MonID", "MonsterID", "id", "ID"]) ?? 0) -
+        (optionalNumberFrom(b, ["MonMapID", "MapID", "monMapId", "MonID", "MonsterID", "id", "ID"]) ?? 0)
+  );
 }
 
 async function getMapItem(bot: Bot, action: BuilderAction, signal?: AbortSignal): Promise<void> {

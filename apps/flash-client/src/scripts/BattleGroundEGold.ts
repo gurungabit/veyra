@@ -5,7 +5,7 @@ export const meta = {
   name: "BattleGroundEGold",
   description: "Farms gold using ZeroToHero's BattleGroundE quest route. Supports level 46+ brackets.",
   tags: ["gold", "farm", "battlegrounde", "zero-to-hero"],
-  version: "2026.06.10.4"
+  version: "2026.06.11.1"
 };
 
 export interface BattleGroundEGoldOptions extends ZeroToHeroRuntimeOptions {

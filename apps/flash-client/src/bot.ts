@@ -34,7 +34,7 @@ export interface Bot {
   goto(username: string): Promise<void>;
   jump(cell: string, pad?: string): Promise<void>;
   walkTo(x: number, y: number, speed?: number): Promise<void>;
-  attack(monster?: string | number): Promise<void>;
+  attack(monster?: string | number): Promise<boolean>;
   useAvailableSkills(): Promise<void>;
   sendPacket(packet: string): Promise<void>;
   getGameObject<T>(path: string): Promise<T>;
@@ -451,26 +451,26 @@ export class BrowserFlashBot implements Bot {
     throw new Error(`Jump to ${cell}/${pad || "Auto"} failed: ${describeUnknownError(lastError)}`);
   }
 
-  async attack(monster: string | number = "*"): Promise<void> {
+  async attack(monster: string | number = "*"): Promise<boolean> {
     let lastError: unknown;
     for (let attempt = 1; attempt <= 2; attempt += 1) {
       try {
-        await this.attackOnce(monster);
-        return;
+        if (await this.attackOnce(monster)) return true;
+        await this.delay(250);
       } catch (error) {
         lastError = error;
         await this.delay(250);
       }
     }
+    if (lastError === undefined) return false;
     throw new Error(`Attack failed: ${describeUnknownError(lastError)}`);
   }
 
-  private async attackOnce(monster: string | number): Promise<void> {
+  private async attackOnce(monster: string | number): Promise<boolean> {
     if (typeof monster === "number") {
-      await this.call("attackMonsterID", monster);
-      return;
+      return toBoolean(await this.call("attackMonsterID", monster));
     }
-    await this.call("attackMonsterName", monster);
+    return toBoolean(await this.call("attackMonsterName", monster));
   }
 
   async useAvailableSkills(): Promise<void> {

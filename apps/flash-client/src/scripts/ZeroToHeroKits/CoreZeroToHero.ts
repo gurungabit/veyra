@@ -11,7 +11,7 @@ export const meta = {
   name: "CoreZeroToHero",
   description: "Veyra ZeroToHero progression, class setup, outfit, pet, and endgame flow.",
   tags: ["zero-to-hero", "progression", "core"],
-  version: "2026.06.10.2"
+  version: "2026.06.11.1"
 };
 
 const soloClasses = [

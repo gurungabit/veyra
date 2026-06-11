@@ -19,8 +19,8 @@ public class Monster {
     }
 
     private static function sortMonstersByHP(a:*, b:*):Number {
-        var aHP:int = (a.dataLeaf && a.dataLeaf.intHP) ? a.dataLeaf.intHP : 0;
-        var bHP:int = (b.dataLeaf && b.dataLeaf.intHP) ? b.dataLeaf.intHP : 0;
+        var aHP:int = monsterHP(a);
+        var bHP:int = monsterHP(b);
 
         var aAlive:Boolean = aHP > 0;
         var bAlive:Boolean = bHP > 0;
@@ -33,8 +33,8 @@ public class Monster {
             return aHP - bHP;
         }
 
-        var aMapID:int = a.objData ? a.objData.MonMapID : 0;
-        var bMapID:int = b.objData ? b.objData.MonMapID : 0;
+        var aMapID:int = monsterMapID(a);
+        var bMapID:int = monsterMapID(b);
         return aMapID - bMapID;
     }
 
@@ -45,7 +45,7 @@ public class Monster {
         var isWildcard:Boolean = name == '*';
 
         for each (var monster:* in world.getMonstersByCell(world.strFrame)) {
-            if (monster.pMC != null) {
+            if (isAttackable(monster)) {
                 var monName:String = monster.objData.strMonName.toLowerCase();
                 if (isWildcard || monName.indexOf(lowerName) > -1) {
                     targetCandidates.push(monster);
@@ -65,7 +65,7 @@ public class Monster {
         var world:* = Main.instance.game.world;
 
         for each (var monster:* in world.getMonstersByCell(world.strFrame)) {
-            if (monster.pMC != null && monster.objData && (monster.objData.MonMapID == id || monster.objData.MonID == id)) {
+            if (isAttackable(monster) && monster.objData && (monster.objData.MonMapID == id || monster.objData.MonID == id)) {
                 targetCandidates.push(monster);
             }
         }
@@ -122,12 +122,29 @@ public class Monster {
     }
 
     private static function attackTarget(target:*):String {
-        if (target != null && target.pMC != null) {
+        var world:* = Main.instance.game.world;
+        if (target != null && isAttackable(target)) {
+            if (world.myAvatar.target && monsterHP(world.myAvatar.target) <= 0) {
+                world.cancelTarget();
+            }
             Main.instance.game.world.setTarget(target);
             Main.instance.game.world.approachTarget();
             return true.toString();
         }
+        world.cancelTarget();
         return false.toString();
+    }
+
+    private static function isAttackable(monster:*):Boolean {
+        return monster != null && monster.pMC != null && monster.dataLeaf != null && monsterHP(monster) > 0;
+    }
+
+    private static function monsterHP(monster:*):int {
+        return (monster && monster.dataLeaf && monster.dataLeaf.intHP) ? monster.dataLeaf.intHP : 0;
+    }
+
+    private static function monsterMapID(monster:*):int {
+        return (monster && monster.objData && monster.objData.MonMapID) ? monster.objData.MonMapID : 0;
     }
 }
 }
