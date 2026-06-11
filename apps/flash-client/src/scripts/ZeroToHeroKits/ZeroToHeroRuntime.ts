@@ -119,6 +119,20 @@ const STAFF_OF_INVERSION_MONSTER_ID = 2;
 const STALAGBITE_MAP = "stalagbite";
 const VATH_MONSTER_ID = 7;
 const STALAGBITE_MONSTER_ID = 8;
+const skuaMapBypasses: Record<string, { value: number; index: number }> = {
+  chaoscave: { value: 26, index: 22 },
+  lycanwar: { value: 26, index: 22 },
+  towerofdoom: { value: 159, index: 10 },
+  towerofdoom2: { value: 159, index: 10 },
+  towerofdoom3: { value: 159, index: 10 },
+  towerofdoom4: { value: 159, index: 10 },
+  towerofdoom5: { value: 159, index: 10 },
+  towerofdoom6: { value: 159, index: 10 },
+  towerofdoom7: { value: 159, index: 10 },
+  towerofdoom8: { value: 159, index: 10 },
+  towerofdoom9: { value: 159, index: 10 },
+  towerofdoom10: { value: 159, index: 10 }
+};
 const FISHING_FACTION_NAME = "Fishing";
 const FISHING_BAIT_QUEST_ID = 1682;
 const FISHING_XP_BOOST_QUEST_ID = 1614;
@@ -707,14 +721,18 @@ export class ZeroToHeroRuntime {
 
   private async applySkuaMapBypass(map: string): Promise<void> {
     const normalizedMap = map.trim().toLowerCase();
-    if (normalizedMap !== "chaoscave" && normalizedMap !== "lycanwar") return;
+    const bypass = skuaMapBypasses[normalizedMap];
+    if (!bypass) return;
 
     if (!this.skuaBypassedMaps.has(normalizedMap)) {
       this.log(`Applying Skua map bypass for ${normalizedMap}.`);
       this.skuaBypassedMaps.add(normalizedMap);
     }
 
-    const packet = JSON.stringify({ t: "xt", b: { r: -1, o: { cmd: "updateQuest", iValue: 26, iIndex: 22 } } });
+    const packet = JSON.stringify({
+      t: "xt",
+      b: { r: -1, o: { cmd: "updateQuest", iValue: bypass.value, iIndex: bypass.index } }
+    });
     await this.bot.call("sendClientPacket", packet, "json").catch(() => undefined);
     await this.bot.delay(200, this.signal);
   }
