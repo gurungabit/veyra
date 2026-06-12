@@ -5090,7 +5090,6 @@ export class ZeroToHeroRuntime {
       }
     ]);
     await this.completeQuestPlan(2084, [
-      { kind: "hunt", map: "battleunderb", monster: "*", item: "Spirit Orb", quantity: 100, isTemp: false },
       { kind: "hunt", map: "timevoid", monster: "Ephemerite", item: "Celestial Compass", isTemp: false }
     ]);
   }
