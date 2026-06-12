@@ -113,6 +113,11 @@ const BERSERKER_BUNNY_ITEM = "Berserker Bunny";
 const BLOOD_SORCERESS_ITEM_ID = 36298;
 const SCARLET_SORCERESS_ITEM_ID = 42992;
 const SCARLET_SORCERESS_QUEST_ID = 6236;
+const HEALER_ITEM_ID = 15651;
+const ROGUE_ITEM_ID = 15652;
+const MAGE_ITEM_ID = 15653;
+const WARRIOR_ITEM_ID = 15654;
+const MAGE_CLASSHALLA_SHOP_ITEM_ID = 9845;
 const ESCHERION_MAP = "escherion";
 const ESCHERION_MONSTER_ID = 3;
 const STAFF_OF_INVERSION_MONSTER_ID = 2;
@@ -156,6 +161,22 @@ const towerOfDoomBosses = [
   "Dread Avatar",
   "Dread Fang",
   "Slugbutter"
+];
+const forgeHelmRequirementClasses = ["Rogue", "Healer", "Warrior", "Mage"];
+const forgeHelmCombatClasses = [
+  "Legion Revenant",
+  "ArchMage",
+  "Dragon of Time",
+  "Archfiend",
+  "ArchPaladin",
+  "Dragonslayer General",
+  "DragonSoul Shinobi",
+  "Glacial Berserker",
+  "Horc Evader",
+  "Blaze Binder",
+  "Scarlet Sorceress",
+  "Master Ranger",
+  "Mage"
 ];
 
 const questDataFallbacks: Record<number, Record<string, unknown>> = {
@@ -7801,9 +7822,9 @@ export class ZeroToHeroRuntime {
   private async vim(): Promise<void> {
     if (await this.isQuestCompleted(8824)) return;
     await this.forgeHelmEnhancement();
+    const previousClass = await this.ensureForgeHelmClassRequirement("Rogue", ROGUE_ITEM_ID, 172, 8824);
     await this.acceptQuest(8824);
-    await this.buyItem("classhalla", 172, "Rogue");
-    await this.rankClass("Rogue");
+    await this.restoreForgeHelmCombatClass(previousClass);
     await this.farmTowerOfDoomEtherealEssence(250);
     await this.completeQuest(8824);
   }
@@ -7811,9 +7832,9 @@ export class ZeroToHeroRuntime {
   private async examen(): Promise<void> {
     if (await this.isQuestCompleted(8825)) return;
     await this.vim();
+    const previousClass = await this.ensureForgeHelmClassRequirement("Healer", HEALER_ITEM_ID, 176, 8825);
     await this.acceptQuest(8825);
-    await this.buyItem("classhalla", 176, "Healer");
-    await this.rankClass("Healer");
+    await this.restoreForgeHelmCombatClass(previousClass);
     await this.farmTowerOfDoomEtherealEssence(250);
     await this.completeQuest(8825);
   }
@@ -7821,9 +7842,9 @@ export class ZeroToHeroRuntime {
   private async anima(): Promise<void> {
     if (await this.isQuestCompleted(8826)) return;
     await this.examen();
+    const previousClass = await this.ensureForgeHelmClassRequirement("Warrior", WARRIOR_ITEM_ID, 170, 8826);
     await this.acceptQuest(8826);
-    await this.buyItem("classhalla", 170, "Warrior");
-    await this.rankClass("Warrior");
+    await this.restoreForgeHelmCombatClass(previousClass);
     await this.farmTowerOfDoomEtherealEssence(650);
     await this.completeQuest(8826);
   }
@@ -7831,11 +7852,59 @@ export class ZeroToHeroRuntime {
   private async pneuma(): Promise<void> {
     if (await this.isQuestCompleted(8827)) return;
     await this.anima();
+    const previousClass = await this.ensureForgeHelmClassRequirement(
+      "Mage",
+      MAGE_ITEM_ID,
+      174,
+      8827,
+      MAGE_CLASSHALLA_SHOP_ITEM_ID
+    );
     await this.acceptQuest(8827);
-    await this.buyItem("classhalla", 174, "Mage");
-    await this.rankClass("Mage");
+    await this.restoreForgeHelmCombatClass(previousClass);
     await this.farmTowerOfDoomEtherealEssence(650);
     await this.completeQuest(8827);
+  }
+
+  private async ensureForgeHelmClassRequirement(
+    className: string,
+    itemId: number,
+    shopId: number,
+    questId: number,
+    shopItemId = -1
+  ): Promise<string> {
+    const previousClass = (await this.snapshot().catch(() => undefined))?.currentClassName ?? "";
+    await this.buyItem("classhalla", shopId, itemId, 1, shopItemId);
+    if (!(await this.ensureInInventory(className, itemId)))
+      throw new Error(`Quest ${questId} requires ${className}, but ${className} could not be moved to inventory.`);
+
+    if (!(await this.hasClassRank(className, itemId, 10))) {
+      this.log(`Quest ${questId} requires ${className} Rank 10; ranking ${className} before accepting.`);
+      await this.rankClass(className, itemId);
+    }
+
+    if (!(await this.hasClassRank(className, itemId, 10)))
+      throw new Error(`Quest ${questId} requires ${className} Rank 10, but ${className} is still not Rank 10.`);
+
+    return previousClass;
+  }
+
+  private async restoreForgeHelmCombatClass(previousClass: string): Promise<void> {
+    if (
+      previousClass &&
+      !forgeHelmRequirementClasses.some((className) => sameName(className, previousClass)) &&
+      (await this.equip(previousClass))
+    ) {
+      await this.smartEnhance(previousClass).catch((error) =>
+        this.log(`Enhancement refresh skipped after restoring ${previousClass}: ${errorSummary(error)}`)
+      );
+      return;
+    }
+
+    const restored = await this.equipFirst(forgeHelmCombatClasses);
+    if (restored)
+      await this.smartEnhance(restored).catch((error) =>
+        this.log(`Enhancement refresh skipped after restoring ${restored}: ${errorSummary(error)}`)
+      );
   }
 
   private async farmTowerOfDoomEtherealEssence(quantity: number): Promise<void> {
