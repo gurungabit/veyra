@@ -5070,7 +5070,7 @@ export class ZeroToHeroRuntime {
     await this.farmQuestReward({
       questId: 2082,
       map: "battleunderb",
-      cell: "Spawn",
+      cell: "Enter",
       monster: "Skeleton Warrior",
       item: "Undead Essence",
       quantity: 25,
