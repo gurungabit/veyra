@@ -2429,39 +2429,61 @@ export class ZeroToHeroRuntime {
     }
 
     this.log("Mazumi route: completing Ninja prerequisite quests through Hit Job.");
-    await this.storyKillQuest(90, "pirates", "Fishman Soldier");
-    await this.completeQuestPlan(91, [
-      { kind: "hunt", map: "greenguardwest", monster: "Kittarian", item: "Kittarian's Wallet", quantity: 2 },
-      {
-        kind: "hunt",
-        map: "greenguardwest",
-        monster: "River Fishman",
-        item: "River Fishman's Wallet",
-        quantity: 2
-      },
-      { kind: "hunt", map: "greenguardwest", monster: "Slime", item: "Slime-Soaked Wallet", quantity: 2 },
-      {
-        kind: "hunt",
-        map: "greenguardwest",
-        cell: "West3",
-        pad: "Up",
-        monster: "Frogzard",
-        item: "Frogzard's Lint Hoard",
-        quantity: 2
-      },
-      {
-        kind: "hunt",
-        map: "greenguardwest",
-        cell: "West12",
-        pad: "Up",
-        monster: "Big Bad Boar",
-        item: "Big Bad Boar's Wallet"
+    if (!(await this.isQuestAvailableOrActive(92))) {
+      if (!(await this.isQuestAvailableOrActive(91))) {
+        await this.storyKillQuest(90, "pirates", "Fishman Soldier");
+        if (!(await this.waitForQuestAvailableOrActive(91, 15000))) {
+          this.log("Without a Trace is not visibly unlocked after Ninja Grudge yet; checking the live quest state before continuing.");
+        }
       }
-    ]);
+
+      if (!(await this.isQuestAvailableOrActive(92))) {
+        if (!(await this.isQuestAvailableOrActive(91))) {
+          throw new Error("Without a Trace (91) is still locked after Ninja Grudge; stopping before farming locked objectives.");
+        }
+
+        await this.completeQuestPlan(91, [
+          { kind: "hunt", map: "greenguardwest", monster: "Kittarian", item: "Kittarian's Wallet", quantity: 2 },
+          {
+            kind: "hunt",
+            map: "greenguardwest",
+            monster: "River Fishman",
+            item: "River Fishman's Wallet",
+            quantity: 2
+          },
+          { kind: "hunt", map: "greenguardwest", monster: "Slime", item: "Slime-Soaked Wallet", quantity: 2 },
+          {
+            kind: "hunt",
+            map: "greenguardwest",
+            cell: "West3",
+            pad: "Up",
+            monster: "Frogzard",
+            item: "Frogzard's Lint Hoard",
+            quantity: 2
+          },
+          {
+            kind: "hunt",
+            map: "greenguardwest",
+            cell: "West12",
+            pad: "Up",
+            monster: "Big Bad Boar",
+            item: "Big Bad Boar's Wallet"
+          }
+        ]);
+        if (!(await this.waitForQuestAvailableOrActive(92, 15000))) {
+          this.log("Hit Job is not visibly unlocked after Without a Trace yet; checking the live quest state before continuing.");
+        }
+      }
+    }
+
+    if (!(await this.isQuestAvailableOrActive(92))) {
+      throw new Error("Hit Job (92) is still locked after Without a Trace; stopping before farming locked objectives.");
+    }
+
     await this.storyKillQuest(92, "greenguardwest", ["Breken the Vile", "Ogug Stoneaxe"]);
 
     if (!(await this.waitForStoryQuestComplete(92, 10000))) {
-      throw new Error("Ninja prerequisite quest Hit Job (92) is still incomplete; shop 178 will not unlock Ninja yet.");
+      this.log("Hit Job completion is not visible yet; continuing to the next unlock check.");
     }
   }
 
@@ -7716,12 +7738,7 @@ export class ZeroToHeroRuntime {
 
     if (await this.isQuestUnlocked(8739).catch(() => false)) return;
 
-    const rank = await this.factionRankByName(BLACKSMITHING_FACTION_NAME).catch(() => 0);
-    throw new Error(
-      `Lacerate quest 8739 is still locked after Mazumi Hit Job${
-        rank > 0 ? ` and Blacksmithing Rank ${rank}` : ""
-      }.`
-    );
+    this.log("Lacerate quest still is not visibly unlocked after Mazumi; trying the live quest accept anyway.");
   }
 
   private async smite(): Promise<void> {
@@ -8834,6 +8851,29 @@ export class ZeroToHeroRuntime {
       await this.bot.delay(500, this.signal);
     }
     return this.isStoryQuestComplete(questId).catch(() => false);
+  }
+
+  private async isQuestAvailableOrActive(questId: number): Promise<boolean> {
+    return (
+      (await this.isQuestInProgress(questId).catch(() => false)) ||
+      (await this.isQuestUnlocked(questId).catch(() => false)) ||
+      (await this.isStoryQuestComplete(questId).catch(() => false))
+    );
+  }
+
+  private async waitForQuestAvailableOrActive(questId: number, timeoutMs = 8000): Promise<boolean> {
+    const deadline = Date.now() + timeoutMs;
+    let clearedTree = false;
+    while (!this.signal?.aborted && Date.now() < deadline) {
+      if (await this.isQuestAvailableOrActive(questId)) return true;
+      await this.sendGetQuestPacket(questId).catch(() => undefined);
+      if (!clearedTree && Date.now() + 3000 >= deadline) {
+        clearedTree = true;
+        await this.clearQuestTree().catch(() => undefined);
+      }
+      await this.bot.delay(500, this.signal);
+    }
+    return this.isQuestAvailableOrActive(questId);
   }
 
   private async isQuestCompletedDirect(questId: number): Promise<boolean> {
