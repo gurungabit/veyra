@@ -97,6 +97,7 @@ const SANDSEA_FACTION_ID = 13;
 const HORC_FACTION_ID = 19;
 const EMBERSEA_FACTION_ID = 43;
 const GLACERA_FACTION_ID = 52;
+const EVIL_FACTION_ID = 4;
 const DOOMWOOD_FACTION_ID = 17;
 const DOOMWOOD_FACTION_NAME = "DoomWood";
 const BLACKSMITHING_FACTION_NAME = "Blacksmithing";
@@ -1087,6 +1088,11 @@ export class ZeroToHeroRuntime {
       case "goodrep":
       case "goodreputation":
         await this.goodRep(requiredRank, label);
+        return true;
+      case "evil":
+      case "evilrep":
+      case "evilreputation":
+        await this.evilRep(requiredRank, label);
         return true;
       default:
         return false;
@@ -2705,6 +2711,68 @@ export class ZeroToHeroRuntime {
       await this.factionRank(DOOMWOOD_FACTION_ID),
       await this.factionRankByName(DOOMWOOD_FACTION_NAME)
     );
+  }
+
+  private async evilRep(targetRank = 10, reason = "Evil item"): Promise<void> {
+    const cappedRank = clamp(targetRank, 1, 10);
+    const startRank = await this.factionRankBest(EVIL_FACTION_ID, "Evil");
+    if (startRank >= cappedRank) {
+      this.log(`Evil reputation is already Rank ${startRank}; skipping reputation farm.`);
+      return;
+    }
+
+    this.log(`${reason} requires Evil Rank ${cappedRank}; farming Evil from Rank ${startRank}.`);
+    await this.changeAlignment(2);
+    const evilRep = () => this.factionRepBest(EVIL_FACTION_ID, "Evil");
+    const evilRank = () => this.factionRankBest(EVIL_FACTION_ID, "Evil");
+
+    if ((await evilRank()) < Math.min(cappedRank, 4)) {
+      await this.farmRepeatableFaction({
+        factionId: EVIL_FACTION_ID,
+        factionName: "Evil",
+        targetRank: Math.min(cappedRank, 4),
+        questIds: [364],
+        getRep: evilRep,
+        getRank: evilRank,
+        action: async () => {
+          await this.attackUntilQuestReady(364, "swordhavenbridge", ["Slime"]);
+        }
+      });
+    }
+
+    if ((await evilRank()) >= cappedRank) return;
+
+    if (await this.isMember()) {
+      await this.farmFactionQuest({
+        factionId: EVIL_FACTION_ID,
+        factionName: "Evil",
+        targetRank: cappedRank,
+        questId: 366,
+        action: async () => {
+          await this.hunt("sleuthhound", "Chair", "Chair", 4, true);
+          await this.hunt("sleuthhound", "Table", "Table", 2, true);
+          await this.hunt("sleuthhound", "Bookcase", "Bookcase", 1, true);
+        }
+      });
+      return;
+    }
+
+    await this.farmRepeatableFaction({
+      factionId: EVIL_FACTION_ID,
+      factionName: "Evil",
+      targetRank: cappedRank,
+      questIds: [367],
+      getRep: evilRep,
+      getRank: evilRank,
+      action: async () => {
+        await this.attackUntilQuestReady(367, "castleundead", ["*"]);
+      }
+    });
+  }
+
+  private async changeAlignment(alignment: 1 | 2 | 3): Promise<void> {
+    await this.sendRoomPacket("updateQuest", [41, alignment]);
+    await this.bot.delay(1400, this.signal);
   }
 
   async goodRep(targetRank = 10, reason = "Good item"): Promise<void> {
@@ -6564,6 +6632,37 @@ export class ZeroToHeroRuntime {
       await this.rankClass("Legion Revenant");
       return;
     }
+    await this.joinLegion();
+    await this.acceptDrops([
+      "Legion Token",
+      "Legion Round 1 Medal",
+      "Legion Round 2 Medal",
+      "Legion Round 3 Medal",
+      "Legion Round 4 Medal",
+      "Exalted Crown",
+      "Revenant's Spellscroll",
+      "Conquest Wreath",
+      "Legion Revenant",
+      "Aeacus Empowered",
+      "Tethered Soul",
+      "Darkened Essence",
+      "Dracolich Contract",
+      "Grim Cohort Conquered",
+      "Ancient Cohort Conquered",
+      "Pirate Cohort Conquered",
+      "Battleon Cohort Conquered",
+      "Mirror Cohort Conquered",
+      "Darkblood Cohort Conquered",
+      "Vampire Cohort Conquered",
+      "Spirit Cohort Conquered",
+      "Dragon Cohort Conquered",
+      "Doomwood Cohort Conquered",
+      "Hooded Legion Cowl",
+      "Dage's Favor",
+      "Emblem of Dage",
+      "Diamond Token of Dage",
+      "Dark Token"
+    ]);
     await this.farmExperience(80);
     await this.revenantSpellscroll(1, true);
     await this.revenantSpellscroll(20);
@@ -6584,6 +6683,9 @@ export class ZeroToHeroRuntime {
       (!forQuest && (await this.contains("Revenant's Spellscroll", quantity)))
     )
       return;
+
+    await this.joinLegion();
+    await this.evilRep(10, "Legion Fealty 1");
 
     let loops = 0;
     while (
@@ -6650,6 +6752,7 @@ export class ZeroToHeroRuntime {
     )
       return;
     if (!(await this.isQuestCompleted(6898))) await this.revenantSpellscroll(1, true);
+    await this.joinLegion();
 
     let loops = 0;
     while (
@@ -6770,6 +6873,7 @@ export class ZeroToHeroRuntime {
     )
       return;
     if (!(await this.isQuestCompleted(6899))) await this.conquestWreath(1, true);
+    await this.joinLegion();
     await this.seraphicWar();
 
     let loops = 0;
@@ -6780,83 +6884,19 @@ export class ZeroToHeroRuntime {
     ) {
       if (this.options.maxFarmLoops && loops >= this.options.maxFarmLoops) return;
       loops += 1;
-      await this.completeQuestPlan(
-        6899,
-        [
-          { kind: "buy", map: "underworld", shopId: 216, item: "Hooded Legion Cowl" },
-          {
-            kind: "hunt",
-            map: "legionarena",
-            cell: "Boss",
-            pad: "Left",
-            monster: "Legion Fiend Rider",
-            item: "Legion Token",
-            quantity: 4000,
-            isTemp: false
-          },
-          {
-            kind: "hunt",
-            map: "underworld",
-            cell: "r16",
-            pad: "Left",
-            monster: "*",
-            item: "Dage's Favor",
-            quantity: 300,
-            isTemp: false
-          },
-          { kind: "hunt", map: "shadowblast", monster: "Carnage", item: "Gem of Mastery", isTemp: false },
-          {
-            kind: "hunt",
-            map: "shadowblast",
-            cell: "r10",
-            pad: "Left",
-            monster: "*",
-            item: "Legion Seal",
-            quantity: 25,
-            isTemp: false
-          },
-          {
-            kind: "hunt",
-            map: "tercessuinotlim",
-            cell: "m2",
-            pad: "Left",
-            monster: "*",
-            item: "Defeated Makai",
-            quantity: 25,
-            isTemp: false
-          },
-          {
-            kind: "hunt",
-            map: "aqlesson",
-            cell: "Frame9",
-            pad: "Right",
-            monster: "Carnax",
-            item: "Carnax Eye",
-            isTemp: false
-          },
-          { kind: "hunt", map: "deepchaos", monster: "Kathool", item: "Kathool Tentacle", isTemp: false },
-          { kind: "hunt", map: "lair", monster: "Red Dragon", item: "Red Dragon's Fang", isTemp: false },
-          {
-            kind: "hunt",
-            map: "bloodtitan",
-            monster: "Blood Titan",
-            item: "Blood Titan's Blade",
-            isTemp: false
-          },
-          {
-            kind: "hunt",
-            map: "dflesson",
-            cell: "r12",
-            pad: "Right",
-            monster: 29,
-            item: "Dark Token",
-            quantity: 100,
-            isTemp: false
-          }
-        ],
-        -1,
-        !forQuest
-      );
+      await this.buyItem("underworld", 216, "Hooded Legion Cowl");
+      await this.farmLegionToken(4000);
+      await this.dageFavor(300);
+      await this.emblemOfDage(1);
+      await this.diamondTokenOfDage(30);
+      await this.darkToken(100);
+      await this.ensureInventoryQuantity("Hooded Legion Cowl", 1);
+      await this.ensureInventoryQuantity("Legion Token", 4000);
+      await this.ensureInventoryQuantity("Dage's Favor", 300);
+      await this.ensureInventoryQuantity("Emblem of Dage", 1);
+      await this.ensureInventoryQuantity("Diamond Token of Dage", 30);
+      await this.ensureInventoryQuantity("Dark Token", 100);
+      await this.completeQuestPlan(6899, [], -1, !forQuest);
       await this.acceptDrops([
         "Exalted Crown",
         "Legion Token",
@@ -6867,6 +6907,344 @@ export class ZeroToHeroRuntime {
       ]);
       if (forQuest) return;
     }
+  }
+
+  private async joinLegion(): Promise<void> {
+    if (await this.isQuestCompleted(793).catch(() => false)) return;
+
+    this.log("Joining the Undead Legion prerequisite route.");
+    if (!(await this.isQuestCompleted(792).catch(() => false))) await this.farmCombatTrophy(200);
+
+    if (!(await this.contains("Undead Warrior", 1, false, false))) {
+      await this.buyItem("underworld", 215, "Undead Warrior");
+      await this.ensureInInventory("Undead Warrior");
+    }
+    if (!(await this.contains("Undead Warrior", 1, false, false))) {
+      throw new Error("Legion Revenant requires Undead Warrior for Legion initiation, but it is not in inventory.");
+    }
+
+    await this.completeQuestPlan(789, [
+      {
+        kind: "hunt",
+        map: "greenguardwest",
+        monster: "Black Knight",
+        item: "Black Knight's Eternal Contract",
+        isTemp: true
+      }
+    ]);
+    await this.completeQuestPlan(790, [
+      { kind: "hunt", map: "dwarfhold", monster: "Chaos Drow", item: "Chaos Drow slain", isTemp: true },
+      {
+        kind: "hunt",
+        map: "swordhavenundead",
+        monster: "Skeletal Soldier",
+        item: "Skeletal Soldier slain",
+        isTemp: true
+      },
+      { kind: "hunt", map: "pirates", monster: "Fishman Soldier", item: "Fishman Soldier slain", isTemp: true },
+      { kind: "hunt", map: "willowcreek", monster: "Dwakel Soldier", item: "Dwakel Soldier slain", isTemp: true }
+    ]);
+    await this.completeQuestPlan(791, [
+      {
+        kind: "hunt",
+        map: "battleunderb",
+        cell: "r3",
+        pad: "Right",
+        monster: "Undead Champion",
+        item: "Ravaged Champion Soul",
+        quantity: 80,
+        isTemp: false
+      }
+    ]);
+    await this.chainQuest(792);
+    await this.storyKillQuest(793, "prison", "King Alteon's Knight");
+    await this.buyItem("underworld", 216, "Undead Champion");
+  }
+
+  private async farmCombatTrophy(quantity = 200): Promise<void> {
+    if ((await this.quantity("Combat Trophy", false)) >= quantity) return;
+    await this.acceptDrops("Combat Trophy");
+
+    const current = await this.snapshot().catch(() => undefined);
+    if (current?.map.toLowerCase() === "bludrutbrawl") await this.join("whitemap");
+
+    let loops = 0;
+    while (!this.signal?.aborted && (await this.quantity("Combat Trophy", false)) < quantity) {
+      if (this.options.maxFarmLoops && loops >= this.options.maxFarmLoops) return;
+      loops += 1;
+
+      const before = await this.quantity("Combat Trophy", false);
+      this.log(`Combat Trophy progress: ${before}/${quantity}.`);
+      await this.bot.joinExact("bludrutbrawl-999999", "Enter0", "Spawn");
+      await this.bot.delay(1200, this.signal);
+
+      await this.pvpMove(5, "Morale0C", randomInt(784, 862), randomInt(254, 274));
+      await this.pvpMove(4, "Morale0B", randomInt(786, 850), randomInt(262, 287));
+      await this.pvpMove(7, "Morale0A", randomInt(783, 857), randomInt(263, 293));
+      await this.pvpMove(9, "Crosslower", randomInt(777, 857), randomInt(254, 290));
+      await this.pvpMove(15, "Morale1A", randomInt(781, 858), randomInt(258, 290));
+      await this.killPvpMonster(13);
+      await this.pvpMove(23, "Morale1B", randomInt(782, 850), randomInt(259, 276));
+      await this.killPvpMonster(14);
+      await this.pvpMove(25, "Morale1C", randomInt(802, 865), randomInt(264, 286));
+      await this.killPvpMonster(15);
+      await this.pvpMove(28, "Captain1", randomInt(430, 537), 254);
+      await this.killPvpMonster(16);
+      await this.acceptDrops("Combat Trophy");
+      await this.waitForQuantityIncrease("Combat Trophy", before, false, 15000);
+      await this.join("battleon");
+    }
+  }
+
+  private async pvpMove(mtcid: number, cell: string, x: number, y: number): Promise<void> {
+    for (let attempt = 1; attempt <= 6; attempt += 1) {
+      this.throwIfAborted();
+      await this.sendRoomPacket("mv", [x, y, 8]);
+      await this.bot.delay(2500, this.signal);
+      await this.sendRoomPacket("mtcid", [mtcid]);
+      await this.bot.delay(2500, this.signal);
+      const snapshot = await this.snapshot().catch(() => undefined);
+      if (snapshot?.cell === cell) return;
+    }
+    throw new Error(`PvP transition to ${cell} failed.`);
+  }
+
+  private async killPvpMonster(monster: number): Promise<void> {
+    let engaged = false;
+    const deadline = Date.now() + 45000;
+    while (!this.signal?.aborted && Date.now() < deadline) {
+      const snapshot = await this.snapshot();
+      if (!snapshot.alive) throw new Error("Character died during Bludrut Brawl trophy farming.");
+      const target = await this.findAliveMonsterInCurrentCell(monster);
+      if (!target) {
+        if (engaged) return;
+        await this.attackMonsterTarget(monster);
+        await this.bot.delay(450, this.signal);
+        continue;
+      }
+      engaged = true;
+      await this.attackMonsterTarget(target.id ?? monster);
+      await this.bot.useAvailableSkills();
+      await this.bot.delay(550, this.signal);
+    }
+    throw new Error(`Timed out killing PvP monster ${monster}.`);
+  }
+
+  private async farmLegionToken(quantity = 4000): Promise<void> {
+    if (await this.contains("Legion Token", quantity)) return;
+    await this.joinLegion();
+    await this.farmRegisteredQuestReward({
+      questIds: [6742, 6743],
+      location: { map: "legionarena", cell: "Boss", pad: "Left" },
+      monster: "Legion Fiend Rider",
+      reward: "Legion Token",
+      quantity,
+      drops: ["Bone Sigil", "Axeros' Brooch", "Undead Rider Defeated"]
+    });
+  }
+
+  private async dageFavor(quantity = 300): Promise<void> {
+    if (await this.contains("Dage's Favor", quantity)) return;
+    await this.killMonster("underworld", "r16", "Left", "*", "Dage's Favor", quantity, false);
+  }
+
+  private async emblemOfDage(quantity = 1): Promise<void> {
+    if (await this.contains("Emblem of Dage", quantity)) return;
+    await this.legionRound4Medal();
+    await this.acceptDrops(["Emblem of Dage", "Legion Seal", "Gem of Mastery"]);
+    let loops = 0;
+    while (!this.signal?.aborted && !(await this.contains("Emblem of Dage", quantity))) {
+      if (this.options.maxFarmLoops && loops >= this.options.maxFarmLoops) return;
+      loops += 1;
+      await this.ensureRepeatableQuestAccepted(4742);
+      await this.hunt("shadowblast", "Carnage", "Gem of Mastery", 1, false);
+      await this.killMonster("shadowblast", "r10", "Left", "*", "Legion Seal", 25, false);
+      await this.completeQuest(4742);
+      await this.acceptDrops("Emblem of Dage");
+    }
+  }
+
+  private async diamondTokenOfDage(quantity = 30): Promise<void> {
+    if (await this.contains("Diamond Token of Dage", quantity)) return;
+    await this.legionRound4Medal();
+    await this.farmLegionToken(50);
+    await this.acceptDrops([
+      "Diamond Token of Dage",
+      "Legion Token",
+      "Defeated Makai",
+      "Carnax Eye",
+      "Kathool Tentacle",
+      "Red Dragon's Fang",
+      "Fluffy's Bones",
+      "Blood Titan's Blade"
+    ]);
+
+    let loops = 0;
+    while (!this.signal?.aborted && !(await this.contains("Diamond Token of Dage", quantity))) {
+      if (this.options.maxFarmLoops && loops >= this.options.maxFarmLoops) return;
+      loops += 1;
+      await this.ensureRepeatableQuestAccepted(4743);
+      await this.killMonster("tercessuinotlim", "m2", "Left", "*", "Defeated Makai", 25, false);
+      await this.killMonster("aqlesson", "Frame9", "Right", "Carnax", "Carnax Eye", 1, true);
+      await this.hunt("deepchaos", "Kathool", "Kathool Tentacle", 1, true);
+      await this.hunt("lair", "Red Dragon", "Red Dragon's Fang", 1, true);
+      await this.killMonster("dflesson", "r12", "Right", 29, "Fluffy's Bones", 1, true);
+      await this.hunt("bloodtitan", "Blood Titan", "Blood Titan's Blade", 1, true);
+      await this.completeQuest(4743);
+      await this.acceptDrops(["Diamond Token of Dage", "Legion Token"]);
+    }
+  }
+
+  private async darkToken(quantity = 100): Promise<void> {
+    if (await this.contains("Dark Token", quantity)) return;
+    await this.seraphicWar();
+    await this.farmRegisteredQuestReward({
+      questIds: [6248, 6249, 6251],
+      location: { map: "seraphicwardage", cell: "r3", pad: "Left" },
+      monster: "*",
+      reward: "Dark Token",
+      quantity,
+      drops: ["Seraphic Medals", "Mega Seraphic Medals", "Seraphic Commanders Slain"]
+    });
+  }
+
+  private async legionRound4Medal(): Promise<void> {
+    if (await this.contains("Legion Round 4 Medal")) return;
+    await this.joinLegion();
+    await this.acceptDrops([
+      "Legion Round 1 Medal",
+      "Legion Round 2 Medal",
+      "Legion Round 3 Medal",
+      "Legion Round 4 Medal"
+    ]);
+
+    if (!(await this.contains("Legion Round 1 Medal"))) {
+      await this.completeQuestPlan(4738, [
+        {
+          kind: "hunt",
+          map: "shadowblast",
+          monster: "Caesaristhedark",
+          item: "Nation Rookie Defeated",
+          quantity: 5,
+          isTemp: true
+        },
+        {
+          kind: "hunt",
+          map: "shadowblast",
+          monster: "Shadowrise Guard",
+          item: "Shadowscythe Rookie Defeated",
+          quantity: 5,
+          isTemp: true
+        }
+      ]);
+      await this.acceptDrops("Legion Round 1 Medal");
+      await this.waitForInventoryItem("Legion Round 1 Medal", 1, 8000, false);
+    }
+
+    if (!(await this.contains("Legion Round 2 Medal"))) {
+      await this.completeQuestPlan(4739, [
+        {
+          kind: "hunt",
+          map: "shadowblast",
+          monster: "Carnage",
+          item: "Nation Veteran Defeated",
+          quantity: 7,
+          isTemp: true
+        },
+        {
+          kind: "hunt",
+          map: "shadowblast",
+          monster: "Doombringer",
+          item: "Shadowscythe Veteran Defeated",
+          quantity: 7,
+          isTemp: true
+        }
+      ]);
+      await this.acceptDrops("Legion Round 2 Medal");
+      await this.waitForInventoryItem("Legion Round 2 Medal", 1, 8000, false);
+    }
+
+    if (!(await this.contains("Legion Round 3 Medal"))) {
+      await this.completeQuestPlan(4740, [
+        {
+          kind: "hunt",
+          map: "shadowblast",
+          monster: "Minotaurofwar",
+          item: "Nation Elite Defeated",
+          quantity: 10,
+          isTemp: true
+        },
+        {
+          kind: "hunt",
+          map: "shadowblast",
+          monster: "Draconic Doomknight",
+          item: "Shadowscythe Elite Defeated",
+          quantity: 10,
+          isTemp: true
+        }
+      ]);
+      await this.acceptDrops("Legion Round 3 Medal");
+      await this.waitForInventoryItem("Legion Round 3 Medal", 1, 8000, false);
+    }
+
+    if (!(await this.contains("Legion Round 4 Medal"))) {
+      await this.completeQuestPlan(4741, [
+        {
+          kind: "hunt",
+          map: "shadowblast",
+          monster: "Thanatos",
+          item: "Thanatos Vanquished",
+          quantity: 1,
+          isTemp: true
+        }
+      ]);
+      await this.acceptDrops("Legion Round 4 Medal");
+      await this.waitForInventoryItem("Legion Round 4 Medal", 1, 8000, false);
+    }
+  }
+
+  private async farmRegisteredQuestReward(options: {
+    questIds: number[];
+    location: CombatLocation;
+    monster: MonsterTarget;
+    reward: string;
+    quantity: number;
+    drops?: string[];
+  }): Promise<void> {
+    if (await this.contains(options.reward, options.quantity)) return;
+    await this.acceptDrops([options.reward, ...(options.drops ?? [])]);
+    await this.join(options.location.map, options.location.cell, options.location.pad);
+
+    let loops = 0;
+    while (!this.signal?.aborted && !(await this.contains(options.reward, options.quantity))) {
+      if (this.options.maxFarmLoops && loops >= this.options.maxFarmLoops) return;
+      loops += 1;
+      for (const questId of options.questIds) await this.ensureRepeatableQuestAccepted(questId);
+      const completedBefore = await this.completeReadyRepeatableQuests(options.questIds);
+      if (completedBefore > 0) {
+        await this.acceptDrops([options.reward, ...(options.drops ?? [])]);
+        continue;
+      }
+      await this.farmMonster(options.monster, undefined, 1, true, options.location);
+      const completedAfter = await this.completeReadyRepeatableQuests(options.questIds);
+      if (completedAfter > 0) await this.acceptDrops([options.reward, ...(options.drops ?? [])]);
+    }
+  }
+
+  private async waitForQuantityIncrease(
+    item: string,
+    previous: number,
+    includeBank = false,
+    timeoutMs = 9000
+  ): Promise<number> {
+    const deadline = Date.now() + timeoutMs;
+    let current = await this.quantity(item, includeBank);
+    while (!this.signal?.aborted && current <= previous && Date.now() < deadline) {
+      await this.acceptDrops(item);
+      await this.bot.delay(500, this.signal);
+      current = await this.quantity(item, includeBank);
+    }
+    return current;
   }
 
   private async seraphicWar(): Promise<void> {
@@ -9228,6 +9606,13 @@ function clamp(value: number, min: number, max: number): number {
   return Math.max(min, Math.min(Math.floor(value), max));
 }
 
+function randomInt(min: number, max: number): number {
+  const low = Math.ceil(min);
+  const high = Math.floor(max);
+  if (high <= low) return low;
+  return Math.floor(Math.random() * (high - low + 1)) + low;
+}
+
 function formatGold(value: number): string {
   return `${Math.max(0, Math.floor(value)).toLocaleString("en-US")} gold`;
 }
@@ -9667,6 +10052,10 @@ function knownFactionId(faction: string): number | undefined {
     case "glacerarep":
     case "glacerareputation":
       return GLACERA_FACTION_ID;
+    case "evil":
+    case "evilrep":
+    case "evilreputation":
+      return EVIL_FACTION_ID;
     case "doomwood":
     case "doomwoodrep":
     case "doomwoodreputation":

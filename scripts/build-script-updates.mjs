@@ -77,6 +77,12 @@ const officialCoreScripts = [
     category: "Official",
     map: "bloodtusk / cloister / nibbleon",
     entry: "apps/flash-client/src/scripts/FreeBoost10m.ts"
+  },
+  {
+    id: "legion.legion-revenant",
+    category: "Legion",
+    map: "revenant / judgement / legionarena",
+    entry: "apps/flash-client/src/scripts/LegionRevenant.ts"
   }
 ];
 
