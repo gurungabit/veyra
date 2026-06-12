@@ -2788,7 +2788,7 @@ export class ZeroToHeroRuntime {
     const goodRep = () => this.factionRepByName("Good");
     const goodRank = () => this.factionRankByName("Good");
 
-    if ((await goodRank()) < Math.min(cappedRank, 4)) {
+    if ((await goodRank()) < cappedRank) {
       await this.farmRepeatableFaction({
         factionId: 0,
         factionName: "Good",
