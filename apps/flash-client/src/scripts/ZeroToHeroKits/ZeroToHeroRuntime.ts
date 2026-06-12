@@ -2784,6 +2784,7 @@ export class ZeroToHeroRuntime {
     }
 
     this.log(`${reason} requires Good Rank ${cappedRank}; farming Good from Rank ${startRank}.`);
+    await this.changeAlignment(1);
     const goodRep = () => this.factionRepByName("Good");
     const goodRank = () => this.factionRankByName("Good");
 
@@ -4815,7 +4816,10 @@ export class ZeroToHeroRuntime {
       return;
     }
 
+    await this.goodRep(10, "ArchPaladin");
+
     if (!(await this.isMember()) && !(await this.isQuestUnlocked(5467))) {
+      await this.farmGold(500000);
       await this.completeQuestPlan(5463, [
         { kind: "buy", map: "temple", shopId: 288, item: "Stone Paladin Armor" },
         { kind: "buy", map: "darkthronehub", shopId: 1308, item: "Exalted Paladin Seal" }
@@ -4921,6 +4925,7 @@ export class ZeroToHeroRuntime {
       await this.chainQuest(hasSilver ? 5475 : 5471);
       await this.chainQuest(hasSilver ? 5476 : 5472);
       await this.chainQuest(hasSilver ? 5477 : 5473);
+      await this.farmGold(500000);
       await this.completeQuestPlan(hasSilver ? 5478 : 5474, [
         {
           kind: "hunt",
@@ -4976,6 +4981,7 @@ export class ZeroToHeroRuntime {
       { kind: "hunt", map: "skytower", monster: "Dove", item: "Innocence", quantity: 25, isTemp: false }
     ]);
     await this.ensureScrollOfEtherealSlumber();
+    await this.xansLair();
     await this.completeQuestPlan(5469, [
       { kind: "hunt", map: "xancave", monster: "Shurpu Ring Guardian", item: "Fists of Fire", isTemp: false },
       {
@@ -5029,6 +5035,7 @@ export class ZeroToHeroRuntime {
 
     if (armorOnly) return;
     await this.buyItem("darkthronehub", 1303, 36920, 1, 21833);
+    await this.ensureInInventory("ArchPaladin", 36920);
     if (rankUpClass) await this.rankClass("ArchPaladin");
   }
 
@@ -5038,8 +5045,18 @@ export class ZeroToHeroRuntime {
     await this.buyItem("necropolis", 26, "Healer");
     await this.rankClass("Warrior");
     await this.rankClass("Healer");
+    await this.goodRep(5, "Paladin");
     await this.buyItem("necropolis", 26, "Paladin");
     if (rankUpClass) await this.rankClass("Paladin");
+  }
+
+  private async xansLair(): Promise<void> {
+    if (await this.isQuestCompleted(2157).catch(() => false)) return;
+    this.log("Running Xan's Lair prerequisite story for ArchPaladin.");
+    const { definition } = await import("../Story/XansLair.js");
+    await definition.run(this.bot, this.options);
+    await this.clearQuestTree().catch(() => undefined);
+    await this.bot.delay(1200, this.signal);
   }
 
   private async unlockBlodMineCrafting(): Promise<void> {

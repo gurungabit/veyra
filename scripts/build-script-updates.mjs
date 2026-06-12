@@ -83,6 +83,12 @@ const officialCoreScripts = [
     category: "Legion",
     map: "revenant / judgement / legionarena",
     entry: "apps/flash-client/src/scripts/LegionRevenant.ts"
+  },
+  {
+    id: "good.arch-paladin",
+    category: "Good",
+    map: "darkthronehub / brightfall / xancave",
+    entry: "apps/flash-client/src/scripts/ArchPaladin.ts"
   }
 ];
 
