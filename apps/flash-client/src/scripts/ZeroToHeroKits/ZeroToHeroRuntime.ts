@@ -2792,8 +2792,8 @@ export class ZeroToHeroRuntime {
       await this.farmRepeatableFaction({
         factionId: 0,
         factionName: "Good",
-        targetRank: Math.min(cappedRank, 4),
-        questIds: [369],
+        targetRank: cappedRank,
+        questIds: [369, 9203,14],
         getRep: goodRep,
         getRank: goodRank,
         action: async () => {
@@ -2802,19 +2802,19 @@ export class ZeroToHeroRuntime {
       });
     }
 
-    if ((await goodRank()) < cappedRank) {
-      await this.farmRepeatableFaction({
-        factionId: 0,
-        factionName: "Good",
-        targetRank: cappedRank,
-        questIds: [372],
-        getRep: goodRep,
-        getRank: goodRank,
-        action: async () => {
-          await this.attackUntilQuestReady(372, "castleundead", ["*"]);
-        }
-      });
-    }
+    // if ((await goodRank()) < cappedRank) {
+    //   await this.farmRepeatableFaction({
+    //     factionId: 0,
+    //     factionName: "Good",
+    //     targetRank: cappedRank,
+    //     questIds: [372],
+    //     getRep: goodRep,
+    //     getRank: goodRank,
+    //     action: async () => {
+    //       await this.attackUntilQuestReady(372, "castleundead", ["*"]);
+    //     }
+    //   });
+    // }
   }
 
   private async blacksmithingRep(targetRank = 4): Promise<void> {
