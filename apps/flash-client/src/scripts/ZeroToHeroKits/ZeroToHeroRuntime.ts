@@ -67,24 +67,24 @@ export type VeyraQuestAction =
   | { kind: "accept"; questId?: number }
   | { kind: "complete"; questId?: number; rewardId?: number; turnIns?: number }
   | {
-      kind: "hunt";
-      map: string;
-      monster: MonsterTarget;
-      item?: string | number;
-      quantity?: number;
-      isTemp?: boolean;
-      cell?: string;
-      pad?: string;
-    }
+    kind: "hunt";
+    map: string;
+    monster: MonsterTarget;
+    item?: string | number;
+    quantity?: number;
+    isTemp?: boolean;
+    cell?: string;
+    pad?: string;
+  }
   | { kind: "mapItem"; map?: string; id: number; quantity?: number }
   | {
-      kind: "buy";
-      map?: string;
-      shopId: number;
-      item: string | number;
-      quantity?: number;
-      shopItemId?: number;
-    }
+    kind: "buy";
+    map?: string;
+    shopId: number;
+    item: string | number;
+    quantity?: number;
+    shopItemId?: number;
+  }
   | { kind: "join"; map: string; cell?: string; pad?: string }
   | { kind: "jump"; cell: string; pad?: string }
   | { kind: "packet"; packet: string }
@@ -650,16 +650,15 @@ export class ZeroToHeroRuntime {
   private async debugClassInventory(className: string, itemIdsToTry: number[]): Promise<void> {
     const items = await this.inventory();
     const matches = items.filter(
-        (record) =>
+      (record) =>
         sameName(itemName(record), className) || itemIds(record).some((id) => itemIdsToTry.includes(id))
     );
     const parts = await Promise.all(
       matches.slice(0, 4).map(async (record) => {
         const ids = itemIds(record);
         const cp = await Promise.all(ids.map((id) => this.classPointsById(id)));
-        return `${itemName(record) || "class"} ids=${ids.join("/") || "?"} rank=${itemRank(record)} cp=${cp.join("/") || "?"}${
-          record.bank ? " bank" : ""
-        }`;
+        return `${itemName(record) || "class"} ids=${ids.join("/") || "?"} rank=${itemRank(record)} cp=${cp.join("/") || "?"}${record.bank ? " bank" : ""
+          }`;
       })
     );
     this.log(`${className} inventory check: ${parts.length > 0 ? parts.join("; ") : "not found in inventory/bank"}.`);
@@ -1820,7 +1819,7 @@ export class ZeroToHeroRuntime {
         Number(this.monsterHp(a) <= 0) - Number(this.monsterHp(b) <= 0) ||
         this.monsterHp(a) - this.monsterHp(b) ||
         numberFrom(a, ["MonMapID", "MapID", "monMapId", "MonID", "MonsterID", "id", "ID"]) -
-          numberFrom(b, ["MonMapID", "MapID", "monMapId", "MonID", "MonsterID", "id", "ID"])
+        numberFrom(b, ["MonMapID", "MapID", "monMapId", "MonID", "MonsterID", "id", "ID"])
     );
   }
 
@@ -2793,7 +2792,7 @@ export class ZeroToHeroRuntime {
         factionId: 0,
         factionName: "Good",
         targetRank: cappedRank,
-        questIds: [369, 9203,14],
+        questIds: [369, 9203, 14],
         getRep: goodRep,
         getRank: goodRank,
         action: async () => {
@@ -4787,14 +4786,14 @@ export class ZeroToHeroRuntime {
     const targets: Array<[string, number]> = item
       ? [[item, quantity]]
       : [
-          ["Tainted Gem", 1000],
-          ["Dark Crystal Shard", 1000],
-          ["Diamond of Nulgath", 1000],
-          ["Gem of Nulgath", 1000],
-          ["Unidentified 10", 1000],
-          ["Essence of Nulgath", 100],
-          ["Unidentified 13", 13]
-        ];
+        ["Tainted Gem", 1000],
+        ["Dark Crystal Shard", 1000],
+        ["Diamond of Nulgath", 1000],
+        ["Gem of Nulgath", 1000],
+        ["Unidentified 10", 1000],
+        ["Essence of Nulgath", 100],
+        ["Unidentified 13", 13]
+      ];
 
     let loops = 0;
     while (!this.signal?.aborted && !(await this.hasAllMaterials(targets))) {
@@ -5067,16 +5066,19 @@ export class ZeroToHeroRuntime {
     await this.completeQuestPlan(2067, [
       { kind: "buy", map: "doomwood", shopId: 276, item: "Bonegrinder Medal" }
     ]);
-    await this.completeQuestPlan(2082, [
-      {
-        kind: "hunt",
-        map: "battleunderb",
-        monster: "Skeleton Warrior",
-        item: "Undead Essence",
-        quantity: 25,
-        isTemp: false
-      }
-    ]);
+
+    await this.farmQuestReward({
+      questId: 2082,
+      map: "battleunderb",
+      cell: "Spawn",
+      monster: "Skeleton Warrior",
+      item: "Undead Essence",
+      quantity: 25,
+      isTemp: false,
+      reward: "Spirit Orb",
+      targetQuantity: 100,
+    });
+
     await this.completeQuestPlan(2083, [
       {
         kind: "hunt",
@@ -9132,8 +9134,8 @@ export class ZeroToHeroRuntime {
     const quest = (await this.findQuestInTree(questId).catch(() => undefined)) ?? questDataFallbacks[questId];
     const names = quest
       ? questRequirementRecords(quest)
-          .map((record) => stringFrom(firstFrom(record, ["sName", "Name", "name", "strName"])).trim())
-          .filter(Boolean)
+        .map((record) => stringFrom(firstFrom(record, ["sName", "Name", "name", "strName"])).trim())
+        .filter(Boolean)
       : [];
     if (names.length > 0) await this.acceptDrops(names);
     if (await this.shouldAcceptAcDrops()) await this.bot.call("acceptACDrops").catch(() => undefined);
