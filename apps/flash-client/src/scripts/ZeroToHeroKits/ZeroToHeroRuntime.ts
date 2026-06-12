@@ -2431,10 +2431,7 @@ export class ZeroToHeroRuntime {
     this.log("Mazumi route: completing Ninja prerequisite quests through Hit Job.");
     if (!(await this.isQuestAvailableOrActive(92))) {
       if (!(await this.isQuestAvailableOrActive(91))) {
-        await this.storyKillQuest(90, "pirates", "Fishman Soldier");
-        if (!(await this.waitForQuestAvailableOrActive(91, 15000))) {
-          this.log("Without a Trace is not visibly unlocked after Ninja Grudge yet; checking the live quest state before continuing.");
-        }
+        await this.completeMazumiNinjaGrudge();
       }
 
       if (!(await this.isQuestAvailableOrActive(92))) {
@@ -2443,20 +2440,38 @@ export class ZeroToHeroRuntime {
         }
 
         await this.completeQuestPlan(91, [
-          { kind: "hunt", map: "greenguardwest", monster: "Kittarian", item: "Kittarian's Wallet", quantity: 2 },
           {
             kind: "hunt",
             map: "greenguardwest",
+            cell: "West1",
+            pad: "Left",
+            monster: "Kittarian",
+            item: "Kittarian's Wallet",
+            quantity: 2
+          },
+          {
+            kind: "hunt",
+            map: "greenguardwest",
+            cell: "West9",
+            pad: "Left",
             monster: "River Fishman",
             item: "River Fishman's Wallet",
             quantity: 2
           },
-          { kind: "hunt", map: "greenguardwest", monster: "Slime", item: "Slime-Soaked Wallet", quantity: 2 },
+          {
+            kind: "hunt",
+            map: "greenguardwest",
+            cell: "West10",
+            pad: "Left",
+            monster: "Slime",
+            item: "Slime-Soaked Wallet",
+            quantity: 2
+          },
           {
             kind: "hunt",
             map: "greenguardwest",
             cell: "West3",
-            pad: "Up",
+            pad: "Left",
             monster: "Frogzard",
             item: "Frogzard's Lint Hoard",
             quantity: 2
@@ -2485,6 +2500,23 @@ export class ZeroToHeroRuntime {
     if (!(await this.waitForStoryQuestComplete(92, 10000))) {
       this.log("Hit Job completion is not visible yet; continuing to the next unlock check.");
     }
+  }
+
+  private async completeMazumiNinjaGrudge(): Promise<void> {
+    const questId = 90;
+    for (let attempt = 1; attempt <= 5; attempt += 1) {
+      if (await this.isQuestAvailableOrActive(91)) return;
+
+      this.log(`Mazumi route: completing Ninja Grudge (${attempt}/5) for Without a Trace unlock.`);
+      await this.acceptQuest(questId);
+      await this.hunt("pirates", "Shark Bait", "Pirate Medallion", 12, true);
+      await this.completeQuest(questId);
+
+      if (await this.waitForQuestAvailableOrActive(91, 8000)) return;
+      this.log("Without a Trace is not visibly unlocked yet; rechecking Ninja Grudge instead of farming locked objectives.");
+    }
+
+    throw new Error("Without a Trace (91) is still locked after Ninja Grudge; quest 90 may not be completing on the server.");
   }
 
   private async masterRanger(): Promise<void> {
