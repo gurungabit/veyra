@@ -3,9 +3,9 @@ import { ZeroToHeroRuntime, type ZeroToHeroRuntimeOptions } from "./ZeroToHeroKi
 
 export const meta = {
   name: "LegionRevenant",
-  description: "Farms Legion Revenant using the SKua CoreLR route ported to Veyra.",
+  description: "Farms the full Legion Revenant Fealty questline and buys the class.",
   tags: ["legion", "revenant", "fealty", "class", "lr"],
-  version: "2026.06.11.9"
+  version: "2026.06.11.11"
 };
 
 export interface LegionRevenantOptions extends ZeroToHeroRuntimeOptions {}

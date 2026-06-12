@@ -125,7 +125,7 @@ const STAFF_OF_INVERSION_MONSTER_ID = 2;
 const STALAGBITE_MAP = "stalagbite";
 const VATH_MONSTER_ID = 7;
 const STALAGBITE_MONSTER_ID = 8;
-const skuaMapBypasses: Record<string, { slot: number; value: number }> = {
+const questProgressBypasses: Record<string, { slot: number; value: number }> = {
   chaoscave: { slot: 26, value: 22 },
   lycanwar: { slot: 26, value: 22 },
   towerofdoom: { slot: 159, value: 10 },
@@ -389,7 +389,7 @@ export class ZeroToHeroRuntime {
   private lastFightPromptClickAt = 0;
   private consecutiveAttackErrors = 0;
   private lastAttackErrorLogAt = 0;
-  private readonly skuaBypassedMaps = new Set<string>();
+  private readonly appliedQuestProgressBypasses = new Set<string>();
   private bankLoadAttempted = false;
   private blacksmithingMethodChoice?: BlacksmithingMethodChoice | "cancel";
 
@@ -691,7 +691,7 @@ export class ZeroToHeroRuntime {
   async join(map: string, cell = "Enter", pad = "Spawn"): Promise<void> {
     await this.recoverIfDead({ map, cell, pad });
     this.throwIfAborted();
-    await this.applySkuaMapBypass(map);
+    await this.applyMapQuestProgressBypass(map);
     await this.bot.join(map, cell, pad);
     await this.bot.delay(700, this.signal);
     await this.skipCutsceneIfActive();
@@ -741,14 +741,14 @@ export class ZeroToHeroRuntime {
     return true;
   }
 
-  private async applySkuaMapBypass(map: string): Promise<void> {
+  private async applyMapQuestProgressBypass(map: string): Promise<void> {
     const normalizedMap = map.trim().toLowerCase();
-    const bypass = skuaMapBypasses[normalizedMap];
+    const bypass = questProgressBypasses[normalizedMap];
     if (!bypass) return;
 
-    if (!this.skuaBypassedMaps.has(normalizedMap)) {
-      this.log(`Applying Skua map bypass for ${normalizedMap}.`);
-      this.skuaBypassedMaps.add(normalizedMap);
+    if (!this.appliedQuestProgressBypasses.has(normalizedMap)) {
+      this.log(`Applying quest progress bypass for ${normalizedMap}.`);
+      this.appliedQuestProgressBypasses.add(normalizedMap);
     }
 
     await this.sendClientQuestProgress(bypass.value, bypass.slot);
@@ -1200,7 +1200,7 @@ export class ZeroToHeroRuntime {
       return;
     }
 
-    this.log(`GetBoosts: farming Skua-style ${boostName} via fishing quest ${questId}.`);
+    this.log(`GetBoosts: farming ${boostName} via fishing quest ${questId}.`);
     await this.ensureFishingRank2();
     await this.acceptDrops([FISHING_DYNAMITE, boostName]);
 
@@ -7958,7 +7958,7 @@ export class ZeroToHeroRuntime {
     if (await this.contains("Drakath the Eternal")) return;
     await this.complete13LordsOfChaos();
     if (!(await this.contains("Drakath Armor"))) {
-      this.log("Drakath the Eternal requires Drakath Armor; Skua also stops if the Drakath daily chain is not ready.");
+      this.log("Drakath the Eternal requires Drakath Armor; this route stops if the Drakath daily chain is not ready.");
       return;
     }
 
@@ -8016,7 +8016,7 @@ export class ZeroToHeroRuntime {
 
     const hasReconstructedDebris = await this.contains("Darkon's Debris 2 (Reconstructed)");
     if (!hasReconstructedDebris) {
-      this.log("Arcana's Concerto requires Darkon's Debris 2 (Reconstructed); Skua also stops here unless the ultra insignia path is ready.");
+      this.log("Arcana's Concerto requires Darkon's Debris 2 (Reconstructed); this route stops here unless the ultra insignia path is ready.");
       return;
     }
     if (!(await this.contains("King Drago Insignia", 5)) || !(await this.contains("Darkon Insignia", 5))) {
