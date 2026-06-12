@@ -1,15 +1,15 @@
 {
   "schema": 1,
   "channel": "stable",
-  "version": "2026.06.11.6",
+  "version": "2026.06.11.7",
   "packages": [
     {
       "id": "official-scripts",
       "name": "Official Scripts",
-      "version": "2026.06.11.6",
+      "version": "2026.06.11.7",
       "type": "module-scripts",
-      "url": "official-scripts-2026.06.11.6.json",
-      "sha256": "8e18ed50f07dd860f331df83c81b6909fa2df1eda3418a8801c009892261b8e4"
+      "url": "official-scripts-2026.06.11.7.json",
+      "sha256": "3f3f5e26e83d0e82590047806c8196827e7e001fe14b7da49fbbb2390abd0740"
     }
   ]
 }

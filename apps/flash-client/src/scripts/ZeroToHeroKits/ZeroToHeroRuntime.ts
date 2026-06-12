@@ -119,19 +119,19 @@ const STAFF_OF_INVERSION_MONSTER_ID = 2;
 const STALAGBITE_MAP = "stalagbite";
 const VATH_MONSTER_ID = 7;
 const STALAGBITE_MONSTER_ID = 8;
-const skuaMapBypasses: Record<string, { value: number; index: number }> = {
-  chaoscave: { value: 26, index: 22 },
-  lycanwar: { value: 26, index: 22 },
-  towerofdoom: { value: 159, index: 10 },
-  towerofdoom2: { value: 159, index: 10 },
-  towerofdoom3: { value: 159, index: 10 },
-  towerofdoom4: { value: 159, index: 10 },
-  towerofdoom5: { value: 159, index: 10 },
-  towerofdoom6: { value: 159, index: 10 },
-  towerofdoom7: { value: 159, index: 10 },
-  towerofdoom8: { value: 159, index: 10 },
-  towerofdoom9: { value: 159, index: 10 },
-  towerofdoom10: { value: 159, index: 10 }
+const skuaMapBypasses: Record<string, { slot: number; value: number }> = {
+  chaoscave: { slot: 26, value: 22 },
+  lycanwar: { slot: 26, value: 22 },
+  towerofdoom: { slot: 159, value: 10 },
+  towerofdoom2: { slot: 159, value: 10 },
+  towerofdoom3: { slot: 159, value: 10 },
+  towerofdoom4: { slot: 159, value: 10 },
+  towerofdoom5: { slot: 159, value: 10 },
+  towerofdoom6: { slot: 159, value: 10 },
+  towerofdoom7: { slot: 159, value: 10 },
+  towerofdoom8: { slot: 159, value: 10 },
+  towerofdoom9: { slot: 159, value: 10 },
+  towerofdoom10: { slot: 159, value: 10 }
 };
 const FISHING_FACTION_NAME = "Fishing";
 const FISHING_BAIT_QUEST_ID = 1682;
@@ -729,17 +729,17 @@ export class ZeroToHeroRuntime {
       this.skuaBypassedMaps.add(normalizedMap);
     }
 
+    await this.sendClientQuestProgress(bypass.value, bypass.slot);
+    await this.bot.delay(200, this.signal);
+  }
+
+  private async sendClientQuestProgress(value: number, slot: number): Promise<void> {
+    if (value <= 0 || slot < 0) return;
     const packet = JSON.stringify({
       t: "xt",
-      b: { r: -1, o: { cmd: "updateQuest", iValue: bypass.value, iIndex: bypass.index } }
+      b: { r: -1, o: { cmd: "updateQuest", iValue: value, iIndex: slot } }
     });
     await this.bot.call("sendClientPacket", packet, "json").catch(() => undefined);
-
-    const snapshot = await this.snapshot().catch(() => undefined);
-    if (snapshot?.room && runtimeBaseMapName(snapshot.map) === runtimeBaseMapName(normalizedMap)) {
-      await this.bot.sendPacket(`%xt%zm%updateQuest%${snapshot.room}%${bypass.index}%${bypass.value}%`).catch(() => undefined);
-    }
-    await this.bot.delay(200, this.signal);
   }
 
   async equip(name: string, itemId?: number): Promise<boolean> {
@@ -7872,63 +7872,22 @@ export class ZeroToHeroRuntime {
 
     this.log(`Tower of Doom floor ${floor}: killing ${boss} for quest ${questId}.`);
     await this.acceptQuest(questId);
-    await this.join(map);
-    await this.applySkuaMapBypass(map);
-    await this.advanceTowerOfDoomFloor(floor, map, boss, questId);
+    await this.applyQuestProgressBypass(questId);
+    await this.join(map, "r10", "Left");
+
+    const drop = `${boss} Defeated`;
+    await this.farmMonster(boss, drop, 1, true, { map, cell: "r10", pad: "Left" }, [drop]);
     await this.completeQuest(questId);
     await this.acceptQuestDrops(questId);
   }
 
-  private async advanceTowerOfDoomFloor(floor: number, map: string, boss: string, questId: number): Promise<void> {
-    this.log(`Tower of Doom floor ${floor}: advancing room by room.`);
-    for (let room = 1; room <= 10; room += 1) {
-      const cell = `r${room}`;
-      const pad = room === 10 ? "Left" : "Auto";
-      await this.advanceTowerOfDoomRoom(floor, cell, pad, questId);
-      if (room < 10) await this.clearTowerOfDoomCurrentRoom(floor, questId);
-    }
-
-    const drop = `${boss} Defeated`;
-    await this.farmMonster(boss, drop, 1, true, { map, cell: "r10", pad: "Left" }, [drop]);
-  }
-
-  private async advanceTowerOfDoomRoom(floor: number, cell: string, pad: string, questId: number): Promise<void> {
-    for (let attempt = 1; attempt <= 8; attempt += 1) {
-      const snapshot = await this.snapshot().catch(() => undefined);
-      if (snapshot?.cell === cell) return;
-
-      this.log(
-        `Tower of Doom floor ${floor}: moving to ${cell}/${pad}${attempt > 1 ? ` (retry ${attempt})` : ""}.`
-      );
-      await this.jump(cell, pad).catch(() => undefined);
-      await this.bot.delay(700, this.signal);
-
-      const afterJump = await this.snapshot().catch(() => undefined);
-      if (afterJump?.cell === cell) return;
-
-      await this.clearTowerOfDoomCurrentRoom(floor, questId);
-    }
-
-    const last = await this.snapshot().catch(() => undefined);
-    throw new Error(
-      `Tower of Doom floor ${floor} could not advance to ${cell}/${pad}. Last location: ${
-        last ? `${last.map}-${last.room} ${last.cell}/${last.pad}` : "unknown"
-      }.`
-    );
-  }
-
-  private async clearTowerOfDoomCurrentRoom(floor: number, questId: number): Promise<void> {
-    for (let guard = 0; guard < 12; guard += 1) {
-      if ((await this.questCompletionReadiness(questId).catch(() => undefined))?.ready) return;
-
-      const target = await this.findAliveMonsterInCurrentCell("*");
-      if (!target) return;
-
-      await this.safeAttack(target.id ?? "*", `clearing Tower of Doom floor ${floor}`);
-      await this.bot.useAvailableSkills().catch(() => undefined);
-      await this.acceptQuestDrops(questId).catch(() => undefined);
-      await this.bot.delay(650, this.signal);
-    }
+  private async applyQuestProgressBypass(questId: number): Promise<void> {
+    const quest = await this.ensureQuestLoaded(questId).catch(() => undefined);
+    if (!quest) return;
+    const slot = numberFrom(quest, ["iSlot", "Slot", "slot", "iIndex"]);
+    const value = numberFrom(quest, ["iValue", "Value", "value"]);
+    await this.sendClientQuestProgress(value, slot);
+    await this.bot.delay(200, this.signal);
   }
 
   private async unlockBladeOfAwe(): Promise<void> {
@@ -9135,10 +9094,6 @@ export function isClassItem(item: ItemRecord): boolean {
 
 export function sameName(left: string, right: string): boolean {
   return left.trim().toLowerCase() === right.trim().toLowerCase();
-}
-
-function runtimeBaseMapName(map: string): string {
-  return map.trim().toLowerCase().replace(/-\d+$/, "");
 }
 
 export function normalizedClassRank(snapshot: PlayerSnapshot): number {
