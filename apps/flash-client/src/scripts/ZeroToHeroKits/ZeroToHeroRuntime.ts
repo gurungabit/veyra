@@ -93,6 +93,7 @@ export type VeyraQuestAction =
   | { kind: "bank"; items: string | string[] };
 
 export const RANK_10_CLASS_POINTS = 302500;
+const ARCHPALADIN_QUEST_SOURCE: CombatLocation = { map: "darkthronehub" };
 const SANDSEA_FACTION_ID = 13;
 const HORC_FACTION_ID = 19;
 const EMBERSEA_FACTION_ID = 43;
@@ -4819,13 +4820,13 @@ export class ZeroToHeroRuntime {
 
     if (!(await this.isMember()) && !(await this.isQuestUnlocked(5467))) {
       await this.farmGold(500000);
-      await this.completeQuestPlan(5463, [
+      await this.completeArchPaladinQuestPlan(5463, [
         { kind: "buy", map: "temple", shopId: 288, item: "Stone Paladin Armor" },
         { kind: "buy", map: "darkthronehub", shopId: 1308, item: "Exalted Paladin Seal" }
       ]);
       await this.unlockBlodMineCrafting();
       await this.battleUnderB("Undead Energy", 1000);
-      await this.completeQuestPlan(5464, [
+      await this.completeArchPaladinQuestPlan(5464, [
         {
           kind: "hunt",
           map: "doomvault",
@@ -4846,7 +4847,7 @@ export class ZeroToHeroRuntime {
         { kind: "hunt", map: "doomkitten", monster: "DoomKitten", item: "DoomKitten Claw", isTemp: true },
         { kind: "hunt", map: "vordredboss", monster: "Vordred", item: "Vordred's Skull", isTemp: false }
       ]);
-      await this.completeQuestPlan(5465, [
+      await this.completeArchPaladinQuestPlan(5465, [
         {
           kind: "hunt",
           map: "xantown",
@@ -4896,7 +4897,7 @@ export class ZeroToHeroRuntime {
         },
         { kind: "hunt", map: "farm", monster: "Treeant", item: "Just the Perfect Stick", isTemp: false }
       ]);
-      await this.completeQuestPlan(5466, [
+      await this.completeArchPaladinQuestPlan(5466, [
         { kind: "buy", map: "castle", shopId: 88, item: "Holy Hand Grenade" },
         {
           kind: "hunt",
@@ -4921,11 +4922,11 @@ export class ZeroToHeroRuntime {
     } else if ((await this.isMember()) && !(await this.isQuestUnlocked(5467))) {
       await this.paladinClass(false);
       const hasSilver = await this.contains("Silver Paladin");
-      await this.chainQuest(hasSilver ? 5475 : 5471);
-      await this.chainQuest(hasSilver ? 5476 : 5472);
-      await this.chainQuest(hasSilver ? 5477 : 5473);
+      await this.chainQuest(hasSilver ? 5475 : 5471, -1, ARCHPALADIN_QUEST_SOURCE);
+      await this.chainQuest(hasSilver ? 5476 : 5472, -1, ARCHPALADIN_QUEST_SOURCE);
+      await this.chainQuest(hasSilver ? 5477 : 5473, -1, ARCHPALADIN_QUEST_SOURCE);
       await this.farmGold(500000);
-      await this.completeQuestPlan(hasSilver ? 5478 : 5474, [
+      await this.completeArchPaladinQuestPlan(hasSilver ? 5478 : 5474, [
         {
           kind: "hunt",
           map: "bosschallenge",
@@ -4938,7 +4939,7 @@ export class ZeroToHeroRuntime {
       ]);
     }
 
-    await this.completeQuestPlan(5467, [
+    await this.completeArchPaladinQuestPlan(5467, [
       {
         kind: "hunt",
         map: "brightfall",
@@ -4961,7 +4962,7 @@ export class ZeroToHeroRuntime {
         isTemp: false
       }
     ]);
-    await this.completeQuestPlan(5468, [
+    await this.completeArchPaladinQuestPlan(5468, [
       { kind: "hunt", map: "poisonforest", monster: "Xavier Lionfang", item: "Divine Elixir", isTemp: false },
       {
         kind: "hunt",
@@ -4981,7 +4982,7 @@ export class ZeroToHeroRuntime {
     ]);
     await this.ensureScrollOfEtherealSlumber();
     await this.xansLair();
-    await this.completeQuestPlan(5469, [
+    await this.completeArchPaladinQuestPlan(5469, [
       { kind: "hunt", map: "xancave", monster: "Shurpu Ring Guardian", item: "Fists of Fire", isTemp: false },
       {
         kind: "hunt",
@@ -4992,7 +4993,7 @@ export class ZeroToHeroRuntime {
       },
       { kind: "hunt", map: "palace", monster: "Pettivox", item: "Ring of Mana Transposition", isTemp: false }
     ]);
-    await this.completeQuestPlan(5470, [
+    await this.completeArchPaladinQuestPlan(5470, [
       { kind: "hunt", map: "seraph", monster: "Adventus", item: "Sacred Tome", isTemp: false },
       {
         kind: "hunt",
@@ -5036,6 +5037,14 @@ export class ZeroToHeroRuntime {
     await this.buyItem("darkthronehub", 1303, 36920, 1, 21833);
     await this.ensureInInventory("ArchPaladin", 36920);
     if (rankUpClass) await this.rankClass("ArchPaladin");
+  }
+
+  private async completeArchPaladinQuestPlan(
+    questId: number,
+    actions: VeyraQuestAction[],
+    rewardId = -1
+  ): Promise<void> {
+    await this.completeQuestPlan(questId, actions, rewardId, false, ARCHPALADIN_QUEST_SOURCE);
   }
 
   private async paladinClass(rankUpClass = true): Promise<void> {
@@ -8702,8 +8711,9 @@ export class ZeroToHeroRuntime {
     return step.questId >= 3812 && step.questId <= 3824;
   }
 
-  async chainQuest(questId: number, rewardId = -1): Promise<void> {
+  async chainQuest(questId: number, rewardId = -1, sourceLocation?: CombatLocation): Promise<void> {
     if (await this.isStoryQuestComplete(questId)) return;
+    if (sourceLocation) await this.join(sourceLocation.map, sourceLocation.cell, sourceLocation.pad);
     await this.acceptQuest(questId);
     await this.completeQuest(questId, rewardId);
     await this.acceptQuestDrops(questId);
@@ -8751,13 +8761,16 @@ export class ZeroToHeroRuntime {
     questId: number,
     actions: VeyraQuestAction[],
     rewardId = -1,
-    repeatable = false
+    repeatable = false,
+    sourceLocation?: CombatLocation
   ): Promise<void> {
     if (!repeatable && (await this.isQuestCompletedDirect(questId).catch(() => false))) return;
     const startLocation = this.questActionStartLocation(actions);
-    if (startLocation) await this.join(startLocation.map, startLocation.cell, startLocation.pad);
+    if (sourceLocation) await this.join(sourceLocation.map, sourceLocation.cell, sourceLocation.pad);
+    else if (startLocation) await this.join(startLocation.map, startLocation.cell, startLocation.pad);
     if (!repeatable && (await this.isStoryQuestComplete(questId))) return;
     await this.acceptQuest(questId);
+    if (sourceLocation && startLocation) await this.join(startLocation.map, startLocation.cell, startLocation.pad);
     for (const action of actions) await this.runQuestAction(action, questId);
     await this.completeQuest(questId, rewardId);
     await this.acceptQuestDrops(questId);
