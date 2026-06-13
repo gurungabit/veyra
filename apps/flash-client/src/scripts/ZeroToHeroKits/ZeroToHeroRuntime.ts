@@ -692,7 +692,18 @@ export class ZeroToHeroRuntime {
     await this.recoverIfDead({ map, cell, pad });
     this.throwIfAborted();
     await this.applyMapQuestProgressBypass(map);
-    await this.bot.join(map, cell, pad);
+    try {
+      await this.bot.join(map, cell, pad);
+    } catch (error) {
+      if (!cell || cell === "Enter") throw error;
+      this.log(
+        `Join to ${map} ${cell}/${pad} did not settle; retrying through Enter/Auto (${errorSummary(error)}).`
+      );
+      await this.bot.join(map, "Enter", "Spawn");
+      await this.bot.delay(1200, this.signal);
+      await this.bot.jump(cell, "Auto");
+    }
+    await this.waitForRuntimeLocation(map, cell, pad);
     await this.bot.delay(700, this.signal);
     await this.skipCutsceneIfActive();
     await this.clickFightPromptIfVisible();
@@ -701,10 +712,53 @@ export class ZeroToHeroRuntime {
   async jump(cell: string, pad = "Spawn"): Promise<void> {
     await this.recoverIfDead();
     this.throwIfAborted();
+    const start = await this.snapshot().catch(() => undefined);
     await this.bot.jump(cell, pad);
+    if (start?.map) await this.waitForRuntimeLocation(start.map, cell, pad);
     await this.bot.delay(450, this.signal);
     await this.skipCutsceneIfActive();
     await this.clickFightPromptIfVisible();
+  }
+
+  private async waitForRuntimeLocation(map: string, cell?: string, pad?: string, timeoutMs = 9000): Promise<void> {
+    const targetMap = baseMapName(map);
+    const targetCell = (cell || "").trim();
+    const targetPad = (pad || "").trim();
+    const requirePad = targetPad.length > 0 && targetPad.toLowerCase() !== "auto";
+    const deadline = Date.now() + timeoutMs;
+    let retriedAutoJump = false;
+    let initRoomSeenAt = 0;
+    let latest: PlayerSnapshot | undefined;
+
+    while (!this.signal?.aborted && Date.now() < deadline) {
+      latest = await this.snapshot().catch(() => latest);
+      const mapMatches = !targetMap || baseMapName(latest?.map || "") === targetMap;
+      const currentCell = (latest?.cell || "").trim();
+      const normalizedCell = currentCell.toLowerCase();
+      const loaded = latest?.mapLoaded !== false && latest?.mapLoading !== true;
+      const cellMatches = !targetCell || normalizedCell === targetCell.toLowerCase();
+      const padMatches = !requirePad || (latest?.pad || "").trim().toLowerCase() === targetPad.toLowerCase();
+
+      if (mapMatches && loaded && cellMatches && padMatches && normalizedCell !== "initroom") return;
+
+      if (mapMatches && loaded && targetCell && ["", "init", "initroom"].includes(normalizedCell)) {
+        initRoomSeenAt ||= Date.now();
+        if (!retriedAutoJump && Date.now() - initRoomSeenAt >= 1200) {
+          retriedAutoJump = true;
+          this.log(`Retrying jump to ${targetCell}/Auto after ${currentCell || "initRoom"} did not settle.`);
+          await this.bot.jump(targetCell, "Auto").catch(() => undefined);
+        }
+      }
+
+      await this.bot.delay(250, this.signal);
+    }
+
+    const location = latest
+      ? `${latest.map || "unknown"} ${latest.cell || "unknown"}/${latest.pad || "unknown"}`
+      : "unknown";
+    throw new Error(
+      `Timed out waiting for ${map}${targetCell ? ` ${targetCell}` : ""}${targetPad ? `/${targetPad}` : ""}. Last location: ${location}.`
+    );
   }
 
   async skipCutsceneIfActive(): Promise<boolean> {
@@ -4831,7 +4885,7 @@ export class ZeroToHeroRuntime {
           kind: "hunt",
           map: "doomvault",
           cell: "r5",
-          pad: "Left",
+          pad: "Auto",
           monster: "Binky",
           item: "Binky's Uni-horn",
           isTemp: false
@@ -9572,6 +9626,10 @@ export function isClassItem(item: ItemRecord): boolean {
 
 export function sameName(left: string, right: string): boolean {
   return left.trim().toLowerCase() === right.trim().toLowerCase();
+}
+
+function baseMapName(map: string): string {
+  return (map || "").split("-")[0]?.trim().toLowerCase() || "";
 }
 
 export function normalizedClassRank(snapshot: PlayerSnapshot): number {
